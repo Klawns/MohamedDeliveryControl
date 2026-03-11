@@ -40,7 +40,11 @@ function RegisterContent() {
 
                     <div className="space-y-4">
                         <button
-                            onClick={() => window.location.href = `${API_URL}/auth/google?plan=${plan}`}
+                            onClick={() => {
+                                const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+                                const baseUrl = isProd ? "/api/auth/google" : `${API_URL}/auth/google`;
+                                window.location.href = `${baseUrl}?plan=${plan}`;
+                            }}
                             className="w-full bg-white text-slate-950 hover:bg-slate-100 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 group shadow-xl shadow-white/5"
                         >
                             <Image src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width={22} height={22} />
