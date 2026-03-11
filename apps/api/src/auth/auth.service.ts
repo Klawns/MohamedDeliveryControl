@@ -124,22 +124,25 @@ export class AuthService {
     }
 
     async validateGoogleUser(profile: any) {
+        console.log('[AuthService] Google Profile recebido:', JSON.stringify(profile));
         const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
         let user = await this.usersService.findByEmail(profile.email);
 
         if (!user) {
-            // Registro automático via Google
+            console.log('[AuthService] Criando novo usuário via Google:', profile.email, 'Nome:', fullName);
             user = await this.usersService.create({
                 email: profile.email,
                 name: fullName,
                 password: '', // Sem senha para usuários social
             });
             await this.subscriptionsService.updateOrCreate(user.id, 'starter');
-        } else if (user.name && user.name.endsWith(' undefined')) {
-            // Cleanup para usuários afetados pelo bug anterior
-            const cleanedName = user.name.replace(' undefined', '').trim();
-            await this.usersService.update(user.id, { name: cleanedName });
-            user.name = cleanedName;
+        } else {
+            console.log('[AuthService] Usuário Google encontrado no banco:', user.email, 'ID:', user.id, 'Nome atual:', user.name);
+            if (user.name && user.name.endsWith(' undefined')) {
+                const cleanedName = user.name.replace(' undefined', '').trim();
+                await this.usersService.update(user.id, { name: cleanedName });
+                user.name = cleanedName;
+            }
         }
 
         return this.login(user);

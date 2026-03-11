@@ -25,6 +25,8 @@ export class PaymentsService {
         const user = await this.usersService.findById(userId);
         const [dbPlan] = await this.db.select().from(schema.pricingPlans).where(eq(schema.pricingPlans.id, plan));
 
+        console.log(`[PaymentsService] Iniciando checkout. ID: ${userId}, Nome DB: ${user?.name}, Email DB: ${user?.email}, Plano: ${plan}`);
+
         if (!dbPlan) {
             throw new Error('Plano não encontrado');
         }
