@@ -7,9 +7,8 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    // Só aplica o proxy se a URL da API estiver definida
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return [];
+    // URL da API (usado como destino do proxy)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
     return [
       {
