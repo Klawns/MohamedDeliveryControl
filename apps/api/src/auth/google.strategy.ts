@@ -6,9 +6,15 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     constructor(private configService: ConfigService) {
-        const clientID = configService.get<string>('GOOGLE_CLIENT_ID') || 'placeholder';
-        const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET') || 'placeholder';
+        const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
+        const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
         const callbackURL = configService.get<string>('GOOGLE_CALLBACK_URL');
+
+        console.log(`[GoogleStrategy] Inicializando. ID: ${!!clientID}, Secret: ${!!clientSecret}, Callback: ${callbackURL}`);
+
+        if (!clientID || !clientSecret) {
+            throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be defined');
+        }
 
         if (!callbackURL && process.env.NODE_ENV === 'production') {
             throw new Error('GOOGLE_CALLBACK_URL must be defined in production');
@@ -17,7 +23,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         super({
             clientID,
             clientSecret,
-            callbackURL,
+            callbackURL: callbackURL || 'http://localhost:3000/auth/google/callback',
             scope: ['email', 'profile'],
         });
     }

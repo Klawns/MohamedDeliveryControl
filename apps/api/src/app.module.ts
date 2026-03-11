@@ -17,6 +17,7 @@ import { DebugController } from './debug/debug.controller';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', 'apps/api/.env'],
     }),
     DatabaseModule,
     UsersModule,
