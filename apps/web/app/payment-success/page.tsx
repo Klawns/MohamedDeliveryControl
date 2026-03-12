@@ -71,7 +71,7 @@ export default function PaymentSuccessPage() {
                         <div className="w-20 h-20 bg-lime-500/20 rounded-full flex items-center justify-center mx-auto">
                             <CheckCircle2 className="w-12 h-12 text-lime-400" />
                         </div>
-                        <h1 className="text-3xl font-black text-white">Pagamento Confirmado!</h1>
+                        <h1 className="text-3xl font-black text-white">Pagamento Concluído!</h1>
                         <p className="text-slate-300 text-lg">
                             Parabéns! Sua conta premium está ativa. <br />
                             Prepare-se para decolar suas entregas.
@@ -96,12 +96,12 @@ export default function PaymentSuccessPage() {
                         animate={{ opacity: 1 }}
                         className="space-y-6"
                     >
-                        <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto">
-                            <Rocket className="w-8 h-8 text-blue-400" />
+                        <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
+                            <Rocket className="w-8 h-8 text-amber-400" />
                         </div>
-                        <h1 className="text-xl font-bold text-white">Pagamento processado!</h1>
+                        <h1 className="text-xl font-bold text-white">Quase tudo pronto!</h1>
                         <p className="text-slate-400">
-                            Seu pagamento foi enviado com sucesso, mas o sistema pode levar até 1 minuto para atualizar.
+                            Seu pagamento foi enviado, mas o sistema está levando um pouco mais de tempo para validar.
                         </p>
                         <button
                             onClick={() => router.push("/dashboard")}
@@ -110,7 +110,7 @@ export default function PaymentSuccessPage() {
                             Ir para o Dashboard agora
                         </button>
                         <p className="text-xs text-slate-500">
-                            Se o seu plano não atualizar em breve, entre em contato com o suporte.
+                            Se o seu plano não atualizar em 1 minuto, entre em contato com o suporte.
                         </p>
                     </motion.div>
                 )}

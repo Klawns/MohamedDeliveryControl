@@ -104,7 +104,7 @@ export class AbacatePayProvider implements IPaymentProvider {
     const payload = {
       frequency: 'ONE_TIME',
       methods: ['PIX'],
-      // externalId: userId, // REMOVIDO para testar se o AbacatePay pára de usar dados antigos do cliente
+      externalId: userId, // Restaurado para garantir identificação unívoca
       products: [
         {
           externalId: `plan_${plan}`,
@@ -345,8 +345,9 @@ export class AbacatePayProvider implements IPaymentProvider {
     }
 
     // Camada 1: Validação por Secret na URL (Query String)
-    const querySecret = query?.webhookSecret;
-    const isQuerySecretValid = querySecret && querySecret === this.webhookSecret;
+    const normalize = (s: any) => (s as string)?.trim().replace(/^'|'$/g, '').replace(/^"|"$/g, '');
+    const querySecret = normalize(query?.webhookSecret);
+    const isQuerySecretValid = querySecret && querySecret === normalize(this.webhookSecret);
 
     if (isQuerySecretValid) {
       console.log('[AbacatePay] ✅ Validação Camada 1 (Secret na URL) concluída com sucesso.');
@@ -411,42 +412,58 @@ export class AbacatePayProvider implements IPaymentProvider {
       // 1. Metadata direta (o ideal)
       let userId =
         checkout?.metadata?.userId ||
-        data?.metadata?.userId ||
-        checkout?.externalId;
+        data?.metadata?.userId;
+
+      // Funções auxiliares de validação
+      const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      const isEmail = (val: string) => typeof val === 'string' && val.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      const isValidUserId = (val: any) => typeof val === 'string' && val.length > 5 && (isUUID(val) || isEmail(val)) && !val.startsWith('plan_');
+
+      // Estratégia de busca de userId:
+      let candidateId: string | null = null;
+
+      // 1. Metadata direta (o ideal)
+      candidateId = checkout?.metadata?.userId || data?.metadata?.userId;
+      if (isValidUserId(candidateId)) {
+        userId = candidateId;
+        console.log(`[AbacatePay] userId extraído via Metadata: ${userId}`);
+      }
 
       // 2. Metadata no customer
-      if (!userId && customer) {
-        userId = customer.metadata?.userId || customer.externalId;
-      }
-
-      // 3. Busca Recursiva Profunda (Encontra em qualquer nível)
-      if (!userId) {
-        const findDeep = (obj: any, target: string): any => {
-          if (!obj || typeof obj !== 'object') return undefined;
-          if (obj[target]) return obj[target];
-          for (const key in obj) {
-            const res = findDeep(obj[key], target);
-            if (res) return res;
-          }
-          return undefined;
-        };
-        userId = findDeep(body, 'userId') || findDeep(body, 'externalId');
-        if (userId) console.log(`[AbacatePay] userId encontrado via busca profunda: ${userId}`);
-      }
-
-      // 4. Busca por Regex UUID
-      if (!userId) {
-        const uuidMatch = bodyStr.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-        if (uuidMatch) {
-          userId = uuidMatch[0];
-          console.log(`[AbacatePay] userId extraído via Regex UUID de emergência: ${userId}`);
+      if (!isValidUserId(userId) && customer) {
+        candidateId = customer.metadata?.userId || (isValidUserId(customer.externalId) ? customer.externalId : null);
+        if (isValidUserId(candidateId)) {
+          userId = candidateId;
+          console.log(`[AbacatePay] userId extraído via Customer Data: ${userId}`);
         }
       }
 
-      // Fallback para e-mail
-      if (!userId && customer?.email) {
-        console.log(`[AbacatePay] Usando e-mail como fallback: ${customer.email}`);
-        userId = customer.email;
+      // 3. externalId na RAIZ do checkout (Apenas se for válido)
+      if (!isValidUserId(userId) && checkout?.externalId) {
+        candidateId = checkout.externalId;
+        if (isValidUserId(candidateId)) {
+          userId = candidateId;
+          console.log(`[AbacatePay] userId extraído via ExternalId: ${userId}`);
+        } else {
+          console.warn(`[AbacatePay] candidateId descartado (inválido como userId): ${candidateId}`);
+        }
+      }
+
+      // 4. Busca por Regex UUID no corpo inteiro (Salva-vidas)
+      if (!isValidUserId(userId)) {
+        const uuidMatch = bodyStr.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+        if (uuidMatch && isValidUserId(uuidMatch[0])) {
+          userId = uuidMatch[0];
+          console.log(`[AbacatePay] userId extraído via Regex UUID: ${userId}`);
+        }
+      }
+
+      // 5. Fallback para e-mail direto no customer
+      if (!isValidUserId(userId) && customer?.email) {
+        if (isValidUserId(customer.email)) {
+          userId = customer.email;
+          console.log(`[AbacatePay] userId extraído via E-mail: ${userId}`);
+        }
       }
 
       const plan =
@@ -454,8 +471,8 @@ export class AbacatePayProvider implements IPaymentProvider {
         checkout?.products?.[0]?.externalId?.replace('plan_', '') ||
         'premium';
 
-      if (!userId) {
-        console.error('[AbacatePay] ❌ Falha crítica: Não foi possível identificar o usuário no payload.');
+      if (!userId || userId.startsWith('plan_')) {
+        console.error(`[AbacatePay] ❌ Falha crítica: Identificador inválido ou ausente. Recebido: ${userId}`);
         return { received: true };
       }
 

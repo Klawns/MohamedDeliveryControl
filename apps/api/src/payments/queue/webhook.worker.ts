@@ -29,6 +29,14 @@ export class WebhookWorker extends WorkerHost {
       `Processando Webhook - Job ID: ${job.id} | Usuário: ${userId} | Plano: ${plan}`,
     );
 
+    // Guard against previously enqueued bad data (e.g. product IDs instead of user IDs)
+    if (!userId || userId.startsWith('plan_')) {
+      this.logger.warn(
+        `Job ${job.id} descartado: Identificador de usuário inválido (${userId})`,
+      );
+      return;
+    }
+
     try {
       await this.subscriptionsService.updateOrCreate(userId, plan);
       // Invalidate the cache so the frontend /auth/me polling gets the new plan immediately

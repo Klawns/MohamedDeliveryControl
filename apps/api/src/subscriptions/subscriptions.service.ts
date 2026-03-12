@@ -24,6 +24,9 @@ export class SubscriptionsService {
     userId: string,
     plan: 'starter' | 'premium' | 'lifetime',
   ) {
+    if (!userId || userId.startsWith('plan_')) {
+      throw new Error(`Invalid userId: ${userId}`);
+    }
     return this.subscriptionsRepository.updateOrCreate(userId, plan);
   }
 
