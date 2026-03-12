@@ -20,9 +20,15 @@ export class AbacatePayProvider implements IPaymentProvider {
   private readonly lifetimePrice: number;
 
   constructor(private configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('ABACATEPAY_API_KEY') || '';
+    this.apiKey = this.configService.get<string>('ABACATEPAY_API_KEY') || process.env.ABACATEPAY_API_KEY || '';
     this.webhookSecret =
-      this.configService.get<string>('ABACATEPAY_WEBHOOK_SECRET') || '';
+      this.configService.get<string>('ABACATEPAY_WEBHOOK_SECRET') || process.env.ABACATEPAY_WEBHOOK_SECRET || '';
+
+    if (this.webhookSecret) {
+      console.log(`[AbacatePay] ✅ Provedor inicializado. Secret carregado (${this.webhookSecret.length} bytes).`);
+    } else {
+      console.error('[AbacatePay] ❌ Provedor inicializado SEM ABACATEPAY_WEBHOOK_SECRET!');
+    }
   }
 
   private logToFile(data: any) {
