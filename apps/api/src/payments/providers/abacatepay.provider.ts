@@ -408,22 +408,23 @@ export class AbacatePayProvider implements IPaymentProvider {
       const checkout = data.checkout || data.billing || data.transparent;
       const customer = data.customer || checkout?.customer;
 
-      // Estratégia de busca de userId:
-      // 1. Metadata direta (o ideal)
-      let userId =
-        checkout?.metadata?.userId ||
-        data?.metadata?.userId;
-
       // Funções auxiliares de validação
       const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
       const isEmail = (val: string) => typeof val === 'string' && val.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
       const isValidUserId = (val: any) => typeof val === 'string' && val.length > 5 && (isUUID(val) || isEmail(val)) && !val.startsWith('plan_');
 
-      // Estratégia de busca de userId:
+      let userId: string | null = null;
       let candidateId: string | null = null;
 
-      // 1. Metadata direta (o ideal)
-      candidateId = checkout?.metadata?.userId || data?.metadata?.userId;
+      // Estratégia de busca de userId (Seguindo a V1 mas resiliente a variações de logs):
+
+      // 1. Metadata (Padrão Oficial V1 e variações de produção)
+      candidateId =
+        checkout?.metadata?.userId ||
+        data?.metadata?.userId ||
+        data?.billing?.customer?.metadata?.userId ||
+        data?.checkout?.customer?.metadata?.userId;
+
       if (isValidUserId(candidateId)) {
         userId = candidateId;
         console.log(`[AbacatePay] userId extraído via Metadata: ${userId}`);
@@ -431,7 +432,10 @@ export class AbacatePayProvider implements IPaymentProvider {
 
       // 2. Metadata no customer
       if (!isValidUserId(userId) && customer) {
-        candidateId = customer.metadata?.userId || (isValidUserId(customer.externalId) ? customer.externalId : null);
+        candidateId =
+          customer.metadata?.userId ||
+          (isValidUserId(customer.externalId) ? customer.externalId : null);
+
         if (isValidUserId(candidateId)) {
           userId = candidateId;
           console.log(`[AbacatePay] userId extraído via Customer Data: ${userId}`);
@@ -439,13 +443,11 @@ export class AbacatePayProvider implements IPaymentProvider {
       }
 
       // 3. externalId na RAIZ do checkout (Apenas se for válido)
-      if (!isValidUserId(userId) && checkout?.externalId) {
-        candidateId = checkout.externalId;
+      if (!isValidUserId(userId)) {
+        candidateId = checkout?.externalId || data?.billing?.externalId;
         if (isValidUserId(candidateId)) {
           userId = candidateId;
           console.log(`[AbacatePay] userId extraído via ExternalId: ${userId}`);
-        } else {
-          console.warn(`[AbacatePay] candidateId descartado (inválido como userId): ${candidateId}`);
         }
       }
 
