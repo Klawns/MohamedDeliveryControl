@@ -110,7 +110,7 @@ export class AbacatePayProvider implements IPaymentProvider {
           externalId: `plan_${plan}`,
           name: `Plano MDC - ${plan.toUpperCase()}`,
           quantity: 1,
-          price: Math.round(amount * 100), // API v1 espera CENTAVOS (Ex: R$10,00 = 1000)
+          price: amount, // O valor já vem do banco em centavos (Ex: 499 = R$ 4,99)
         },
       ],
       returnUrl: `${frontendUrl}/pricing?payment=cancel`,
@@ -118,13 +118,13 @@ export class AbacatePayProvider implements IPaymentProvider {
       customer: customer
         ? {
           name: customer.name || 'Cliente Mohamed',
-          email: customer.email, // fabingames13@gmail.com
+          email: customer.email,
           cellphone: customer.cellphone || '',
           taxId: customer.taxId || '',
         }
         : undefined,
       metadata: {
-        userId, // Identificador ÚNICO via metadata para o Webhook me achar
+        userId,
         plan,
       },
       coupons: coupons || [],
@@ -370,10 +370,20 @@ export class AbacatePayProvider implements IPaymentProvider {
         .update(payload)
         .digest('base64');
 
-      if (signature === expectedSigHex) {
+      // Função de comparação em tempo constante para evitar ataques de timing
+      const safeCompare = (a: string, b: string) => {
+        try {
+          if (!a || !b || a.length !== b.length) return false;
+          return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+        } catch {
+          return false;
+        }
+      };
+
+      if (safeCompare(signature, expectedSigHex)) {
         isHmacValid = true;
         console.log('[AbacatePay] ✅ Validação Camada 2 (HMAC HEX) concluída com sucesso.');
-      } else if (signature === expectedSigB64) {
+      } else if (safeCompare(signature, expectedSigB64)) {
         isHmacValid = true;
         console.log('[AbacatePay] ✅ Validação Camada 2 (HMAC B64) concluída com sucesso.');
       }
@@ -413,49 +423,42 @@ export class AbacatePayProvider implements IPaymentProvider {
       const isEmail = (val: string) => typeof val === 'string' && val.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
       const isValidUserId = (val: any) => typeof val === 'string' && val.length > 5 && (isUUID(val) || isEmail(val)) && !val.startsWith('plan_');
 
-      // Log do payload Data para depuração definitiva se o ID sumir
-      console.log('[AbacatePay] debug - Objeto DATA completo:', JSON.stringify(data));
-
       let userId: string | null = null;
-      let candidateId: string | null = null;
 
-      // Estratégia de busca de userId (Seguindo a V1 mas resiliente a variações de logs):
-
-      // 1. Metadata (Padrão Oficial V1 e variações de produção)
-      candidateId =
+      // 1️⃣ METADATA (Ideal)
+      userId =
         checkout?.metadata?.userId ||
         data?.metadata?.userId ||
         data?.billing?.metadata?.userId ||
         data?.billing?.customer?.metadata?.userId ||
         data?.checkout?.customer?.metadata?.userId;
 
-      if (isValidUserId(candidateId)) {
-        userId = candidateId;
+      if (isValidUserId(userId)) {
         console.log(`[AbacatePay] userId extraído via Metadata: ${userId}`);
       }
 
-      // 2. Metadata no customer
-      if (!isValidUserId(userId) && customer) {
-        candidateId =
-          customer.metadata?.userId ||
-          (isValidUserId(customer.externalId) ? customer.externalId : null);
-
-        if (isValidUserId(candidateId)) {
-          userId = candidateId;
-          console.log(`[AbacatePay] userId extraído via Customer Data: ${userId}`);
-        }
-      }
-
-      // 3. externalId na RAIZ do checkout (Apenas se for válido)
+      // 2️⃣ EXTERNAL_ID (Recomendado)
       if (!isValidUserId(userId)) {
-        candidateId = checkout?.externalId || data?.billing?.externalId;
-        if (isValidUserId(candidateId)) {
-          userId = candidateId;
+        userId = checkout?.externalId || data?.billing?.externalId;
+        if (isValidUserId(userId)) {
           console.log(`[AbacatePay] userId extraído via ExternalId: ${userId}`);
         }
       }
 
-      // 4. Busca por Regex UUID no corpo inteiro (Salva-vidas)
+      // 3️⃣ EMAIL FALLBACK (Segurança final)
+      if (!isValidUserId(userId)) {
+        const email =
+          customer?.metadata?.email ||
+          data?.billing?.customer?.metadata?.email ||
+          customer?.email;
+
+        if (isValidUserId(email)) {
+          userId = email;
+          console.log(`[AbacatePay] userId extraído via E-mail Fallback: ${userId}`);
+        }
+      }
+
+      // 4️⃣ BUSCA POR REGEX (Salva-vidas final dependendo do payload bruto)
       if (!isValidUserId(userId)) {
         const uuidMatch = bodyStr.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
         if (uuidMatch && isValidUserId(uuidMatch[0])) {
@@ -464,18 +467,19 @@ export class AbacatePayProvider implements IPaymentProvider {
         }
       }
 
-      // 5. Fallback para e-mail direto no customer
-      if (!isValidUserId(userId) && customer?.email) {
-        if (isValidUserId(customer.email)) {
-          userId = customer.email;
-          console.log(`[AbacatePay] userId extraído via E-mail: ${userId}`);
-        }
-      }
-
       const plan =
         checkout?.metadata?.plan ||
         checkout?.products?.[0]?.externalId?.replace('plan_', '') ||
         'premium';
+
+      // Validação de segurança dos planos permitidos
+      const validPlans = ['starter', 'premium', 'lifetime'];
+      const normalizedPlan = plan.toLowerCase();
+
+      if (!validPlans.includes(normalizedPlan)) {
+        console.warn(`[AbacatePay] ⚠️ Plano inválido recebido no Webhook: ${plan}`);
+        return { received: true };
+      }
 
       if (!userId || userId.startsWith('plan_')) {
         console.error(`[AbacatePay] ❌ Falha crítica: Identificador inválido ou ausente. Recebido: ${userId}`);
@@ -483,14 +487,15 @@ export class AbacatePayProvider implements IPaymentProvider {
       }
 
       console.log(
-        `[AbacatePay] Pagamento confirmado! User/ID: ${userId}, Plano: ${plan}`,
+        `[AbacatePay] Pagamento confirmado! User/ID: ${userId}, Plano: ${normalizedPlan}`,
       );
 
       return {
         received: true,
         userId,
-        plan: plan.toLowerCase() as PaymentPlan,
+        plan: normalizedPlan as PaymentPlan,
         status: 'PAID',
+        eventId: body.id || undefined, // Extrai ID real do evento se disponível
       };
     }
 

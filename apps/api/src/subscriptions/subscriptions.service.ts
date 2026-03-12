@@ -27,6 +27,13 @@ export class SubscriptionsService {
     if (!userId || userId.startsWith('plan_')) {
       throw new Error(`Invalid userId: ${userId}`);
     }
+
+    const currentSub = await this.findByUserId(userId);
+    if (currentSub && currentSub.plan === plan && currentSub.status === 'active') {
+      console.log(`[Subscription] Plano ${plan} já ativo para o usuário ${userId}. Ignorando atualização.`);
+      return currentSub;
+    }
+
     return this.subscriptionsRepository.updateOrCreate(userId, plan);
   }
 
