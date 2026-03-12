@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -107,6 +108,20 @@ export class PaymentsService {
   }
 
   async handleWebhook(signature: string, payload: Buffer, query?: any) {
+    // 1. Evita processamento duplo do MESMO webhook (Retentativas de rede)
+    // Geramos um hash único do corpo da requisição para identificar se é o MESMO aviso
+    const payloadHash = crypto.createHash('sha256').update(payload).digest('hex');
+    const idempotencyKey = `webhook:processed:${payloadHash}`;
+
+    const alreadyProcessed = await this.cache.get(idempotencyKey);
+    if (alreadyProcessed) {
+      console.log(`[Webhook] 🛡️ Webhook já em processamento ou finalizado. Ignorando duplicata.`);
+      return { received: true };
+    }
+
+    // Marca como processando por 60 segundos (Tempo seguro para evitar race condition de rede)
+    await this.cache.set(idempotencyKey, 'processing', 60);
+
     const result = await this.provider.handleWebhook(signature, payload, query);
 
     if (result.userId && result.plan) {

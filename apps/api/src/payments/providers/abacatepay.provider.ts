@@ -110,7 +110,7 @@ export class AbacatePayProvider implements IPaymentProvider {
           externalId: `plan_${plan}`,
           name: `Plano MDC - ${plan.toUpperCase()}`,
           quantity: 1,
-          price: amount,
+          price: Math.round(amount * 100), // API v1 espera CENTAVOS (Ex: R$10,00 = 1000)
         },
       ],
       returnUrl: `${frontendUrl}/pricing?payment=cancel`,
@@ -143,7 +143,10 @@ export class AbacatePayProvider implements IPaymentProvider {
         `${this.baseUrl}/billing/create`,
         payload,
         {
-          headers: this.headers,
+          headers: {
+            ...this.headers,
+            'Idempotency-Key': `checkout_${userId}_${plan}_${amount}`, // Proteção contra cobrança duplicada
+          },
         },
       );
       return { url: response.data.data.url as string };
@@ -154,13 +157,10 @@ export class AbacatePayProvider implements IPaymentProvider {
 
   async getBilling(id: string) {
     try {
-      const response = await axios.get(`${this.baseUrl}/billing/list`, {
+      const response = await axios.get(`${this.baseUrl}/billing/get?id=${id}`, {
         headers: this.headers,
       });
-      // O AbacatePay não possui endpoint direto /get?id= para billing aparentemente,
-      // vamos filtrar na listagem ou tentar um chute no endpoint se documentado
-      const billings = response.data.data as any[];
-      return billings.find((b) => b.id === id);
+      return response.data.data;
     } catch (error) {
       this.handleError('Erro ao buscar detalhes da cobrança', error);
     }
@@ -413,6 +413,9 @@ export class AbacatePayProvider implements IPaymentProvider {
       const isEmail = (val: string) => typeof val === 'string' && val.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
       const isValidUserId = (val: any) => typeof val === 'string' && val.length > 5 && (isUUID(val) || isEmail(val)) && !val.startsWith('plan_');
 
+      // Log do payload Data para depuração definitiva se o ID sumir
+      console.log('[AbacatePay] debug - Objeto DATA completo:', JSON.stringify(data));
+
       let userId: string | null = null;
       let candidateId: string | null = null;
 
@@ -422,6 +425,7 @@ export class AbacatePayProvider implements IPaymentProvider {
       candidateId =
         checkout?.metadata?.userId ||
         data?.metadata?.userId ||
+        data?.billing?.metadata?.userId ||
         data?.billing?.customer?.metadata?.userId ||
         data?.checkout?.customer?.metadata?.userId;
 

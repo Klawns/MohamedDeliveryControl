@@ -39,9 +39,12 @@ export class PaymentsController {
 
   @Post('webhook')
   async handleWebhook(
-    @Headers('x-webhook-signature') signature: string,
+    @Headers('x-webhook-signature') sig1: string,
+    @Headers('x-abacatepay-signature') sig2: string,
+    @Headers('x-signature') sig3: string,
     @Req() request: RawBodyRequest<express.Request>,
   ) {
+    const signature = sig1 || sig2 || sig3;
     console.log(`[Webhook] 📥 Requisição recebida em /payments/webhook`);
     console.log(`[Webhook] Signature Header: ${signature ? 'Presente' : 'AUSENTE'}`);
     console.log(`[Webhook] RawBody: ${request.rawBody ? 'Presente (' + request.rawBody.length + ' bytes)' : 'AUSENTE'}`);
