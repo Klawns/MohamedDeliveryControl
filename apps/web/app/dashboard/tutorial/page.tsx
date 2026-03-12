@@ -56,10 +56,10 @@ export default function TutorialPage() {
                 >
                     <Bike size={32} />
                 </motion.div>
-                <h1 className="text-4xl font-black text-white tracking-tight">Bem-vindo ao MDC!</h1>
+                <h1 className="text-4xl font-black text-white tracking-tight">Bem-vindo ao Rotta!</h1>
                 <p className="text-slate-400 text-lg max-w-2xl mx-auto">
                     Transformamos seu faturamento em algo simples, rápido e profissional.
-                    Veja como tirar o melhor proveito das nossas ferramentas.
+                    Seja bem-vindo ao Rotta, o centro de comando do seu crescimento.
                 </p>
             </header>
 

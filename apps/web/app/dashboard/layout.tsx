@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Users, Bike, LogOut, ChevronRight, Menu, X, Wallet, Shield, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { TutorialModal } from "@/components/dashboard/tutorial-modal";
 import { api } from "@/services/api";
@@ -65,7 +66,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     const handleMenuClick = () => {
-        // Apenas fecha a sidebar automaticamente se estiver no mobile
         if (window.innerWidth < 1024) {
             setIsSidebarOpen(false);
         }
@@ -134,17 +134,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
             >
                 <div className="flex flex-col h-full p-6 min-w-[18rem] lg:min-w-0">
-                    <div className="flex items-center justify-between mb-10 overflow-hidden h-10">
+                    <div className="flex items-center justify-between mb-10 overflow-hidden h-12">
                         <AnimatePresence mode="wait">
                             {isSidebarOpen && (
                                 <motion.div
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -20 }}
-                                    className="flex items-center gap-3"
+                                    className="flex items-center gap-3 shrink-0"
                                 >
-                                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/20 text-white shrink-0">M</div>
-                                    <span className="font-black text-xl tracking-tighter uppercase whitespace-nowrap">MDC App</span>
+                                    <div className="relative w-10 h-10 shrink-0">
+                                        <Image
+                                            src="/assets/logo3.webp"
+                                            alt="Rotta Logo"
+                                            fill
+                                            className="object-contain rounded-lg"
+                                        />
+                                    </div>
+                                    <span className="font-black text-xl tracking-tighter uppercase whitespace-nowrap italic">Rotta App</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -152,7 +159,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             className={cn(
                                 "p-2 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white bg-white/5 active:scale-90",
-                                !isSidebarOpen && "hidden lg:flex" // No desktop sem sidebar, esse botão não aparece aqui, e sim lá embaixo ou fica oculto? Wait.
+                                !isSidebarOpen && "hidden lg:flex"
                             )}
                         >
                             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -223,7 +230,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </aside>
 
             <main className="flex-1 relative overflow-y-auto flex flex-col min-w-0">
-                {/* Floating Action Button helper for Desktop when Sidebar is closed */}
                 {!isSidebarOpen && (
                     <button
                         onClick={() => setIsSidebarOpen(true)}
@@ -253,10 +259,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 <header className="lg:hidden flex items-center justify-between p-6 bg-slate-900/40 backdrop-blur-md border-b border-white/5 sticky top-0 z-40 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">M</div>
-                        <span className="font-bold">MDC</span>
+                        <div className="relative w-8 h-8 font-black">
+                            <Image
+                                src="/assets/logo3.webp"
+                                alt="Rotta Logo"
+                                fill
+                                className="object-contain rounded-lg"
+                            />
+                        </div>
+                        <span className="font-bold tracking-tight uppercase italic text-white">ROTTA</span>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-white/5 rounded-lg">
+                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-300">
                         <Menu size={20} />
                     </button>
                 </header>

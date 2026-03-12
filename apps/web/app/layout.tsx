@@ -7,17 +7,6 @@ import { AuthProvider } from '@/hooks/use-auth'
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
 
-export const metadata: Metadata = {
-  title: 'MDC - Mohamed Delivery Control',
-  description: 'Sistema de controle de corridas para entregadores',
-  generator: 'v0.app',
-  themeColor: '#020617',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'MDC',
-  },
-}
 
 export default function RootLayout({
   children,

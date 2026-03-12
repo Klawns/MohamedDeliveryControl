@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'Mohamed Delivery Control',
-        short_name: 'MDC',
+        name: 'Rotta Delivery Control',
+        short_name: 'RDC',
         description: 'Sistema de controle de corridas para entregadores',
         start_url: '/',
         display: 'standalone',

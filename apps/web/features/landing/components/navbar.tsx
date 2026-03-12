@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Bike } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
@@ -27,11 +28,17 @@ export function Navbar() {
             scrolled ? "py-4 bg-slate-950/80 backdrop-blur-xl border-b border-white/5" : "py-8 bg-transparent"
         )}>
             <div className="container mx-auto flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-2 group">
-                    <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20 group-hover:scale-110 transition-transform">
-                        <Bike size={20} />
+                <Link href="/" className="flex items-center gap-3 group">
+                    <div className="relative h-12 w-12 group-hover:scale-105 transition-transform duration-300">
+                        <Image
+                            src="/assets/logo3.webp"
+                            alt="Rotta Logo"
+                            fill
+                            className="object-contain rounded-xl"
+                            priority
+                        />
                     </div>
-                    <span className="text-2xl font-black text-white tracking-tighter">MDC</span>
+                    <span className="text-2xl font-black text-white tracking-tighter uppercase italic">ROTTA</span>
                 </Link>
 
                 {/* Desktop Nav */}
