@@ -26,7 +26,9 @@ import {
     CalendarDays,
     BarChart3,
     Filter,
-    Save
+    Save,
+    Camera,
+    Trash2
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
