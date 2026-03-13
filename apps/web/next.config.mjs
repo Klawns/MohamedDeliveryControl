@@ -8,7 +8,12 @@ const nextConfig = {
   },
   async rewrites() {
     // URL da API (usado como destino do proxy)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    let apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000").trim();
+
+    // Garante que a URL tenha o protocolo (essencial para o Next.js build não falhar)
+    if (apiUrl && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+      apiUrl = `https://${apiUrl}`;
+    }
 
     return [
       {
