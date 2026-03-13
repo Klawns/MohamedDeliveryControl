@@ -16,6 +16,10 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Rotta',
   },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
   formatDetection: {
     telephone: false,
   },
