@@ -11,7 +11,7 @@ export class DrizzleAdminRepository implements IAdminRepository {
   constructor(
     @Inject(DRIZZLE)
     private readonly db: LibSQLDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   async getUsersCount(adminEmail: string): Promise<number> {
     const [usersCount] = await this.db

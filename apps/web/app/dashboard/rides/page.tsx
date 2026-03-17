@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bike, Search, Plus, Filter, Calendar, ChevronRight, X, Clock, User, Star, ArrowRight, MessageSquare } from "lucide-react";
+import { Bike, Search, Plus, Filter, Calendar, ChevronRight, X, Clock, User, Star, ArrowRight, MessageSquare, Trash2 } from "lucide-react";
 import { api } from "@/services/api";
 import { formatCurrency, cn } from "@/lib/utils";
 import { RideModal } from "@/components/ride-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface Ride {
     id: string;
@@ -41,7 +43,10 @@ export default function RidesPage() {
     const [selectedQuickClient, setSelectedQuickClient] = useState<{ id: string, name: string } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [rideToEdit, setRideToEdit] = useState<Ride | null>(null);
+    const [rideToDelete, setRideToDelete] = useState<Ride | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { user } = useAuth();
+    const { toast } = useToast();
 
     // Pagination & Filters State
     const [page, setPage] = useState(1);
@@ -107,6 +112,30 @@ export default function RidesPage() {
     const handleEditRide = (ride: Ride) => {
         setRideToEdit(ride);
         setIsRideModalOpen(true);
+    };
+
+    const handleDeleteRide = async () => {
+        if (!rideToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await api.delete(`/rides/${rideToDelete.id}`);
+            toast({
+                title: "Corrida excluída",
+                description: "A corrida foi removida com sucesso.",
+            });
+            fetchData();
+            setRideToDelete(null);
+        } catch (err) {
+            console.error("Erro ao excluir corrida", err);
+            toast({
+                title: "Erro ao excluir",
+                description: "Não foi possível excluir a corrida. Tente novamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const togglePaymentStatus = async (ride: Ride) => {
@@ -377,8 +406,20 @@ export default function RidesPage() {
                                                 {ride.paymentStatus === 'PAID' ? 'Pago' : 'Não Pago'}
                                             </button>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-2xl font-black text-white">{formatCurrency(ride.value)}</p>
+                                        <div className="text-right flex items-center gap-4">
+                                            <div>
+                                                <p className="text-2xl font-black text-white">{formatCurrency(ride.value)}</p>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setRideToDelete(ride);
+                                                }}
+                                                className="p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all active:scale-95 opacity-0 group-hover:opacity-100"
+                                                title="Excluir Corrida"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -425,6 +466,17 @@ export default function RidesPage() {
                 clientId={selectedQuickClient?.id}
                 clientName={selectedQuickClient?.name}
                 rideToEdit={rideToEdit}
+            />
+
+            <ConfirmModal
+                isOpen={!!rideToDelete}
+                onClose={() => setRideToDelete(null)}
+                onConfirm={handleDeleteRide}
+                title="Excluir Corrida"
+                description="Deseja realmente excluir esta corrida? Esta ação não pode ser desfeita."
+                confirmText="Excluir"
+                variant="danger"
+                isLoading={isDeleting}
             />
         </div>
     );

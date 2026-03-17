@@ -1,8 +1,11 @@
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { Ride } from "@/features/rides/hooks/use-rides"
 
-export function generatePDF(clientName: string, rides: Ride[]) {
-    const total = rides.reduce((sum, ride) => sum + ride.value, 0)
+export function generatePDF(clientName: string, rides: Ride[], partialPayments: Array<{ amount: number, paymentDate: string }> = []) {
+    const totalDebt = rides.reduce((sum, ride) => sum + ride.value, 0)
+    const totalPaid = partialPayments.reduce((sum, payment) => sum + payment.amount, 0)
+    const remainingBalance = Math.max(0, totalDebt - totalPaid)
+
     const today = new Date().toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
@@ -15,6 +18,26 @@ export function generatePDF(clientName: string, rides: Ride[]) {
       <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600; color: #22c55e;">${formatCurrency(ride.value)}</td>
     </tr>
   `).join("")
+
+    const paymentsHTML = partialPayments.length > 0 ? `
+    <h3 style="margin-top: 20px; font-size: 16px; margin-bottom: 10px;">Pagamentos Parciais</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Valor Pago</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${partialPayments.map(payment => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e5e5;">${formatDate(payment.paymentDate)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600; color: #3b82f6;">- ${formatCurrency(payment.amount)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    ` : '';
 
     const html = `
     <!DOCTYPE html>
@@ -60,9 +83,22 @@ export function generatePDF(clientName: string, rides: Ride[]) {
           ${ridesHTML}
         </tbody>
       </table>
-      <div class="total">
-        <span>Total</span>
-        <strong>${formatCurrency(total)}</strong>
+      ${paymentsHTML}
+      <div class="summary-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; background: #f8f8f8;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span>Total de Corridas</span>
+          <strong>${formatCurrency(totalDebt)}</strong>
+        </div>
+        ${partialPayments.length > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #3b82f6;">
+          <span>Total Pago Antecipado</span>
+          <strong>- ${formatCurrency(totalPaid)}</strong>
+        </div>
+        ` : ''}
+        <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5; font-size: 18px;">
+          <span>Saldo Restante a Pagar</span>
+          <strong style="color: #22c55e;">${formatCurrency(remainingBalance)}</strong>
+        </div>
       </div>
       <div class="footer">
         <p>Controle de Corridas - Entregador</p>

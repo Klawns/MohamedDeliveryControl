@@ -35,4 +35,4 @@ import { UsersModule } from '../users/users.module';
     IAdminSettingsRepository,
   ],
 })
-export class AdminModule { }
+export class AdminModule {}

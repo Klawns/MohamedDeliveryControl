@@ -91,3 +91,18 @@ export const systemConfigs = sqliteTable('system_configs', {
     description: text('description'),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
+
+export const clientPayments = sqliteTable('client_payments', {
+    id: text('id').primaryKey(),
+    clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    amount: real('amount').notNull(), // Em reais, ex: 100.50
+    paymentDate: integer('payment_date', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    status: text('status', { enum: ['UNUSED', 'USED'] }).notNull().default('UNUSED'),
+    notes: text('notes'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    userIdIdx: index('client_payments_user_id_idx').on(table.userId),
+    clientIdIdx: index('client_payments_client_id_idx').on(table.clientId),
+    statusIdx: index('client_payments_status_idx').on(table.status),
+}));

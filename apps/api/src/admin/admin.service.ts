@@ -1,10 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { AbacatePayProvider } from '../payments/providers/abacatepay.provider';
 import { PAYMENT_PROVIDER } from '../payments/providers/payment-provider.interface';
+import type { IPaymentProvider } from '../payments/providers/payment-provider.interface';
 import { IAdminRepository } from './interfaces/admin-repository.interface';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
+import { IPaymentsRepository } from '../payments/interfaces/payments-repository.interface';
 
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -17,12 +18,14 @@ export class AdminService {
     @Inject(IAdminRepository)
     private readonly adminRepository: IAdminRepository,
     @Inject(PAYMENT_PROVIDER)
-    private abacatePay: AbacatePayProvider,
+    private readonly paymentProvider: IPaymentProvider,
+    @Inject(IPaymentsRepository)
+    private readonly paymentsRepository: IPaymentsRepository,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly usersService: UsersService,
     @Inject(CACHE_PROVIDER)
     private readonly cache: ICacheProvider,
-  ) { }
+  ) {}
 
   async getStats() {
     const usersCount = await this.adminRepository.getUsersCount(
@@ -36,7 +39,10 @@ export class AdminService {
       .toISOString()
       .split('T')[0];
 
-    const revenueData = await this.abacatePay.getRevenue(startDate, endDate);
+    let revenueData = { total: 0 };
+    if (this.paymentProvider.getRevenue) {
+      revenueData = await this.paymentProvider.getRevenue(startDate, endDate);
+    }
 
     return {
       totalUsers: usersCount,
@@ -63,11 +69,12 @@ export class AdminService {
       if (user.plan === 'premium' && (user as any).validUntil) {
         const validUntilDate = new Date((user as any).validUntil);
         const diffTime = validUntilDate.getTime() - now.getTime();
-        daysLeft = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+        daysLeft =
+          diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
       }
       return {
         ...user,
-        daysLeft
+        daysLeft,
       };
     });
 
@@ -82,11 +89,27 @@ export class AdminService {
     };
   }
 
-  async updateUserPlan(userId: string, plan: 'starter' | 'premium' | 'lifetime') {
+  async updateUserPlan(
+    userId: string,
+    plan: 'starter' | 'premium' | 'lifetime',
+  ) {
     const result = await this.subscriptionsService.overridePlan(userId, plan);
     // Invalidating user cache so frontend updates gracefully
     await this.cache.del(`profile:${userId}`);
     return result;
+  }
+
+  async getPlans() {
+    return this.paymentsRepository.getAllPlans();
+  }
+
+  async updatePlan(planId: string, data: any) {
+    const updatedPlan = await this.paymentsRepository.updatePlan(planId, data);
+
+    // Invalidate the cache used by PaymentsService
+    await this.cache.del('pricing:all_plans');
+
+    return updatedPlan;
   }
 
   async createUser(data: any) {

@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Bike, Users, Wallet, ChevronRight, Calendar, ChevronLeft } from "lucide-react";
+import { Bike, Users, Wallet, ChevronRight, Calendar, ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/services/api";
 import Link from "next/link";
 import { RideModal } from "@/components/ride-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { MobileDashboard } from "@/components/dashboard/mobile-dashboard";
 import { RidesChart } from "@/components/dashboard/rides-chart";
 
@@ -26,6 +27,8 @@ export default function DashboardPage() {
     const [activitiesPage, setActivitiesPage] = useState(1);
     const [isRideModalOpen, setIsRideModalOpen] = useState(false);
     const [rideToEdit, setRideToEdit] = useState<any>(null);
+    const [rideToDelete, setRideToDelete] = useState<any>(null);
+    const [isDeletingRide, setIsDeletingRide] = useState(false);
     const itemsPerPage = 4;
 
     useEffect(() => {
@@ -84,6 +87,21 @@ export default function DashboardPage() {
     const handleEditRide = (ride: any) => {
         setRideToEdit(ride);
         setIsRideModalOpen(true);
+    };
+
+    const handleDeleteRide = async () => {
+        if (!rideToDelete) return;
+        setIsDeletingRide(true);
+        try {
+            await api.delete(`/rides/${rideToDelete.id}`);
+            toast({ title: "Corrida excluída" });
+            fetchStats();
+            setRideToDelete(null);
+        } catch (err) {
+            toast({ title: "Erro ao excluir", variant: "destructive" });
+        } finally {
+            setIsDeletingRide(false);
+        }
     };
 
     const dashboardStats = [
@@ -205,19 +223,36 @@ export default function DashboardPage() {
                                         .map((ride: any) => (
                                             <div
                                                 key={ride.id}
-                                                onClick={() => handleEditRide(ride)}
-                                                className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 group cursor-pointer"
+                                                className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 group"
                                             >
                                                 <div className={cn("p-3 rounded-xl", period === 'today' ? "bg-blue-500/10 text-blue-400" : "bg-orange-500/10 text-orange-400")}>
                                                     <Calendar size={20} />
                                                 </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-white">ID: {ride.id?.split("-")[0] || "---"}</h4>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-white truncate">ID: {ride.id?.split("-")[0] || "---"}</h4>
                                                     <p className="text-xs text-slate-500 mt-0.5">{new Date(ride.rideDate || ride.createdAt).toLocaleString()}</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-bold text-white">{formatCurrency(ride.value)}</p>
-                                                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full text-center block w-fit ml-auto">OK</span>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-white">{formatCurrency(ride.value)}</p>
+                                                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full text-center block w-fit ml-auto">OK</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handleEditRide(ride)}
+                                                            className="p-3 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl transition-all active:scale-90"
+                                                            title="Editar"
+                                                        >
+                                                            <Pencil size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setRideToDelete(ride)}
+                                                            className="p-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all active:scale-90"
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -298,6 +333,17 @@ export default function DashboardPage() {
                 }}
                 onSuccess={fetchStats}
                 rideToEdit={rideToEdit}
+            />
+
+            <ConfirmModal
+                isOpen={!!rideToDelete}
+                onClose={() => setRideToDelete(null)}
+                onConfirm={handleDeleteRide}
+                title="Excluir Corrida"
+                description="Deseja realmente excluir esta corrida?"
+                confirmText="Excluir"
+                variant="danger"
+                isLoading={isDeletingRide}
             />
         </div>
     );

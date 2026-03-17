@@ -7,6 +7,7 @@ import { api } from "@/services/api";
 import { uploadImage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
 import {
     Select,
     SelectContent,
@@ -37,7 +38,7 @@ interface RideModalProps {
     rideToEdit?: any; // Dados da corrida a ser editada
 }
 
-const QUICK_VALUES = [10, 15, 20, 25];
+const QUICK_VALUES = [10, 12, 15, 20, 25, 30];
 
 export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, rideToEdit }: RideModalProps) {
     const { verify, user } = useAuth();
@@ -119,7 +120,7 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
         setIsCreatingClient(true);
         try {
             const { data } = await api.post("/clients", { name: newClientName });
-            setClients(prev => [...prev, data]);
+            setClients((prev: Client[]) => [...prev, data]);
             setSelectedClientId(data.id);
             setNewClientName("");
             setIsCreatingClient(false);
@@ -143,6 +144,10 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (currentStep < 5) {
+            setCurrentStep(prev => prev + 1);
+            return;
+        }
         if (!selectedClientId || !value) return;
 
         setIsSubmitting(true);
@@ -246,14 +251,14 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                     {rideToEdit ? 'Editar Corrida' : 'Nova Corrida'}
                                 </h2>
                                 <p className="text-slate-500 text-[10px] sm:text-xs mt-1.5 uppercase tracking-[0.2em] font-bold opacity-70">
-                                    Passo {currentStep} de 4
+                                    Passo {currentStep} de 5
                                 </p>
                             </div>
                         </div>
 
                         {/* Progress Bar */}
                         <div className="flex gap-2 mb-2">
-                            {[1, 2, 3, 4].map((s) => (
+                            {[1, 2, 3, 4, 5].map((s) => (
                                 <div
                                     key={s}
                                     className={cn(
@@ -266,7 +271,15 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                     </div>
 
                     <div className="overflow-y-auto px-6 sm:px-10 pb-10 custom-scrollbar">
-                        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 min-h-[300px] flex flex-col">
+                        <form 
+                            onSubmit={handleSubmit} 
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.target instanceof HTMLInputElement && e.target.type !== 'submit') {
+                                    e.preventDefault();
+                                }
+                            }}
+                            className="space-y-6 sm:space-y-8 min-h-[300px] flex flex-col"
+                        >
                             <AnimatePresence mode="wait">
                                 {currentStep === 1 && (
                                     <motion.div
@@ -414,52 +427,98 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                                 <DollarSign size={12} /> Valor e Localização
                                             </label>
 
-                                            {presets.length > 0 && (
-                                                <div className="grid grid-cols-2 gap-2.5">
-                                                    {presets.map(preset => (
-                                                        <button
-                                                            key={preset.id}
-                                                            type="button"
-                                                            onClick={() => handlePresetClick(preset)}
-                                                            className={cn(
-                                                                "p-3.5 rounded-2xl border flex flex-col items-start transition-all group active:scale-95",
-                                                                value === String(preset.value) && location === preset.location && !isCustomValue
-                                                                    ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
-                                                                    : "bg-slate-950/50 border-white/5 text-slate-400 hover:bg-slate-900"
-                                                            )}
-                                                        >
-                                                            <span className="text-base font-black">R$ {preset.value}</span>
-                                                            <span className="text-[9px] font-bold uppercase tracking-tight opacity-60 mt-0.5">{preset.location}</span>
-                                                        </button>
-                                                    ))}
+                                            {(presets.length > 0 || QUICK_VALUES.length > 0) && (
+                                                <div className="grid grid-cols-3 gap-2.5">
+                                                    {QUICK_VALUES.map((v) => {
+                                                        const matchingPreset = presets.find((p: any) => p.value === v);
+                                                        const displayItem = matchingPreset || { id: `default-${v}`, value: v, location: "" };
+                                                        
+                                                        return (
+                                                            <button
+                                                                key={displayItem.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (matchingPreset) {
+                                                                        handlePresetClick(matchingPreset);
+                                                                    } else {
+                                                                        setValue(String(v));
+                                                                        setLocation("");
+                                                                        setIsCustomValue(false);
+                                                                    }
+                                                                }}
+                                                                className={cn(
+                                                                    "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95",
+                                                                    value === String(v) && !isCustomValue
+                                                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
+                                                                        : "bg-slate-950/50 border-white/5 text-slate-400 hover:bg-slate-900"
+                                                                )}
+                                                            >
+                                                                <span className="text-base font-black">R$ {v}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsCustomValue(true);
+                                                            setValue("");
+                                                            setLocation("");
+                                                        }}
+                                                        className={cn(
+                                                            "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95",
+                                                            isCustomValue
+                                                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
+                                                                : "bg-slate-950/50 border-white/5 text-slate-400 hover:bg-slate-900"
+                                                        )}
+                                                    >
+                                                        <span className="text-sm font-black">OUTRO</span>
+                                                    </button>
                                                 </div>
                                             )}
 
-                                            <div className="relative group">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-base">R$</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={value}
-                                                    onChange={(e) => { setValue(e.target.value); setIsCustomValue(true); }}
-                                                    placeholder="Valor Personalizado"
-                                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-xl font-black focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
-                                                />
+                                            <div className="flex items-center gap-2 px-1">
+                                                <Star size={10} className="text-blue-500/50" />
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                                                    Valores e locais fixos podem ser alterados nas <Link href="/dashboard/settings" className="text-blue-500 hover:underline">Configurações</Link>
+                                                </p>
                                             </div>
 
-                                            <div className="space-y-3">
-                                                <input
-                                                    type="text"
-                                                    value={location}
-                                                    onChange={(e) => { setLocation(e.target.value); setIsCustomValue(true); }}
-                                                    placeholder="Localização Personalizada..."
-                                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 text-white text-sm font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
-                                                />
-                                            </div>
+                                            <AnimatePresence>
+                                                {isCustomValue && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                                        animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                                                        exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                                        className="overflow-hidden space-y-4"
+                                                    >
+                                                        <div className="relative group">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-base">R$</span>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={value}
+                                                                onChange={(e) => { setValue(e.target.value); setIsCustomValue(true); }}
+                                                                placeholder="Valor Personalizado"
+                                                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-xl font-black focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            <input
+                                                                type="text"
+                                                                value={location}
+                                                                onChange={(e) => { setLocation(e.target.value); setIsCustomValue(true); }}
+                                                                placeholder="Localização Personalizada..."
+                                                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 text-white text-sm font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                                            />
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </motion.div>
                                 )}
-
+ 
                                 {currentStep === 3 && (
                                     <motion.div
                                         key="step3"
@@ -468,34 +527,6 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                         exit={{ opacity: 0, x: -20 }}
                                         className="space-y-8"
                                     >
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
-                                                <CheckCircle2 size={12} /> Status da Corrida
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-3 p-1 bg-slate-950/50 rounded-[2rem] border border-white/5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setStatus('PENDING')}
-                                                    className={cn(
-                                                        "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest",
-                                                        status === 'PENDING' ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.02]" : "text-slate-600 hover:text-slate-400"
-                                                    )}
-                                                >
-                                                    Pendente
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setStatus('COMPLETED')}
-                                                    className={cn(
-                                                        "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest",
-                                                        status === 'COMPLETED' ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 scale-[1.02]" : "text-slate-600 hover:text-slate-400"
-                                                    )}
-                                                >
-                                                    Concluída
-                                                </button>
-                                            </div>
-                                        </div>
-
                                         <div className="space-y-4">
                                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
                                                 <DollarSign size={12} /> Status do Pagamento
@@ -586,6 +617,72 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                         </div>
                                     </motion.div>
                                 )}
+
+                                {currentStep === 5 && (
+                                    <motion.div
+                                        key="step5"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="bg-slate-950/40 border border-white/5 rounded-[2.5rem] p-6 space-y-4">
+                                            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400">
+                                                    <User size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cliente</p>
+                                                    <p className="text-white font-bold">{clients.find((c: Client) => c.id === selectedClientId)?.name || clientName}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 py-2">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2">Valor</p>
+                                                    <p className="text-2xl font-black text-white">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value))}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2">Pagamento</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        <span className={cn(
+                                                            "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
+                                                            paymentStatus === 'PAID' ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-500"
+                                                        )}>{paymentStatus === 'PAID' ? 'Pago' : 'Não Pago'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2">Localização</p>
+                                                <p className="text-sm text-slate-300 font-bold">{location}</p>
+                                            </div>
+
+                                            {(rideDate || notes || photo) && (
+                                                <div className="pt-4 border-t border-white/5 space-y-4">
+                                                    {rideDate && (
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Data Agendada</p>
+                                                            <p className="text-sm text-slate-400 font-medium">{new Date(rideDate).toLocaleString()}</p>
+                                                        </div>
+                                                    )}
+                                                    {notes && (
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Observações</p>
+                                                            <p className="text-sm text-slate-400 italic">"{notes}"</p>
+                                                        </div>
+                                                    )}
+                                                    {photo && (
+                                                        <div className="flex items-center gap-2 text-blue-400">
+                                                            <Camera size={14} />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">Foto Anexada</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
                             </AnimatePresence>
 
                             {/* Form Navigation */}
@@ -600,21 +697,21 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                     </button>
                                 )}
 
-                                {currentStep < 4 ? (
+                                {currentStep < 5 ? (
                                     <button
                                         type="button"
                                         onClick={() => {
                                             if (currentStep === 1 && !selectedClientId) return;
-                                            if (currentStep === 2 && (!value || !location)) return;
+                                            if (currentStep === 2 && !value) return;
                                             setCurrentStep(prev => prev + 1);
                                         }}
                                         disabled={
                                             (currentStep === 1 && !selectedClientId) ||
-                                            (currentStep === 2 && (!value || !location))
+                                            (currentStep === 2 && !value)
                                         }
                                         className="flex-1 h-14 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-30"
                                     >
-                                        CONTINUAR
+                                        {currentStep === 4 ? "REVISAR" : "CONTINUAR"}
                                         <ChevronRight size={20} />
                                     </button>
                                 ) : (
@@ -627,7 +724,7 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                             <div className="h-6 w-6 border-[3px] border-white/30 border-t-white rounded-full animate-spin"></div>
                                         ) : (
                                             <>
-                                                {rideToEdit ? 'SALVAR ALTERAÇÕES' : 'FINALIZAR REGISTRO'}
+                                                {rideToEdit ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR E REGISTRAR'}
                                                 <CheckCircle2 size={24} />
                                             </>
                                         )}

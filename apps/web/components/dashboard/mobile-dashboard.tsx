@@ -22,7 +22,9 @@ import {
     Lock,
     Crown,
     Info,
-    Camera
+    Camera,
+    Star,
+    X
 } from "lucide-react";
 import { api } from "@/services/api";
 import { uploadImage } from "@/lib/upload";
@@ -38,16 +40,15 @@ import { RidesChart } from "./rides-chart";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { RideModal } from "@/components/ride-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 interface MobileDashboardProps {
     onRideCreated: () => void;
 }
+
+const QUICK_VALUES = [10, 12, 15, 20, 25, 30];
 
 export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
     const { toast } = useToast();
@@ -61,7 +62,6 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
     const [weekTotal, setWeekTotal] = useState(0);
     const [monthTotal, setMonthTotal] = useState(0);
     const [monthRides, setMonthRides] = useState<any[]>([]);
-    const [totalRides, setTotalRides] = useState(0);
     const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
 
     // Ride History
@@ -91,35 +91,17 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
     const [photo, setPhoto] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    const [isRideModalOpen, setIsRideModalOpen] = useState(false);
+    const [rideToEdit, setRideToEdit] = useState<any>(null);
+    const [rideToDelete, setRideToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPhoto(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    // Edit Ride States
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editingRide, setEditingRide] = useState<any>(null);
-    const [editValue, setEditValue] = useState("");
-    const [editLocation, setEditLocation] = useState("");
-    const [editRideDate, setEditRideDate] = useState("");
-    const [editNotes, setEditNotes] = useState("");
-    const [editPhoto, setEditPhoto] = useState<string | null>(null);
-    const [editStatus, setEditStatus] = useState<any>("");
-    const [editPaymentStatus, setEditPaymentStatus] = useState<any>("");
-    const [isUpdating, setIsUpdating] = useState(false);
-
-    const handleEditPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setEditPhoto(reader.result as string);
             };
             reader.readAsDataURL(file);
         }
@@ -151,7 +133,6 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
             setMonthTotal(month.data.totalValue || 0);
             setMonthRides(month.data.rides || []);
 
-            // Sync history on main data load
             loadHistory();
         } catch (err) {
             console.error("Erro ao carregar dados mobile", err);
@@ -162,12 +143,19 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
 
     async function loadHistory() {
         try {
-            // Using offset/limit for history
             const { data } = await api.get(`/rides?limit=${ridesPerPage}&offset=${historyPage * ridesPerPage}`);
             setRecentRides(data.rides || []);
         } catch (err) {
             console.error("Erro ao carregar histórico", err);
         }
+    }
+
+    function handleRideSuccess() {
+        setIsRideModalOpen(false);
+        setRideToEdit(null);
+        loadData();
+        loadHistory();
+        if (onRideCreated) onRideCreated();
     }
 
     async function handleConfirmRide() {
@@ -180,14 +168,19 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
             finalValue = Number(customValue);
             finalLocation = customLocation;
         } else if (selectedPresetId) {
-            const preset = presets.find(p => p.id === selectedPresetId);
-            if (!preset) return;
-            finalValue = preset.value;
-            finalLocation = preset.location;
+            if (selectedPresetId.startsWith('default-')) {
+                finalValue = Number(selectedPresetId.split('-')[1]);
+                finalLocation = "Central";
+            } else {
+                const preset = presets.find((p: any) => p.id === selectedPresetId);
+                if (!preset) return;
+                finalValue = preset.value;
+                finalLocation = preset.location;
+            }
         }
 
-        if (!finalValue || !finalLocation) {
-            toast({ title: "Selecione um valor ou local", variant: "destructive" });
+        if (!finalValue) {
+            toast({ title: "Selecione um valor", variant: "destructive" });
             return;
         }
 
@@ -211,7 +204,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
             await api.post("/rides", {
                 clientId: selectedClient.id,
                 value: finalValue,
-                location: finalLocation,
+                location: finalLocation || "Central",
                 notes: notes || undefined,
                 photo: uploadedPhotoUrl || undefined,
                 status: rideStatus,
@@ -221,7 +214,6 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
 
             toast({ title: "Corrida registrada!", description: `R$ ${finalValue.toFixed(2)} para ${selectedClient.name}` });
 
-            // Reset and Refresh
             setSelectedClient(null);
             setSelectedPresetId(null);
             setShowCustomForm(false);
@@ -232,8 +224,8 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
             setPhoto(null);
             setHistoryPage(0);
 
-            onRideCreated(); // Tell layout/parent to sync
-            loadData(); // local reload
+            onRideCreated();
+            loadData();
         } catch (err) {
             toast({ title: "Erro ao registrar", variant: "destructive" });
         } finally {
@@ -246,7 +238,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
         setIsCreatingClient(true);
         try {
             const { data } = await api.post("/clients", { name: newClientName });
-            setClients(prev => [...prev, data]);
+            setClients((prev: any[]) => [...prev, data]);
             setSelectedClient(data);
             setIsClientModalOpen(false);
             setNewClientName("");
@@ -259,63 +251,31 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
     }
 
     function handleOpenEdit(ride: any) {
-        setEditingRide(ride);
-        setEditValue(ride.value.toString());
-        setEditLocation(ride.location || "");
-        setEditRideDate(ride.rideDate || ride.createdAt || "");
-        setEditNotes(ride.notes || "");
-        setEditPhoto(ride.photo || null);
-        setEditStatus(ride.status);
-        setEditPaymentStatus(ride.paymentStatus);
-        setIsEditModalOpen(true);
+        setRideToEdit(ride);
+        setIsRideModalOpen(true);
     }
 
-    async function handleSaveUpdate() {
-        if (!editingRide) return;
-        setIsUpdating(true);
+    async function handleDeleteRide() {
+        if (!rideToDelete) return;
+        setIsDeleting(true);
         try {
-            let uploadedPhotoUrl = editPhoto;
-
-            if (editPhoto && editPhoto.startsWith('data:image')) {
-                try {
-                    const response = await fetch(editPhoto);
-                    const blob = await response.blob();
-                    const file = new File([blob], "ride-photo.jpg", { type: blob.type });
-                    const res = await uploadImage(file, 'rides');
-                    uploadedPhotoUrl = res.url;
-                } catch (uploadErr) {
-                    console.error("Erro no upload R2:", uploadErr);
-                    uploadedPhotoUrl = undefined;
-                }
-            }
-
-            await api.patch(`/rides/${editingRide.id}`, {
-                value: Number(editValue),
-                location: editLocation,
-                rideDate: editRideDate || undefined,
-                notes: editNotes || undefined,
-                photo: uploadedPhotoUrl || undefined,
-                status: editStatus,
-                paymentStatus: editPaymentStatus
-            });
-
-            toast({ title: "Corrida atualizada! 🏎️" });
-            setIsEditModalOpen(false);
-
-            // Local Refresh
+            await api.delete(`/rides/${rideToDelete.id}`);
+            toast({ title: "Corrida excluída" });
             loadData();
             loadHistory();
+            if (onRideCreated) onRideCreated();
+            setRideToDelete(null);
         } catch (err) {
-            toast({ title: "Erro ao atualizar", variant: "destructive" });
+            toast({ title: "Erro ao excluir", variant: "destructive" });
         } finally {
-            setIsUpdating(false);
+            setIsDeleting(false);
         }
     }
 
     async function handleDeletePreset(id: string) {
         try {
             await api.delete(`/settings/ride-presets/${id}`);
-            setPresets(prev => prev.filter(p => p.id !== id));
+            setPresets((prev: any[]) => prev.filter((p: any) => p.id !== id));
             toast({ title: "Atalho removido" });
         } catch (err) {
             toast({ title: "Erro ao remover atalho", variant: "destructive" });
@@ -363,7 +323,6 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                 ))}
             </section>
 
-
             {/* 1. Client Grid Section */}
             <section className="bg-slate-900/40 rounded-3xl border border-white/5 p-4">
                 <div className="flex items-center justify-between mb-4 px-2">
@@ -379,7 +338,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                 {!selectedClient ? (
                     <div className="space-y-4">
                         <div className="grid grid-cols-4 gap-2">
-                            {paginatedClients.map((client) => (
+                            {paginatedClients.map((client: any) => (
                                 <motion.button
                                     key={client.id}
                                     whileTap={{ scale: 0.95 }}
@@ -402,9 +361,9 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                         </div>
                         {totalPages > 1 && (
                             <div className="flex items-center justify-center gap-4 mt-2">
-                                <button disabled={clientPage === 0} onClick={() => setClientPage(prev => Math.max(0, prev - 1))} className="p-2 text-slate-400 disabled:opacity-30"><ChevronLeft size={18} /></button>
+                                <button disabled={clientPage === 0} onClick={() => setClientPage((prev: number) => Math.max(0, prev - 1))} className="p-2 text-slate-400 disabled:opacity-30"><ChevronLeft size={18} /></button>
                                 <span className="text-[10px] text-slate-500 font-bold">{clientPage + 1}/{totalPages}</span>
-                                <button disabled={clientPage >= totalPages - 1} onClick={() => setClientPage(prev => Math.min(totalPages - 1, prev + 1))} className="p-2 text-slate-400 disabled:opacity-30"><ChevronRight size={18} /></button>
+                                <button disabled={clientPage >= totalPages - 1} onClick={() => setClientPage((prev: number) => Math.min(totalPages - 1, prev + 1))} className="p-2 text-slate-400 disabled:opacity-30"><ChevronRight size={18} /></button>
                             </div>
                         )}
                     </div>
@@ -458,43 +417,65 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
 
                         <div className="bg-slate-900/40 rounded-3xl border border-white/5 p-4">
                             <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><MapPin size={18} className="text-blue-400" />Valor e Local</h2>
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                {presets.map((p) => (
-                                    <div key={p.id} className="relative group/preset">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedPresetId(p.id);
-                                                setShowCustomForm(false);
-                                            }}
-                                            className={cn(
-                                                "w-full rounded-2xl p-3 text-left transition-all border",
-                                                selectedPresetId === p.id
-                                                    ? "bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-500/10 scale-[1.02]"
-                                                    : "bg-white/5 border-white/5 active:bg-white/10"
-                                            )}
-                                        >
-                                            <p className={cn("text-lg font-black", selectedPresetId === p.id ? "text-white" : "text-slate-200")}>{formatCurrency(p.value)}</p>
-                                            <p className="text-[10px] text-slate-500 truncate mt-0.5">{p.label} • {p.location}</p>
-                                        </button>
+                            <div className="grid grid-cols-3 gap-2.5 mb-4">
+                                {QUICK_VALUES.map((v) => {
+                                    const matchingPreset = presets.find((p: any) => p.value === v);
+                                    const displayId = matchingPreset?.id || `default-${v}`;
+                                    const isSelected = (!showCustomForm && (selectedPresetId === displayId || (customValue === String(v) && !selectedPresetId)));
 
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeletePreset(p.id);
-                                            }}
-                                            className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all opacity-0 group-hover/preset:opacity-100 md:opacity-40"
-                                        >
-                                            <Trash2 size={10} strokeWidth={3} />
-                                        </button>
-                                    </div>
-                                ))}
+                                    return (
+                                        <div key={displayId} className="relative group/preset">
+                                            <button
+                                                onClick={() => {
+                                                    if (matchingPreset) {
+                                                        setSelectedPresetId(matchingPreset.id);
+                                                        setShowCustomForm(false);
+                                                    } else {
+                                                        setSelectedPresetId(displayId);
+                                                        setCustomValue(String(v));
+                                                        setCustomLocation("");
+                                                        setShowCustomForm(false);
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "w-full rounded-2xl p-4 text-center border transition-all flex flex-col justify-center items-center shadow-sm",
+                                                    isSelected 
+                                                        ? "bg-blue-600 border-blue-500 shadow-lg shadow-blue-600/20" 
+                                                        : "bg-white/5 border-white/5"
+                                                )}
+                                            >
+                                                <div className={cn("text-base font-black", isSelected ? "text-white" : "text-blue-400")}>
+                                                    R$ {v}
+                                                </div>
+                                            </button>
+                                            {matchingPreset && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeletePreset(matchingPreset.id);
+                                                    }}
+                                                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all opacity-0 group-hover/preset:opacity-100"
+                                                >
+                                                    <Trash2 size={10} strokeWidth={3} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                                 <button onClick={() => {
                                     setShowCustomForm(!showCustomForm);
                                     setSelectedPresetId(null);
                                 }} className={cn("rounded-2xl p-3 text-left border transition-all flex flex-col justify-center", showCustomForm ? "bg-blue-600/20 border-blue-500" : "bg-white/5 border-white/5")}>
                                     <div className="flex items-center gap-2 text-white font-bold text-xs"><Plus size={14} />Outro</div>
-                                    <p className="text-[9px] text-slate-500 mt-0.5 italic">Valor Manual</p>
+                                    <p className="text-[9px] text-slate-500 mt-0.5 italic">Manual</p>
                                 </button>
+                            </div>
+
+                            <div className="flex items-center gap-2 px-1 mb-4 mt-2">
+                                <Star size={10} className="text-blue-500/50" />
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter leading-tight">
+                                    Gerencie valores e locais em <Link href="/dashboard/settings" className="text-blue-500 hover:underline">Configurações</Link>
+                                </p>
                             </div>
 
                             {showCustomForm && (
@@ -568,7 +549,6 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                                 </AnimatePresence>
                             </div>
 
-                            {/* Global Save Button - Only shown when client is selected */}
                             <Button
                                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black h-14 rounded-2xl shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                                 onClick={handleConfirmRide}
@@ -585,7 +565,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                 )}
             </AnimatePresence>
 
-            {/* 3. History Section (5 items) */}
+            {/* 3. History Section */}
             <section className="bg-slate-900/40 rounded-3xl border border-white/5 p-4">
                 <div className="flex items-center justify-between mb-4 px-2">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -599,7 +579,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                             <span className="text-white font-black italic">ROTTA</span>
                         </div>
                     ) : (
-                        recentRides.map(r => (
+                        recentRides.map((r: any) => (
                             <motion.div
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -645,23 +625,31 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                                         )}>
                                             {r.paymentStatus === 'PAID' ? "Pago" : "Não Pago"}
                                         </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setRideToDelete(r);
+                                            }}
+                                            className="p-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
                         ))
                     )}
                 </div>
-                {/* Pagination Controls */}
                 <div className="flex items-center justify-center gap-8 mt-6 pb-2">
                     <button
                         disabled={historyPage === 0}
-                        onClick={() => setHistoryPage(p => p - 1)}
+                        onClick={(e) => { e.stopPropagation(); setHistoryPage((p: number) => p - 1); }}
                         className="p-2 transition-colors text-slate-400 disabled:opacity-20 flex items-center gap-1 text-[10px] font-bold"
                     >
                         <ChevronLeft size={16} /> ANTERIOR
                     </button>
                     <button
-                        onClick={() => setHistoryPage(p => p + 1)}
+                        onClick={(e) => { e.stopPropagation(); setHistoryPage((p: number) => p + 1); }}
                         disabled={recentRides.length < ridesPerPage}
                         className="p-2 transition-colors text-slate-400 disabled:opacity-20 flex items-center gap-1 text-[10px] font-bold"
                     >
@@ -670,10 +658,8 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                 </div>
             </section>
 
-            {/* 0.1 Chart Performance */}
             <RidesChart rides={monthRides} />
 
-            {/* 4. Export & Link to Finance */}
             <section className="bg-slate-900/40 rounded-3xl border border-white/5 p-5">
                 <div className="flex items-center justify-between mb-4 px-1">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -708,155 +694,27 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                 </div>
             </section>
 
-            {/* Modal de Edição de Corrida */}
-            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent className="bg-slate-900 border-white/10 text-white rounded-[2rem] w-[95%] max-w-sm mx-auto p-6">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            <Pencil size={20} className="text-blue-400" />
-                            Editar Corrida
-                        </DialogTitle>
-                    </DialogHeader>
+            <RideModal
+                isOpen={isRideModalOpen}
+                onClose={() => {
+                    setIsRideModalOpen(false);
+                    setRideToEdit(null);
+                }}
+                onSuccess={handleRideSuccess}
+                rideToEdit={rideToEdit}
+            />
 
-                    <div className="space-y-6 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Valor da Corrida</Label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">R$</span>
-                                <Input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    className="bg-slate-950 border-white/10 h-14 pl-12 rounded-2xl text-lg font-black focus-visible:ring-blue-500"
-                                />
-                            </div>
-                        </div>
+            <ConfirmModal
+                isOpen={!!rideToDelete}
+                onClose={() => setRideToDelete(null)}
+                onConfirm={handleDeleteRide}
+                title="Excluir Corrida"
+                description="Deseja realmente excluir esta corrida?"
+                confirmText="Excluir"
+                variant="danger"
+                isLoading={isDeleting}
+            />
 
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Localização/Destino</Label>
-                            <Input
-                                value={editLocation}
-                                onChange={(e) => setEditLocation(e.target.value)}
-                                className="bg-slate-950 border-white/10 h-14 rounded-2xl focus-visible:ring-blue-500"
-                                placeholder="Ex: Centro, Shopping..."
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Calendar size={14} className="text-blue-500/50" />
-                                Data/Hora da Corrida
-                            </Label>
-                            <Input
-                                type="datetime-local"
-                                value={editRideDate}
-                                onChange={(e) => setEditRideDate(e.target.value)}
-                                className="bg-slate-950 border-white/10 h-14 rounded-2xl text-xs focus-visible:ring-blue-500 [color-scheme:dark]"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status</Label>
-                                <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5">
-                                    <button
-                                        onClick={() => setEditStatus('PENDING')}
-                                        className={cn(
-                                            "flex-1 py-2 rounded-lg text-[10px] font-bold transition-all",
-                                            editStatus === 'PENDING' ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"
-                                        )}
-                                    >PEND.</button>
-                                    <button
-                                        onClick={() => setEditStatus('COMPLETED')}
-                                        className={cn(
-                                            "flex-1 py-2 rounded-lg text-[10px] font-bold transition-all",
-                                            editStatus === 'COMPLETED' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-500 hover:text-slate-300"
-                                        )}
-                                    >OK</button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pagamento</Label>
-                                <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5">
-                                    <button
-                                        onClick={() => setEditPaymentStatus('PENDING')}
-                                        className={cn(
-                                            "flex-1 py-2 rounded-lg text-[10px] font-bold transition-all",
-                                            editPaymentStatus === 'PENDING' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-slate-500 hover:text-slate-300"
-                                        )}
-                                    >PEND.</button>
-                                    <button
-                                        onClick={() => setEditPaymentStatus('PAID')}
-                                        className={cn(
-                                            "flex-1 py-2 rounded-lg text-[10px] font-bold transition-all",
-                                            editPaymentStatus === 'PAID' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-500 hover:text-slate-300"
-                                        )}
-                                    >PAGO</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Notas e Foto na Edição */}
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Observação & Foto</Label>
-                                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg text-blue-400 cursor-pointer active:scale-95 transition-all text-[10px] font-black uppercase tracking-tight">
-                                    <Camera size={14} />
-                                    Alterar Foto
-                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleEditPhotoChange} />
-                                </label>
-                            </div>
-                            <textarea
-                                value={editNotes}
-                                onChange={(e) => setEditNotes(e.target.value)}
-                                placeholder="Notas da corrida..."
-                                rows={2}
-                                className="w-full bg-slate-950 border border-white/10 rounded-2xl p-4 text-white text-xs outline-none focus:ring-1 focus:ring-blue-500/30 resize-none transition-all"
-                            />
-                            <AnimatePresence>
-                                {editPhoto && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
-                                        className="relative inline-block"
-                                    >
-                                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-blue-500/30 shadow-2xl">
-                                            <img src={editPhoto} alt="Preview" className="w-full h-full object-cover" />
-                                            <button
-                                                onClick={() => setEditPhoto(null)}
-                                                className="absolute inset-0 bg-red-500/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash2 size={20} className="text-white drop-shadow-xl" />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="flex-row gap-3 pt-4 border-t border-white/5">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsEditModalOpen(false)}
-                            className="flex-1 h-12 rounded-xl text-slate-500 font-bold hover:bg-white/5"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleSaveUpdate}
-                            disabled={isUpdating}
-                            className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-600/20"
-                        >
-                            {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Salvar"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de Limite Atingido (Paywall) */}
             <Dialog open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen}>
                 <DialogContent className="bg-slate-900 border-white/10 text-white rounded-[2rem] w-[95%] max-w-sm mx-auto p-8 text-center overflow-hidden relative">
                     <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl" />

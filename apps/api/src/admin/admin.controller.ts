@@ -7,6 +7,7 @@ import {
   Delete,
   Param,
   Put,
+  Patch,
   Body,
   HttpCode,
   HttpStatus,
@@ -20,7 +21,7 @@ import { AdminService } from './admin.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Get('stats')
   async getStats() {
@@ -52,8 +53,25 @@ export class AdminController {
   @Put('users/:id/plan')
   async updateUserPlan(
     @Param('id') id: string,
-    @Body('plan') plan: 'starter' | 'premium' | 'lifetime'
+    @Body('plan') plan: 'starter' | 'premium' | 'lifetime',
   ) {
     return this.adminService.updateUserPlan(id, plan);
+  }
+
+  @Get('settings/plans')
+  async getPlans() {
+    return this.adminService.getPlans();
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('settings/plans/:id')
+  async updatePlanPut(@Param('id') id: string, @Body() data: any) {
+    return this.adminService.updatePlan(id, data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Patch('settings/plans/:id')
+  async updatePlanPatch(@Param('id') id: string, @Body() data: any) {
+    return this.adminService.updatePlan(id, data);
   }
 }

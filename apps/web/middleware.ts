@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Rotas que não exigem autenticação
-const publicRoutes = ['/login', '/register', '/pricing'];
+const publicRoutes = ['/login', '/register', '/pricing', '/area-restrita'];
 
 // Rotas que exigem autenticação de admin
-const adminRoutes = ['/admin', '/area-restrita'];
+const adminRoutes = ['/admin'];
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

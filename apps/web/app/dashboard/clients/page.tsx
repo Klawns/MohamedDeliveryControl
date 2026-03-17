@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, User, Bike, ChevronRight, X, Calendar, Trash2, Star } from "lucide-react";
+import { Plus, Search, User, Bike, ChevronRight, Star } from "lucide-react";
 import { api } from "@/services/api";
 import { formatCurrency, cn } from "@/lib/utils";
 import { RideModal } from "@/components/ride-modal";
+import { PaymentModal } from "@/components/payment-modal";
 import { ClientModal } from "@/components/client-modal";
+import { ClientDetailsDrawer } from "@/components/client-details-drawer";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { PDFService } from "@/services/pdf-service";
 
 interface Client {
     id: string;
@@ -37,7 +41,17 @@ export default function ClientsPage() {
     const [isRideModalOpen, setIsRideModalOpen] = useState(false);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
+    const [rideToEdit, setRideToEdit] = useState<Ride | null>(null);
+    const [rideToDelete, setRideToDelete] = useState<Ride | null>(null);
+    const [clientBalance, setClientBalance] = useState<{ totalDebt: number, totalPaid: number, remainingBalance: number } | null>(null);
+    const [clientPayments, setClientPayments] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSettling, setIsSettling] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeletingRide, setIsDeletingRide] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isCloseDebtConfirmOpen, setIsCloseDebtConfirmOpen] = useState(false);
     const { user } = useAuth();
 
     // Client List Pagination
@@ -62,6 +76,8 @@ export default function ClientsPage() {
         if (selectedClient) {
             setRidePage(1);
             fetchRides(selectedClient.id, 1);
+            fetchClientBalance(selectedClient.id);
+            fetchClientPayments(selectedClient.id);
         }
     }, [selectedClient]);
 
@@ -106,6 +122,99 @@ export default function ClientsPage() {
         }
     };
 
+    const fetchClientBalance = async (clientId: string) => {
+        try {
+            const { data } = await api.get(`/clients/${clientId}/balance`);
+            setClientBalance(data);
+        } catch (err) {
+            console.error("Erro ao buscar saldo do cliente", err);
+        }
+    };
+
+    const fetchClientPayments = async (clientId: string) => {
+        try {
+            const { data } = await api.get(`/clients/${clientId}/payments`);
+            setClientPayments(data || []);
+        } catch (err) {
+            console.error("Erro ao buscar pagamentos do cliente", err);
+        }
+    };
+
+    const handleGeneratePDF = async () => {
+        if (!selectedClient || !clientBalance) return;
+
+        try {
+            // Get all pending rides for the report (without pagination)
+            const { data } = await api.get(`/rides/client/${selectedClient.id}?limit=100`);
+            
+            PDFService.generateClientDebtReport(
+                { name: selectedClient.name, id: selectedClient.id },
+                data.rides || [],
+                clientPayments,
+                clientBalance,
+                { userName: user?.name || "Motorista" }
+            );
+        } catch (err) {
+            alert("Erro ao gerar PDF.");
+        }
+    };
+
+    const handleCloseDebt = async () => {
+        if (!selectedClient) return;
+        
+        setIsSettling(true);
+        try {
+            await api.post(`/clients/${selectedClient.id}/close-debt`);
+            fetchClientBalance(selectedClient.id);
+            fetchClientPayments(selectedClient.id);
+            fetchRides(selectedClient.id, 1);
+            setIsCloseDebtConfirmOpen(false);
+        } catch (err) {
+            alert("Erro ao fechar dívida.");
+        } finally {
+            setIsSettling(false);
+        }
+    };
+
+    const handleDeleteClient = async () => {
+        if (!selectedClient) return;
+
+        setIsDeleting(true);
+        try {
+            await api.delete(`/clients/${selectedClient.id}`);
+            setSelectedClient(null);
+            fetchClients();
+            setIsDeleteConfirmOpen(false);
+        } catch (err) {
+            console.error("Erro ao excluir cliente", err);
+            alert("Erro ao excluir cliente. Verifique se ele possui dados vinculados ou tente novamente.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleEditRide = (ride: any) => {
+        setRideToEdit(ride);
+        setIsRideModalOpen(true);
+    };
+
+    const handleDeleteRide = async () => {
+        if (!rideToDelete || !selectedClient) return;
+
+        setIsDeletingRide(true);
+        try {
+            await api.delete(`/rides/${rideToDelete.id}`);
+            fetchRides(selectedClient.id, ridePage);
+            fetchClientBalance(selectedClient.id);
+            setRideToDelete(null);
+        } catch (err) {
+            console.error("Erro ao excluir corrida", err);
+            alert("Erro ao excluir corrida.");
+        } finally {
+            setIsDeletingRide(false);
+        }
+    };
+
     const handleEditClient = (client: Client) => {
         setClientToEdit(client);
         setIsClientModalOpen(true);
@@ -131,7 +240,7 @@ export default function ClientsPage() {
     };
 
 
-    const filteredClients = clients.filter(c =>
+    const filteredClients = clients.filter((c: Client) =>
         c.name.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -171,7 +280,7 @@ export default function ClientsPage() {
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {clients.map((client) => (
+                        {clients.map((client: Client) => (
                             <motion.div
                                 key={client.id}
                                 initial={{ opacity: 0, y: 10 }}
@@ -245,14 +354,14 @@ export default function ClientsPage() {
                             <div className="flex gap-2">
                                 <button
                                     disabled={clientPage === 1}
-                                    onClick={() => { setClientPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                    onClick={() => { setClientPage((p: number) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                     className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     Anterior
                                 </button>
                                 <button
                                     disabled={clientPage * clientLimit >= clientTotal}
-                                    onClick={() => { setClientPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                    onClick={() => { setClientPage((p: number) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                     className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     Próxima
@@ -263,140 +372,51 @@ export default function ClientsPage() {
                 </>
             )}
 
-            {/* Drawer de Detalhes do Cliente */}
-            <AnimatePresence>
-                {selectedClient && (
-                    <div className="fixed inset-0 z-[100] flex justify-end">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setSelectedClient(null)}
-                            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ x: "100%" }}
-                            animate={{ x: 0 }}
-                            exit={{ x: "100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="bg-[#020617] border-l border-white/10 w-full max-w-xl relative z-10 shadow-2xl h-screen overflow-y-auto"
-                        >
-                            <div className="p-8 lg:p-12 space-y-10">
-                                <header className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-4 bg-blue-600/10 rounded-2xl text-blue-400">
-                                            <User size={32} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-3xl font-bold text-white tracking-tight">{selectedClient.name}</h2>
-                                            <p className="text-slate-500">ID: {selectedClient.id.split("-")[0]}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setSelectedClient(null)}
-                                        className="p-2 hover:bg-white/5 rounded-xl text-slate-500 transition-colors"
-                                    >
-                                        <X size={24} />
-                                    </button>
-                                </header>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setIsRideModalOpen(true)}
-                                        className="flex flex-col items-center gap-2 p-6 bg-blue-600 hover:bg-blue-500 rounded-[2rem] text-white transition-all group shadow-xl shadow-blue-600/20 active:scale-95"
-                                    >
-                                        <Bike size={24} className="group-hover:scale-110 transition-transform" />
-                                        <span className="font-bold">Nova Corrida</span>
-                                    </button>
-                                    <button
-                                        className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-red-500/10 rounded-[2rem] text-slate-400 hover:text-red-400 border border-white/5 transition-all group active:scale-95"
-                                    >
-                                        <Trash2 size={24} className="group-hover:scale-110 transition-transform" />
-                                        <span className="font-bold">Excluir</span>
-                                    </button>
-                                </div>
-
-                                <section className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-bold text-white">Histórico de Corridas</h3>
-                                        <span className="text-xs font-bold text-slate-500 uppercase bg-white/5 px-3 py-1 rounded-full">{rides.length} totais</span>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {rides.length === 0 ? (
-                                            <div className="text-center py-10 border-2 border-dashed border-white/5 rounded-3xl">
-                                                <p className="text-slate-500 text-sm">Nenhuma corrida registrada para este cliente.</p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                {rides.map((ride) => (
-                                                    <div key={ride.id} className="flex items-center gap-4 p-5 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/10 transition-colors">
-                                                        <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-                                                            <Calendar size={20} />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="font-semibold text-white truncate">ID: {ride.id.split("-")[0]}</h4>
-                                                            <p className="text-[10px] text-slate-500 mt-0.5">{new Date(ride.rideDate || ride.createdAt).toLocaleString()}</p>
-                                                            <div className="flex gap-2 mt-2">
-                                                                <span className={cn(
-                                                                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
-                                                                    ride.status === 'COMPLETED' ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
-                                                                )}>
-                                                                    {ride.status === 'COMPLETED' ? 'OK' : 'Pendente'}
-                                                                </span>
-                                                                <span className={cn(
-                                                                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
-                                                                    ride.paymentStatus === 'PAID' ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                                                                )}>
-                                                                    {ride.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="font-extrabold text-white text-lg">{formatCurrency(ride.value)}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-
-                                                {rideTotal > rideLimit && (
-                                                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5">
-                                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                                            Página <span className="text-white">{ridePage}</span> de <span className="text-white">{Math.ceil(rideTotal / rideLimit)}</span>
-                                                        </p>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                disabled={ridePage === 1}
-                                                                onClick={() => setRidePage(p => p - 1)}
-                                                                className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                                            >
-                                                                Anterior
-                                                            </button>
-                                                            <button
-                                                                disabled={ridePage * rideLimit >= rideTotal}
-                                                                onClick={() => setRidePage(p => p + 1)}
-                                                                className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                                            >
-                                                                Próxima
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                </section>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            <ClientDetailsDrawer
+                client={selectedClient}
+                rides={rides}
+                balance={clientBalance}
+                ridePage={ridePage}
+                rideTotal={rideTotal}
+                rideLimit={rideLimit}
+                isSettling={isSettling}
+                isDeleting={isDeleting}
+                onClose={() => setSelectedClient(null)}
+                onNewRide={() => setIsRideModalOpen(true)}
+                onCloseDebt={() => setIsCloseDebtConfirmOpen(true)}
+                onAddPayment={() => setIsPaymentModalOpen(true)}
+                onGeneratePDF={handleGeneratePDF}
+                onDeleteClient={() => setIsDeleteConfirmOpen(true)}
+                onEditRide={handleEditRide}
+                onDeleteRide={(ride) => setRideToDelete(ride as Ride)}
+                onPageChange={setRidePage}
+            />
 
             <RideModal
                 isOpen={isRideModalOpen}
                 onClose={() => setIsRideModalOpen(false)}
-                onSuccess={() => selectedClient && fetchRides(selectedClient.id, ridePage)}
+                onSuccess={() => {
+                    if (selectedClient) {
+                        fetchRides(selectedClient.id, ridePage);
+                        fetchClientBalance(selectedClient.id);
+                    }
+                    setRideToEdit(null);
+                }}
                 clientId={selectedClient?.id}
                 clientName={selectedClient?.name}
+                rideToEdit={rideToEdit}
+            />
+            <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                onSuccess={() => {
+                    if (selectedClient) {
+                        fetchClientBalance(selectedClient.id);
+                        fetchClientPayments(selectedClient.id);
+                    }
+                }}
+                clientId={selectedClient?.id || ""}
+                clientName={selectedClient?.name || ""}
             />
             <ClientModal
                 isOpen={isClientModalOpen}
@@ -406,6 +426,38 @@ export default function ClientsPage() {
                 }}
                 onSuccess={fetchClients}
                 clientToEdit={clientToEdit || undefined}
+            />
+
+            <ConfirmModal
+                isOpen={isDeleteConfirmOpen}
+                onClose={() => setIsDeleteConfirmOpen(false)}
+                onConfirm={handleDeleteClient}
+                title="Excluir Cliente"
+                description={`Deseja realmente excluir o cliente "${selectedClient?.name}"? Esta ação é IRREVERSÍVEL e excluirá todas as corridas e pagamentos vinculados.`}
+                confirmText="Excluir"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
+            <ConfirmModal
+                isOpen={isCloseDebtConfirmOpen}
+                onClose={() => setIsCloseDebtConfirmOpen(false)}
+                onConfirm={handleCloseDebt}
+                title="Fechar Dívida"
+                description={`Deseja realmente fechar a dívida de ${selectedClient?.name}? Isso marcará as corridas como pagas e os adiantamentos como usados.`}
+                confirmText="Fechar Dívida"
+                isLoading={isSettling}
+            />
+
+            <ConfirmModal
+                isOpen={!!rideToDelete}
+                onClose={() => setRideToDelete(null)}
+                onConfirm={handleDeleteRide}
+                title="Excluir Corrida"
+                description="Deseja realmente excluir esta corrida?"
+                confirmText="Excluir"
+                variant="danger"
+                isLoading={isDeletingRide}
             />
         </div>
     );
