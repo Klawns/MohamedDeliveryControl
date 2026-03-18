@@ -144,7 +144,7 @@ function TaxDataModal({
                         </p>
                     </form>
                 </div>
-            </div>
+            </DialogContent>
         </Dialog>
     );
 }

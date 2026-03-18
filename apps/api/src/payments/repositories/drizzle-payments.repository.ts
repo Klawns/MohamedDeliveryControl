@@ -27,4 +27,20 @@ export class DrizzlePaymentsRepository implements IPaymentsRepository {
   async getAllPlans(): Promise<PricingPlan[]> {
     return this.db.select().from(schema.pricingPlans);
   }
+
+  async updatePlan(
+    id: string,
+    data: Partial<PricingPlan>,
+  ): Promise<PricingPlan> {
+    const [updatedPlan] = await this.db
+      .update(schema.pricingPlans)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.pricingPlans.id, id))
+      .returning();
+
+    return updatedPlan;
+  }
 }
