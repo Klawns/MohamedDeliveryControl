@@ -1,11 +1,11 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   IClientsRepository,
   CreateClientDto,
 } from './interfaces/clients-repository.interface';
 import { IClientPaymentsRepository } from './interfaces/client-payments-repository.interface';
-import { RidesService } from '../rides/rides.service';
+import { IRidesRepository } from '../rides/interfaces/rides-repository.interface';
 
 @Injectable()
 export class ClientsService {
@@ -14,8 +14,8 @@ export class ClientsService {
     private readonly clientsRepository: IClientsRepository,
     @Inject(IClientPaymentsRepository)
     private readonly clientPaymentsRepository: IClientPaymentsRepository,
-    @Inject(forwardRef(() => RidesService))
-    private readonly ridesService: RidesService,
+    @Inject(IRidesRepository)
+    private readonly ridesRepository: IRidesRepository,
   ) {}
 
   async findAll(
@@ -47,20 +47,11 @@ export class ClientsService {
   }
 
   async getClientBalance(userId: string, clientId: string) {
-    // 1. Get all pending rides for the client
-    const { rides } = await this.ridesService.findByClient(userId, clientId);
-    const pendingRides = rides.filter(
-      (r) => r.paymentStatus === 'PENDING' && r.status !== 'CANCELLED',
-    );
-    const totalDebt = pendingRides.reduce((sum, r) => sum + r.value, 0);
+    // 1. Get total pending debt and count from DB
+    const { totalDebt, pendingRidesCount } = await this.ridesRepository.getPendingDebtStats(clientId, userId);
 
-    // 2. Get all unused partial payments
-    const payments = await this.clientPaymentsRepository.findByClient(
-      clientId,
-      userId,
-      'UNUSED',
-    );
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    // 2. Get total unused payments and count from DB
+    const { totalPaid, unusedPaymentsCount } = await this.clientPaymentsRepository.getUnusedPaymentsStats(clientId, userId);
 
     // 3. Calculate remaining balance
     const remainingBalance = Math.max(0, totalDebt - totalPaid);
@@ -69,8 +60,8 @@ export class ClientsService {
       totalDebt,
       totalPaid,
       remainingBalance,
-      pendingRides: pendingRides.length,
-      unusedPayments: payments.length,
+      pendingRides: pendingRidesCount,
+      unusedPayments: unusedPaymentsCount,
     };
   }
 
@@ -90,23 +81,13 @@ export class ClientsService {
   }
 
   async closeDebt(userId: string, clientId: string) {
-    // 1. Find all pending rides
-    const { rides } = await this.ridesService.findByClient(userId, clientId);
-    const pendingRides = rides.filter(
-      (r) => r.paymentStatus === 'PENDING' && r.status !== 'CANCELLED',
-    );
+    // 1. Mark all pending as PAID in DB directly
+    const settledCount = await this.ridesRepository.markAllAsPaidForClient(clientId, userId);
 
-    // 2. Mark them as PAID
-    for (const ride of pendingRides) {
-      await this.ridesService.updateStatus(userId, ride.id, {
-        paymentStatus: 'PAID',
-      });
-    }
-
-    // 3. Mark all unused partial payments as USED
+    // 2. Mark all unused partial payments as USED
     await this.clientPaymentsRepository.markAsUsed(clientId, userId);
 
-    return { success: true, settledRides: pendingRides.length };
+    return { success: true, settledRides: settledCount };
   }
 
   async getClientPayments(

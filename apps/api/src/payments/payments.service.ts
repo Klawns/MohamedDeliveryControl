@@ -3,8 +3,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Audit } from '../common/decorators/audit.decorator';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 
 import { UsersService } from '../users/users.service';
 import type {
@@ -16,7 +14,6 @@ import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
 import { IPaymentsRepository } from './interfaces/payments-repository.interface';
 
-import { WebhookJobData } from './queue/webhook.worker';
 import {
   PaymentEvents,
   PaymentWebhookReceivedEvent,

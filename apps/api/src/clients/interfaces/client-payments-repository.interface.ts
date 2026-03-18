@@ -15,4 +15,6 @@ export interface IClientPaymentsRepository {
   create(data: CreateClientPaymentDto): Promise<ClientPayment>;
 
   markAsUsed(clientId: string, userId: string): Promise<void>;
+
+  getUnusedPaymentsStats(clientId: string, userId: string): Promise<{ totalPaid: number; unusedPaymentsCount: number }>;
 }

@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import * as schema from '@mdc/database';
 
@@ -62,5 +62,26 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
           eq(schema.clientPayments.status, 'UNUSED'),
         ),
       );
+  }
+
+  async getUnusedPaymentsStats(clientId: string, userId: string): Promise<{ totalPaid: number; unusedPaymentsCount: number }> {
+    const result = await this.db
+      .select({
+        total: sql<number>`SUM(${schema.clientPayments.amount})`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(schema.clientPayments)
+      .where(
+        and(
+          eq(schema.clientPayments.clientId, clientId),
+          eq(schema.clientPayments.userId, userId),
+          eq(schema.clientPayments.status, 'UNUSED')
+        )
+      );
+
+    return {
+      totalPaid: Number(result[0]?.total || 0),
+      unusedPaymentsCount: Number(result[0]?.count || 0),
+    };
   }
 }

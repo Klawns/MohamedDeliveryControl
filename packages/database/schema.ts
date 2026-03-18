@@ -26,6 +26,8 @@ export const clients = sqliteTable('clients', {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    phone: text('phone'),
+    address: text('address'),
     isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({

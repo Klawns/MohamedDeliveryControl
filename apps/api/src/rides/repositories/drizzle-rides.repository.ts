@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
-import { eq, and, gte, lte, sql, desc, or, like } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, or, like, ne } from 'drizzle-orm';
 import * as schema from '@mdc/database';
 
 import { DRIZZLE } from '../../database/database.provider';
@@ -263,5 +263,44 @@ export class DrizzleRidesRepository implements IRidesRepository {
       totalValue,
       rides: results as RideWithClient[],
     };
+  }
+
+  async getPendingDebtStats(clientId: string, userId: string): Promise<{ totalDebt: number; pendingRidesCount: number }> {
+    const result = await this.db
+      .select({
+        total: sql<number>`SUM(${schema.rides.value})`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(schema.rides)
+      .where(
+        and(
+          eq(schema.rides.clientId, clientId),
+          eq(schema.rides.userId, userId),
+          eq(schema.rides.paymentStatus, 'PENDING'),
+          ne(schema.rides.status, 'CANCELLED')
+        )
+      );
+
+    return {
+      totalDebt: Number(result[0]?.total || 0),
+      pendingRidesCount: Number(result[0]?.count || 0),
+    };
+  }
+
+  async markAllAsPaidForClient(clientId: string, userId: string): Promise<number> {
+    const result = await this.db
+      .update(schema.rides)
+      .set({ paymentStatus: 'PAID' })
+      .where(
+        and(
+          eq(schema.rides.clientId, clientId),
+          eq(schema.rides.userId, userId),
+          eq(schema.rides.paymentStatus, 'PENDING'),
+          ne(schema.rides.status, 'CANCELLED')
+        )
+      )
+      .returning({ updatedId: schema.rides.id });
+      
+    return result.length;
   }
 }

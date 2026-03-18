@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -13,9 +13,9 @@ import { RefreshTokenService } from './refresh-token/refresh-token.service';
 
 @Module({
   imports: [
-    forwardRef(() => UsersModule),
-    forwardRef(() => SubscriptionsModule),
-    forwardRef(() => RidesModule),
+    UsersModule,
+    SubscriptionsModule,
+    RidesModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

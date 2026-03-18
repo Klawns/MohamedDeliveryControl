@@ -65,4 +65,8 @@ export interface IRidesRepository {
     end: Date,
     clientId?: string,
   ): Promise<{ count: number; totalValue: number; rides: RideWithClient[] }>;
+
+  getPendingDebtStats(clientId: string, userId: string): Promise<{ totalDebt: number; pendingRidesCount: number }>;
+
+  markAllAsPaidForClient(clientId: string, userId: string): Promise<number>;
 }

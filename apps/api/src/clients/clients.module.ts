@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { ClientsController } from './clients.controller';
 import { DrizzleClientsRepository } from './repositories/drizzle-clients.repository';
@@ -19,7 +19,7 @@ import { RidesModule } from '../rides/rides.module';
       useClass: DrizzleClientPaymentsRepository,
     },
   ],
-  imports: [forwardRef(() => RidesModule)],
+  imports: [RidesModule],
   controllers: [ClientsController],
   exports: [ClientsService, IClientsRepository, IClientPaymentsRepository],
 })

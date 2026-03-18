@@ -62,6 +62,22 @@ export class AuthController {
     };
   }
 
+  private setAuthCookies(res: Response, tokens: any, isAdmin = false) {
+    const cookieOptions = this.getCookieOptions();
+    const refreshCookieName = isAdmin ? 'admin_refresh_token' : 'refresh_token';
+    const accessCookieName = isAdmin ? 'admin_access_token' : 'access_token';
+
+    res.cookie(refreshCookieName, tokens.refresh_token, {
+      ...cookieOptions,
+      maxAge: 15 * 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie(accessCookieName, tokens.access_token, {
+      ...cookieOptions,
+      maxAge: 30 * 60 * 1000,
+    });
+  }
+
   private getFrontendUrl() {
     return (
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
@@ -76,19 +92,10 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
     const tokens = await this.authService.validateGoogleUser(req.user);
-    const cookieOptions = this.getCookieOptions();
-
-    res.cookie('refresh_token', tokens.refresh_token, {
-      ...cookieOptions,
-      maxAge: 15 * 24 * 60 * 60 * 1000,
-    });
-
-    res.cookie('access_token', tokens.access_token, {
-      ...cookieOptions,
-      maxAge: 30 * 60 * 1000,
-    });
+    this.setAuthCookies(res, tokens);
 
     const selectedPlan = req.cookies['selected_plan'] || 'starter';
+    const cookieOptions = this.getCookieOptions();
     res.clearCookie('selected_plan', cookieOptions);
 
     const subscription = await this.authService.getUserSubscription(
@@ -136,17 +143,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokens = await this.authService.updateProfile(req.user.id, body);
-    const cookieOptions = this.getCookieOptions();
-
-    res.cookie('refresh_token', tokens.refresh_token, {
-      ...cookieOptions,
-      maxAge: 15 * 24 * 60 * 60 * 1000,
-    });
-
-    res.cookie('access_token', tokens.access_token, {
-      ...cookieOptions,
-      maxAge: 30 * 60 * 1000,
-    });
+    this.setAuthCookies(res, tokens);
 
     return {
       user: tokens.user,
@@ -167,21 +164,7 @@ export class AuthController {
     }
 
     const tokens = await this.authService.login(user);
-    const cookieOptions = this.getCookieOptions();
-
-    const isAdmin = user.role === 'admin';
-    const refreshCookieName = isAdmin ? 'admin_refresh_token' : 'refresh_token';
-    const accessCookieName = isAdmin ? 'admin_access_token' : 'access_token';
-
-    res.cookie(refreshCookieName, tokens.refresh_token, {
-      ...cookieOptions,
-      maxAge: 15 * 24 * 60 * 60 * 1000,
-    });
-
-    res.cookie(accessCookieName, tokens.access_token, {
-      ...cookieOptions,
-      maxAge: 30 * 60 * 1000,
-    });
+    this.setAuthCookies(res, tokens, user.role === 'admin');
 
     return {
       user: tokens.user,
@@ -196,17 +179,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokens = await this.authService.register(body);
-    const cookieOptions = this.getCookieOptions();
-
-    res.cookie('refresh_token', tokens.refresh_token, {
-      ...cookieOptions,
-      maxAge: 15 * 24 * 60 * 60 * 1000,
-    });
-
-    res.cookie('access_token', tokens.access_token, {
-      ...cookieOptions,
-      maxAge: 30 * 60 * 1000,
-    });
+    this.setAuthCookies(res, tokens);
 
     return {
       user: tokens.user,
@@ -228,17 +201,7 @@ export class AuthController {
       throw new UnauthorizedException();
     }
     const tokens = await this.authService.refresh(token);
-    const cookieOptions = this.getCookieOptions();
-
-    res.cookie(refreshTokenName, tokens.refresh_token, {
-      ...cookieOptions,
-      maxAge: 15 * 24 * 60 * 60 * 1000,
-    });
-
-    res.cookie(accessTokenName, tokens.access_token, {
-      ...cookieOptions,
-      maxAge: 30 * 60 * 1000,
-    });
+    this.setAuthCookies(res, tokens, isAdmin);
 
     return { success: true };
   }

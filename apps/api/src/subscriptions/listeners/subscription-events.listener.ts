@@ -5,12 +5,12 @@ import { Queue } from 'bullmq';
 import {
   PaymentEvents,
   PaymentWebhookReceivedEvent,
-} from '../events/payment.events';
-import { WebhookJobData } from '../queue/webhook.worker';
+} from '../../payments/events/payment.events';
+import { WebhookJobData } from '../queue/subscription-webhook.worker';
 
 @Injectable()
-export class PaymentEventsListener {
-  private readonly logger = new Logger(PaymentEventsListener.name);
+export class SubscriptionEventsListener {
+  private readonly logger = new Logger(SubscriptionEventsListener.name);
 
   constructor(
     @InjectQueue('webhooks')
@@ -20,7 +20,7 @@ export class PaymentEventsListener {
   @OnEvent(PaymentEvents.WEBHOOK_RECEIVED)
   async handlePaymentWebhookReceived(event: PaymentWebhookReceivedEvent) {
     this.logger.log(
-      `Evento recebido: payment.webhook.received. Enfileirando Job para usuário ${event.userId}`,
+      `Evento EDA Recebido: payment.webhook.received. Enfileirando Job de Assinatura para usuário ${event.userId}`,
     );
 
     await this.webhooksQueue.add(

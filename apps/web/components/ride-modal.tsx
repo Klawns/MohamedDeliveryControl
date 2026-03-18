@@ -174,11 +174,11 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                 clientId: selectedClientId,
                 value: Number(value),
                 location: location || "Não informada",
-                notes: notes || undefined,
-                photo: uploadedPhotoUrl || undefined,
+                notes: notes || null,
+                photo: uploadedPhotoUrl || null,
                 status,
                 paymentStatus,
-                rideDate: rideDate || undefined
+                rideDate: rideDate || null
             };
 
             if (rideToEdit) {

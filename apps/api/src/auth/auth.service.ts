@@ -30,7 +30,7 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  private async buildUserPayload(user: any) {
     const subscription =
       user.role !== 'admin'
         ? await this.subscriptionsService.findByUserId(user.id)
@@ -44,7 +44,7 @@ export class AuthService {
       ? new Date(subscription.validUntil) < now
       : false;
 
-    const payload = {
+    return {
       email: user.email,
       sub: user.id,
       name: user.name,
@@ -61,11 +61,15 @@ export class AuthService {
           }
         : null,
     };
+  }
+
+  async login(user: any) {
+    const payload = await this.buildUserPayload(user);
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = await this.refreshTokenService.create(user.id);
 
     console.log(
-      `[AuthService] Login realizado com sucesso para: ${user.email}. RideCount: ${realRideCount}`,
+      `[AuthService] Login realizado com sucesso para: ${user.email}. Role: ${user.role}`,
     );
 
     return {
@@ -91,42 +95,13 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const subscription =
-      user.role !== 'admin'
-        ? await this.subscriptionsService.findByUserId(user.id)
-        : null;
-
-    const realRideCount =
-      user.role !== 'admin' ? await this.ridesRepository.countAll(user.id) : 0;
-
-    const now = new Date();
-    const isExpired = subscription?.validUntil
-      ? new Date(subscription.validUntil) < now
-      : false;
-
-    const payload = {
-      email: user.email,
-      sub: user.id,
-      name: user.name,
-      role: user.role,
-      taxId: user.taxId,
-      cellphone: user.cellphone,
-      hasSeenTutorial: user.hasSeenTutorial,
-      subscription: subscription
-        ? {
-            plan: subscription.plan,
-            status: isExpired ? 'expired' : subscription.status,
-            validUntil: subscription.validUntil,
-            rideCount: realRideCount,
-          }
-        : null,
-    };
+    const payload = await this.buildUserPayload(user);
 
     const accessToken = this.jwtService.sign(payload);
     const newRefreshToken = await this.refreshTokenService.create(user.id);
 
     console.log(
-      `[AuthService] Refresh realizado com sucesso para: ${user.email}. RideCount: ${realRideCount}`,
+      `[AuthService] Refresh realizado com sucesso para: ${user.email}. Role: ${user.role}`,
     );
 
     // Rotação: revogar o token antigo imediatamente após o uso
@@ -239,36 +214,9 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
     if (!user) return null;
 
-    const subscription =
-      user.role !== 'admin'
-        ? await this.subscriptionsService.findByUserId(user.id)
-        : null;
-
-    const realRideCount =
-      user.role !== 'admin' ? await this.ridesRepository.countAll(userId) : 0;
-
-    const now = new Date();
-    const isExpired = subscription?.validUntil
-      ? new Date(subscription.validUntil) < now
-      : false;
-
-    const finalProfile = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      taxId: user.taxId,
-      cellphone: user.cellphone,
-      hasSeenTutorial: user.hasSeenTutorial,
-      subscription: subscription
-        ? {
-            plan: subscription.plan,
-            status: isExpired ? 'expired' : subscription.status,
-            validUntil: subscription.validUntil,
-            rideCount: realRideCount,
-          }
-        : null,
-    };
+    const finalProfile = await this.buildUserPayload(user);
+    // Adiciona o id ao perfil retornado, pois o buildUserPayload o nomeia como "sub" no JWT
+    Object.assign(finalProfile, { id: user.id });
 
     // 3. Guarda e expira naturalmente em 10 minutos (Dá espaço para não quebrar a sincronização)
     await this.cache.set(cacheKey, finalProfile, 600);

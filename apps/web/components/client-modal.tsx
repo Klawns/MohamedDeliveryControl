@@ -52,8 +52,8 @@ export function ClientModal({ isOpen, onClose, onSuccess, clientToEdit }: Client
         try {
             const payload = {
                 name,
-                phone: phone || undefined,
-                address: address || undefined,
+                phone: phone || null,
+                address: address || null,
             };
 
             if (clientToEdit) {

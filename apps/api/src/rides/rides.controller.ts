@@ -156,17 +156,17 @@ export class RidesController {
     body: {
       value?: number;
       location?: string;
-      notes?: string;
-      photo?: string;
+      notes?: string | null;
+      photo?: string | null;
       status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
       paymentStatus?: 'PENDING' | 'PAID';
-      rideDate?: string;
+      rideDate?: string | null;
     },
   ) {
     return this.ridesService.update(req.user.id, id, {
       ...body,
-      rideDate: body.rideDate ? new Date(body.rideDate) : undefined,
-    });
+      rideDate: body.rideDate === null ? (null as any) : (body.rideDate ? new Date(body.rideDate) : undefined),
+    } as any);
   }
 
   @Delete(':id')
