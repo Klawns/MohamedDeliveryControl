@@ -442,7 +442,7 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                                                         handlePresetClick(matchingPreset);
                                                                     } else {
                                                                         setValue(String(v));
-                                                                        setLocation("");
+                                                                        setLocation("Central");
                                                                         setIsCustomValue(false);
                                                                     }
                                                                 }}

@@ -166,17 +166,12 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
 
         if (showCustomForm) {
             finalValue = Number(customValue);
-            finalLocation = customLocation;
+            finalLocation = customLocation || "Central";
         } else if (selectedPresetId) {
-            if (selectedPresetId.startsWith('default-')) {
-                finalValue = Number(selectedPresetId.split('-')[1]);
-                finalLocation = "Central";
-            } else {
-                const preset = presets.find((p: any) => p.id === selectedPresetId);
-                if (!preset) return;
-                finalValue = preset.value;
-                finalLocation = preset.location;
-            }
+            // Se houver um preset selecionado, usamos o que está no estado customLocation/customValue
+            // O estado é sincronizado no clique do botão do preset
+            finalValue = Number(customValue);
+            finalLocation = customLocation || "Central";
         }
 
         if (!finalValue) {
@@ -422,11 +417,13 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                                                 onClick={() => {
                                                     if (matchingPreset) {
                                                         setSelectedPresetId(matchingPreset.id);
+                                                        setCustomValue(String(matchingPreset.value));
+                                                        setCustomLocation(matchingPreset.location || "Central");
                                                         setShowCustomForm(false);
                                                     } else {
                                                         setSelectedPresetId(displayId);
                                                         setCustomValue(String(v));
-                                                        setCustomLocation("");
+                                                        setCustomLocation("Central");
                                                         setShowCustomForm(false);
                                                     }
                                                 }}
