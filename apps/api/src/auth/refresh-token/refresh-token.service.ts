@@ -11,7 +11,7 @@ export class RefreshTokenService {
   constructor(
     @Inject(CACHE_PROVIDER)
     private cache: ICacheProvider,
-  ) { }
+  ) {}
 
   async create(userId: string): Promise<string> {
     const token = randomUUID();

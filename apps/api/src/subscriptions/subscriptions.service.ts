@@ -6,7 +6,7 @@ export class SubscriptionsService {
   constructor(
     @Inject(ISubscriptionsRepository)
     private readonly subscriptionsRepository: ISubscriptionsRepository,
-  ) { }
+  ) {}
 
   async findByUserId(userId: string) {
     return this.subscriptionsRepository.findByUserId(userId);
@@ -29,18 +29,21 @@ export class SubscriptionsService {
     }
 
     const currentSub = await this.findByUserId(userId);
-    if (currentSub && currentSub.plan === plan && currentSub.status === 'active') {
-      console.log(`[Subscription] Plano ${plan} já ativo para o usuário ${userId}. Ignorando atualização.`);
+    if (
+      currentSub &&
+      currentSub.plan === plan &&
+      currentSub.status === 'active'
+    ) {
+      console.log(
+        `[Subscription] Plano ${plan} já ativo para o usuário ${userId}. Ignorando atualização.`,
+      );
       return currentSub;
     }
 
     return this.subscriptionsRepository.updateOrCreate(userId, plan);
   }
 
-  async overridePlan(
-    userId: string,
-    plan: 'starter' | 'premium' | 'lifetime',
-  ) {
+  async overridePlan(userId: string, plan: 'starter' | 'premium' | 'lifetime') {
     return this.subscriptionsRepository.overridePlan(userId, plan);
   }
 }

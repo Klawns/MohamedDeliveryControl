@@ -11,11 +11,12 @@ import { getRedisConfig } from '../../common/utils/redis.util';
 
 @Injectable()
 export class RedisCacheProvider
-  implements ICacheProvider, OnModuleInit, OnModuleDestroy {
+  implements ICacheProvider, OnModuleInit, OnModuleDestroy
+{
   private redisClient: Redis;
   private readonly logger = new Logger(RedisCacheProvider.name);
 
-  constructor(private configService: ConfigService) { }
+  constructor(private configService: ConfigService) {}
 
   onModuleInit() {
     const redisConfig = getRedisConfig(this.configService);

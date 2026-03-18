@@ -16,7 +16,7 @@ import * as express from 'express';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) { }
+  constructor(private readonly paymentsService: PaymentsService) {}
 
   @Get('plans')
   async getPlans() {
@@ -46,8 +46,12 @@ export class PaymentsController {
   ) {
     const signature = sig1 || sig2 || sig3;
     console.log(`[Webhook] 📥 Requisição recebida em /payments/webhook`);
-    console.log(`[Webhook] Signature Header: ${signature ? 'Presente' : 'AUSENTE'}`);
-    console.log(`[Webhook] RawBody: ${request.rawBody ? 'Presente (' + request.rawBody.length + ' bytes)' : 'AUSENTE'}`);
+    console.log(
+      `[Webhook] Signature Header: ${signature ? 'Presente' : 'AUSENTE'}`,
+    );
+    console.log(
+      `[Webhook] RawBody: ${request.rawBody ? 'Presente (' + request.rawBody.length + ' bytes)' : 'AUSENTE'}`,
+    );
 
     if (!signature || !request.rawBody) {
       console.error(
@@ -57,7 +61,11 @@ export class PaymentsController {
     }
 
     try {
-      return await this.paymentsService.handleWebhook(signature, request.rawBody, request.query);
+      return await this.paymentsService.handleWebhook(
+        signature,
+        request.rawBody,
+        request.query,
+      );
     } catch (error) {
       console.error(`[Webhook] ❌ Erro ao processar: ${error.message}`);
       throw error;

@@ -125,6 +125,7 @@ export function RideControl() {
       <ClientReportModal
         isOpen={!!selectedClientReport}
         onClose={() => setSelectedClientReport(null)}
+        clientId={clients.find(c => c.name === selectedClientReport)?.id}
         clientName={selectedClientReport || ""}
         rides={clientRidesForReport}
         onGeneratePDF={generatePDF}

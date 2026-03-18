@@ -8,23 +8,51 @@ import { Button } from "@/components/ui/button"
 import { FileText } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { Ride } from "../../rides/hooks/use-rides"
+import { useState, useEffect } from "react"
+import { api } from "@/services/api"
 
 interface ClientReportModalProps {
     isOpen: boolean
     onClose: () => void
+    clientId?: string
     clientName: string
     rides: Ride[]
-    onGeneratePDF: (clientName: string, rides: Ride[]) => void
+    onGeneratePDF: (clientName: string, rides: Ride[], partialPayments?: Array<{ amount: number, paymentDate: string }>) => void
 }
 
 export function ClientReportModal({
     isOpen,
     onClose,
+    clientId,
     clientName,
     rides,
     onGeneratePDF,
 }: ClientReportModalProps) {
-    const total = rides.reduce((sum, ride) => sum + ride.value, 0)
+    const [partialPayments, setPartialPayments] = useState<Array<{ amount: number, paymentDate: string }>>([])
+    const [totalPaid, setTotalPaid] = useState(0)
+
+    useEffect(() => {
+        if (isOpen && clientId) {
+            fetchBalance(clientId)
+        }
+    }, [isOpen, clientId])
+
+    const fetchBalance = async (id: string) => {
+        try {
+            const [balanceRes, paymentsRes] = await Promise.all([
+                api.get(`/clients/${id}/balance`),
+                api.get(`/clients/${id}/payments?status=UNUSED`)
+            ])
+            
+            setTotalPaid(balanceRes.data.totalPaid || 0)
+            setPartialPayments(paymentsRes.data || [])
+        } catch (error) {
+            console.error("Erro ao buscar saldo:", error)
+        }
+    }
+
+    const totalDebt = rides.reduce((sum, ride) => sum + ride.value, 0)
+    const totalRemaining = Math.max(0, totalDebt - totalPaid)
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -45,7 +73,25 @@ export function ClientReportModal({
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-muted-foreground">Valor total</p>
-                                <p className="text-2xl font-bold text-primary">{formatCurrency(total)}</p>
+                                <p className="text-2xl font-bold text-primary">{formatCurrency(totalDebt)}</p>
+                            </div>
+                        </div>
+                        {totalPaid > 0 && (
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/50">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Pago Antecipado</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-bold text-blue-500">- {formatCurrency(totalPaid)}</p>
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/50">
+                            <div>
+                                <p className="text-sm text-foreground font-semibold">Total a Pagar</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xl font-bold text-emerald-500">{formatCurrency(totalRemaining)}</p>
                             </div>
                         </div>
                     </div>
@@ -70,7 +116,7 @@ export function ClientReportModal({
 
                 <div className="pt-4 border-t border-border">
                     <Button
-                        onClick={() => onGeneratePDF(clientName, rides)}
+                        onClick={() => onGeneratePDF(clientName, rides, partialPayments)}
                         className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                     >
                         <FileText className="h-5 w-5 mr-2" />

@@ -9,14 +9,18 @@ export class StripeProvider implements IPaymentProvider {
 
   constructor(private configService: ConfigService) {
     this.stripe = new Stripe(
-      this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_placeholder',
+      this.configService.get<string>('STRIPE_SECRET_KEY') ||
+        'sk_test_placeholder',
     );
   }
 
   async createCheckoutSession(
     userId: string,
     plan: PaymentPlan,
-    _customer?: any,
+    amount: number,
+    customer?: any,
+    coupons?: string[],
+    planName?: string,
   ) {
     const prices: any = {
       starter: null,
@@ -46,7 +50,9 @@ export class StripeProvider implements IPaymentProvider {
   }
 
   async handleWebhook(signature: string, payload: Buffer, query?: any) {
-    const endpointSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const endpointSecret = this.configService.get<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
     let event: Stripe.Event;
 
     if (!endpointSecret) throw new Error('STRIPE_WEBHOOK_SECRET not defined');

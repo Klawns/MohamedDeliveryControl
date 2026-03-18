@@ -17,7 +17,7 @@ import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guar
 @Controller('rides')
 @UseGuards(AuthGuard('jwt'), ActiveSubscriptionGuard)
 export class RidesController {
-  constructor(private ridesService: RidesService) { }
+  constructor(private ridesService: RidesService) {}
 
   @Get()
   async findAll(

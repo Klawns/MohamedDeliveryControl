@@ -9,7 +9,7 @@ export class RidesService {
     @Inject(IRidesRepository)
     private readonly ridesRepository: IRidesRepository,
     private subscriptionsService: SubscriptionsService,
-  ) { }
+  ) {}
 
   async findAll(
     userId: string,

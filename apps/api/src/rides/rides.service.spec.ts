@@ -73,7 +73,9 @@ describe('RidesService', () => {
         value: 10,
         location: 'Downtown',
       }),
-    ).rejects.toThrow('Limite de 20 corridas do plano gratuito atingido. Faça o upgrade para continuar.');
+    ).rejects.toThrow(
+      'Limite de 20 corridas do plano gratuito atingido. Faça o upgrade para continuar.',
+    );
   });
 
   it('should allow creation if starter plan and limit not reached', async () => {

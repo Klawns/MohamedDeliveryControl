@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Bike, User, DollarSign, FileText, CheckCircle2, Calendar, Plus, Camera, Trash2, ChevronRight, Star } from "lucide-react";
+import { X, Bike, User, DollarSign, FileText, CheckCircle2, Calendar, Plus, Camera, Trash2, ChevronRight, Star, MapPin } from "lucide-react";
 import { api } from "@/services/api";
 import { uploadImage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
@@ -484,31 +484,36 @@ export function RideModal({ isOpen, onClose, onSuccess, clientId, clientName, ri
                                             </div>
 
                                             <AnimatePresence>
-                                                {isCustomValue && (
+                                                {value !== "" && (
                                                     <motion.div
                                                         initial={{ height: 0, opacity: 0, marginTop: 0 }}
                                                         animate={{ height: "auto", opacity: 1, marginTop: 16 }}
                                                         exit={{ height: 0, opacity: 0, marginTop: 0 }}
                                                         className="overflow-hidden space-y-4"
                                                     >
-                                                        <div className="relative group">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-base">R$</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                value={value}
-                                                                onChange={(e) => { setValue(e.target.value); setIsCustomValue(true); }}
-                                                                placeholder="Valor Personalizado"
-                                                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-xl font-black focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
-                                                            />
-                                                        </div>
+                                                        {isCustomValue && (
+                                                            <div className="relative group">
+                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-base">R$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={value}
+                                                                    onChange={(e) => { setValue(e.target.value); setIsCustomValue(true); }}
+                                                                    placeholder="Valor Personalizado"
+                                                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-xl font-black focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                                                />
+                                                            </div>
+                                                        )}
 
                                                         <div className="space-y-3">
+                                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
+                                                                <MapPin size={12} className="text-blue-500" /> Localização da Corrida
+                                                            </label>
                                                             <input
                                                                 type="text"
                                                                 value={location}
-                                                                onChange={(e) => { setLocation(e.target.value); setIsCustomValue(true); }}
-                                                                placeholder="Localização Personalizada..."
+                                                                onChange={(e) => setLocation(e.target.value)}
+                                                                placeholder="Onde será a corrida? (Ex: Centro, Shopping...)"
                                                                 className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 text-white text-sm font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                                                             />
                                                         </div>

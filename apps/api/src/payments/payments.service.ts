@@ -17,7 +17,10 @@ import type { ICacheProvider } from '../cache/interfaces/cache-provider.interfac
 import { IPaymentsRepository } from './interfaces/payments-repository.interface';
 
 import { WebhookJobData } from './queue/webhook.worker';
-import { PaymentEvents, PaymentWebhookReceivedEvent } from './events/payment.events';
+import {
+  PaymentEvents,
+  PaymentWebhookReceivedEvent,
+} from './events/payment.events';
 
 @Injectable()
 export class PaymentsService {
@@ -31,7 +34,7 @@ export class PaymentsService {
     @Inject(IPaymentsRepository)
     private readonly paymentsRepository: IPaymentsRepository,
     private eventEmitter: EventEmitter2,
-  ) { }
+  ) {}
 
   @Audit()
   async createCheckoutSession(
@@ -56,13 +59,14 @@ export class PaymentsService {
       dbPlan.price,
       user
         ? {
-          name: user.name,
-          email: user.email,
-          taxId: user.taxId ?? undefined,
-          cellphone: user.cellphone ?? undefined,
-        }
+            name: user.name,
+            email: user.email,
+            taxId: user.taxId ?? undefined,
+            cellphone: user.cellphone ?? undefined,
+          }
         : undefined,
       couponCode ? [couponCode] : undefined,
+      dbPlan.name,
     );
   }
 
@@ -114,12 +118,17 @@ export class PaymentsService {
   async handleWebhook(signature: string, payload: Buffer, query?: any) {
     // 1. Evita processamento duplo do MESMO webhook (Retentativas de rede)
     // Geramos um hash único do corpo da requisição para identificar se é o MESMO aviso
-    const payloadHash = crypto.createHash('sha256').update(payload).digest('hex');
+    const payloadHash = crypto
+      .createHash('sha256')
+      .update(payload)
+      .digest('hex');
     const idempotencyKey = `webhook:processed:${payloadHash}`;
 
     const alreadyProcessed = await this.cache.get(idempotencyKey);
     if (alreadyProcessed) {
-      console.log(`[Webhook] 🛡️ Webhook já em processamento ou finalizado. Ignorando duplicata.`);
+      console.log(
+        `[Webhook] 🛡️ Webhook já em processamento ou finalizado. Ignorando duplicata.`,
+      );
       return { received: true };
     }
 
@@ -158,7 +167,11 @@ export class PaymentsService {
       // Emite o evento (Observer Pattern)
       this.eventEmitter.emit(
         PaymentEvents.WEBHOOK_RECEIVED,
-        new PaymentWebhookReceivedEvent(userId, plan, result.eventId || crypto.randomUUID()),
+        new PaymentWebhookReceivedEvent(
+          userId,
+          plan,
+          result.eventId || crypto.randomUUID(),
+        ),
       );
     }
 

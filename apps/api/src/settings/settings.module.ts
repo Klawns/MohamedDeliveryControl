@@ -17,4 +17,4 @@ import { AuthModule } from '../auth/auth.module';
   controllers: [SettingsController],
   exports: [SettingsService, ISettingsRepository],
 })
-export class SettingsModule { }
+export class SettingsModule {}

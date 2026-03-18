@@ -16,7 +16,7 @@ export class DrizzleClientsRepository implements IClientsRepository {
   constructor(
     @Inject(DRIZZLE)
     private readonly db: LibSQLDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   async findAll(
     userId: string,

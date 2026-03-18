@@ -197,7 +197,7 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                     uploadedPhotoUrl = res.url;
                 } catch (uploadErr) {
                     console.error("Erro no upload R2:", uploadErr);
-                    uploadedPhotoUrl = undefined;
+                    uploadedPhotoUrl = null;
                 }
             }
 
@@ -398,19 +398,12 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
             <AnimatePresence>
                 {selectedClient && (
                     <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3">
                             <div className="bg-slate-900/40 rounded-2xl border border-white/5 p-3">
-                                <p className="text-[9px] text-slate-500 uppercase font-black mb-2">Corrida</p>
-                                <div className="flex gap-1">
-                                    <button onClick={() => setRideStatus('PENDING')} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", rideStatus === 'PENDING' ? "bg-orange-500 text-white" : "bg-white/5 text-slate-500")}>Pend.</button>
-                                    <button onClick={() => setRideStatus('COMPLETED')} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", rideStatus === 'COMPLETED' ? "bg-emerald-500 text-white" : "bg-white/5 text-slate-500")}>OK</button>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900/40 rounded-2xl border border-white/5 p-3">
-                                <p className="text-[9px] text-slate-500 uppercase font-black mb-2">Pagamento</p>
-                                <div className="flex gap-1">
-                                    <button onClick={() => setPaymentStatus('PENDING')} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", paymentStatus === 'PENDING' ? "bg-red-500 text-white" : "bg-white/5 text-slate-500")}>Pend.</button>
-                                    <button onClick={() => setPaymentStatus('PAID')} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", paymentStatus === 'PAID' ? "bg-emerald-500 text-white" : "bg-white/5 text-slate-500")}>Pago</button>
+                                <p className="text-[9px] text-slate-500 uppercase font-black mb-2">Status do Pagamento</p>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setPaymentStatus('PENDING')} className={cn("flex-1 py-3 rounded-xl text-xs font-black transition-all uppercase tracking-widest", paymentStatus === 'PENDING' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-white/5 text-slate-500")}>Não Pago</button>
+                                    <button onClick={() => setPaymentStatus('PAID')} className={cn("flex-1 py-3 rounded-xl text-xs font-black transition-all uppercase tracking-widest", paymentStatus === 'PAID' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-white/5 text-slate-500")}>Pago</button>
                                 </div>
                             </div>
                         </div>
@@ -478,14 +471,34 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                                 </p>
                             </div>
 
-                            {showCustomForm && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="space-y-3 pt-2 mb-4">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <input type="number" value={customValue} onChange={e => setCustomValue(e.target.value)} placeholder="R$ 0,00" className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-blue-500" />
-                                        <input type="text" value={customLocation} onChange={e => setCustomLocation(e.target.value)} placeholder="Local..." className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-blue-500" />
-                                    </div>
-                                </motion.div>
-                            )}
+                            <AnimatePresence>
+                                {(selectedPresetId || showCustomForm) && (
+                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="space-y-4 pt-2 mb-4">
+                                        {showCustomForm && (
+                                            <div className="grid grid-cols-1 gap-2">
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-black text-sm">R$</span>
+                                                    <input type="number" value={customValue} onChange={e => setCustomValue(e.target.value)} placeholder="0,00" className="w-full bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 py-3 text-white text-sm font-black outline-none focus:border-blue-500" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                                <MapPin size={14} className="text-blue-500" />
+                                                Localização da Corrida
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                value={customLocation} 
+                                                onChange={e => setCustomLocation(e.target.value)} 
+                                                placeholder="Onde será a corrida?" 
+                                                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-bold outline-none focus:border-blue-500" 
+                                            />
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {/* Campo de Data Opcional */}
                             <div className="border-t border-white/5 pt-4 mt-2 space-y-3">
@@ -608,29 +621,23 @@ export function MobileDashboard({ onRideCreated }: MobileDashboardProps) {
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-1.5">
                                     <span className="text-sm font-black text-white leading-none mb-0.5">{formatCurrency(r.value)}</span>
-                                    <div className="flex gap-1.5">
+                                    <div className="flex w-full">
                                         <span className={cn(
-                                            "text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest border",
-                                            r.status === 'COMPLETED'
-                                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                                : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                                        )}>
-                                            {r.status === 'COMPLETED' ? "Concluída" : "Pendente"}
-                                        </span>
-                                        <span className={cn(
-                                            "text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest border",
+                                            "text-[8px] px-3 py-1 rounded-lg font-black uppercase tracking-widest border text-center flex-1",
                                             r.paymentStatus === 'PAID'
                                                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                 : "bg-red-500/10 text-red-500 border-red-500/20"
                                         )}>
                                             {r.paymentStatus === 'PAID' ? "Pago" : "Não Pago"}
                                         </span>
+                                    </div>
+                                    <div className="flex justify-end mt-1">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setRideToDelete(r);
                                             }}
-                                            className="p-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                                            className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all active:scale-90"
                                         >
                                             <Trash2 size={12} />
                                         </button>

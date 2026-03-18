@@ -17,7 +17,7 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
   constructor(
     @Inject(DRIZZLE)
     private readonly db: LibSQLDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   async findByUserId(userId: string): Promise<Subscription | undefined> {
     const results = await this.db

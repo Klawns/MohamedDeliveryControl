@@ -17,7 +17,11 @@ export interface IClientsRepository {
 
   findOne(userId: string, id: string): Promise<Client | undefined>;
 
-  update(userId: string, id: string, data: Partial<CreateClientDto>): Promise<Client>;
+  update(
+    userId: string,
+    id: string,
+    data: Partial<CreateClientDto>,
+  ): Promise<Client>;
 
   delete(userId: string, id: string): Promise<void>;
 }

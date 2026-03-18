@@ -18,7 +18,7 @@ export class DrizzleRidesRepository implements IRidesRepository {
   constructor(
     @Inject(DRIZZLE)
     private readonly db: LibSQLDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   async findAll(
     userId: string,
@@ -68,9 +68,11 @@ export class DrizzleRidesRepository implements IRidesRepository {
       .leftJoin(schema.clients, eq(schema.rides.clientId, schema.clients.id))
       .where(and(...conditions))
       .orderBy(
-        desc(sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`),
+        desc(
+          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
+        ),
         desc(schema.rides.createdAt),
-        desc(schema.rides.id)
+        desc(schema.rides.id),
       );
 
     if (limit !== undefined) query.limit(limit);
@@ -123,7 +125,12 @@ export class DrizzleRidesRepository implements IRidesRepository {
         isPinned: schema.clients.isPinned,
       })
       .from(schema.clients)
-      .where(and(eq(schema.clients.userId, userId), eq(schema.clients.isPinned, true)))
+      .where(
+        and(
+          eq(schema.clients.userId, userId),
+          eq(schema.clients.isPinned, true),
+        ),
+      )
       .orderBy(desc(schema.clients.createdAt))
       .limit(10);
 
@@ -174,9 +181,11 @@ export class DrizzleRidesRepository implements IRidesRepository {
         ),
       )
       .orderBy(
-        desc(sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`),
+        desc(
+          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
+        ),
         desc(schema.rides.createdAt),
-        desc(schema.rides.id)
+        desc(schema.rides.id),
       );
 
     if (limit !== undefined) query.limit(limit);
@@ -236,9 +245,11 @@ export class DrizzleRidesRepository implements IRidesRepository {
       .leftJoin(schema.clients, eq(schema.rides.clientId, schema.clients.id))
       .where(and(...conditions))
       .orderBy(
-        desc(sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`),
+        desc(
+          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
+        ),
         desc(schema.rides.createdAt),
-        desc(schema.rides.id)
+        desc(schema.rides.id),
       );
 
     const totalValue = results.reduce(

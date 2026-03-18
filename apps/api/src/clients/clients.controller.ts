@@ -17,7 +17,7 @@ import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guar
 @Controller('clients')
 @UseGuards(AuthGuard('jwt'), ActiveSubscriptionGuard)
 export class ClientsController {
-  constructor(private clientsService: ClientsService) { }
+  constructor(private clientsService: ClientsService) {}
 
   @Get()
   async findAll(
@@ -56,5 +56,38 @@ export class ClientsController {
   @Delete(':id')
   async delete(@Request() req: any, @Param('id') id: string) {
     return this.clientsService.delete(req.user.id, id);
+  }
+
+  @Get(':id/balance')
+  async getBalance(@Request() req: any, @Param('id') id: string) {
+    return this.clientsService.getClientBalance(req.user.id, id);
+  }
+
+  @Post(':id/payments')
+  async addPartialPayment(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() body: { amount: number; notes?: string },
+  ) {
+    return this.clientsService.addPartialPayment(
+      req.user.id,
+      id,
+      body.amount,
+      body.notes,
+    );
+  }
+
+  @Get(':id/payments')
+  async getPayments(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Query('status') status?: 'UNUSED' | 'USED',
+  ) {
+    return this.clientsService.getClientPayments(req.user.id, id, status);
+  }
+
+  @Post(':id/close-debt')
+  async closeDebt(@Request() req: any, @Param('id') id: string) {
+    return this.clientsService.closeDebt(req.user.id, id);
   }
 }

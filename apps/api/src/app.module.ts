@@ -41,13 +41,14 @@ import { UploadModule } from './upload/upload.module';
               limit: 100,
             },
           ],
-          storage: typeof redisConfig === 'string'
-            ? new ThrottlerStorageRedisService(redisConfig)
-            : new ThrottlerStorageRedisService({
-              host: redisConfig.host,
-              port: redisConfig.port,
-              password: redisConfig.password,
-            }),
+          storage:
+            typeof redisConfig === 'string'
+              ? new ThrottlerStorageRedisService(redisConfig)
+              : new ThrottlerStorageRedisService({
+                  host: redisConfig.host,
+                  port: redisConfig.port,
+                  password: redisConfig.password,
+                }),
         };
       },
     }),
@@ -108,4 +109,4 @@ import { UploadModule } from './upload/upload.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

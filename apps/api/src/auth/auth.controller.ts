@@ -40,7 +40,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   private getCookieOptions() {
     const frontendUrl = this.configService.get('FRONTEND_URL');
@@ -70,7 +70,7 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  async googleAuth(@Req() req: any) { }
+  async googleAuth(@Req() req: any) {}
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))

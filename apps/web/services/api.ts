@@ -59,7 +59,7 @@ api.interceptors.response.use(
             try {
                 console.log("[API] Iniciando refresh automático do token...");
                 // Usamos axios puro aqui para não entrar no interceptor da nossa própria instância da api
-                await axios.post(
+                const refreshResponse = await axios.post(
                     `${api.defaults.baseURL}/auth/refresh`,
                     {},
                     {
@@ -68,6 +68,10 @@ api.interceptors.response.use(
                         validateStatus: (status) => status < 500
                     }
                 );
+
+                if (refreshResponse.status !== 200) {
+                    throw { response: refreshResponse };
+                }
 
                 console.log("[API] Token renovado com sucesso. Processando fila...");
                 isRefreshing = false;
