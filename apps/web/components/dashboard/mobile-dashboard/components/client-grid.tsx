@@ -28,13 +28,6 @@ interface ClientGridProps {
     onCreate: () => void;
 }
 
-const getInitials = (name: string) => {
-    if (!name) return "??";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 0) return "??";
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 export function ClientGrid({
     clients,
@@ -109,7 +102,6 @@ export function ClientGrid({
                                         }
 
                                         const client = item as Client;
-                                        const initials = getInitials(client.name);
                                         const isSelected = !!selectedClient && (selectedClient as any).id === client.id;
 
                                         return (
@@ -124,15 +116,6 @@ export function ClientGrid({
                                                         : "bg-muted/50 border-border-subtle border active:bg-hover-accent"
                                                 )}
                                             >
-                                                {/* Client Initial Avatar */}
-                                                <div className={cn(
-                                                    "w-8 h-8 rounded-full flex items-center justify-center mb-1.5 text-[10px] font-bold transition-all shadow-lg",
-                                                    isSelected
-                                                        ? "bg-primary text-primary-foreground shadow-primary/40"
-                                                        : "bg-primary/10 text-primary group-active:bg-primary/20 shadow-black/20"
-                                                )}>
-                                                    {initials}
-                                                </div>
 
                                                 {client.isPinned && (
                                                     <div className="absolute top-2 right-2 text-amber-500 animate-pulse">
