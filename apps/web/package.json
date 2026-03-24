@@ -1,6 +1,7 @@
 {
   "name": "my-project",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "Trigger redeploy",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
