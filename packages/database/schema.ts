@@ -47,8 +47,8 @@ export const rides = sqliteTable('rides', {
     photo: text('photo'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
-    userIdIdx: index('rides_user_id_idx').on(table.userId),
-    clientIdIdx: index('rides_client_id_idx').on(table.clientId),
+    userListIdx: index('rides_user_list_idx').on(table.userId, table.rideDate, table.createdAt, table.id),
+    clientListIdx: index('rides_client_list_idx').on(table.userId, table.clientId, table.rideDate, table.createdAt, table.id),
     userDateStatusIdx: index('rides_user_date_status_idx').on(table.userId, table.rideDate, table.status),
 }));
 
