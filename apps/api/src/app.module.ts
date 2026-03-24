@@ -21,6 +21,7 @@ import { SettingsModule } from './settings/settings.module';
 import { DebugController } from './debug/debug.controller';
 import { getRedisConfig } from './common/utils/redis.util';
 import { UploadModule } from './upload/upload.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { UploadModule } from './upload/upload.module';
     AdminModule,
     SettingsModule,
     UploadModule,
+    FinanceModule,
   ],
   controllers: [AppController, DebugController],
   providers: [

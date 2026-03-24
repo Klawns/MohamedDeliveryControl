@@ -13,6 +13,9 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
 import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guard';
+import { ZodBody, ZodQuery } from '../common/decorators/zod.decorator';
+import * as Dtos from './dto/clients.dto';
+import { ClientMapper } from './mappers/client.mapper';
 
 @Controller('clients')
 @UseGuards(AuthGuard('jwt'), ActiveSubscriptionGuard)
@@ -20,22 +23,22 @@ export class ClientsController {
   constructor(private clientsService: ClientsService) {}
 
   @Get()
-  async findAll(
-    @Request() req: any,
-    @Query('limit') limit?: number,
-    @Query('offset') offset?: number,
-    @Query('search') search?: string,
-  ) {
-    return this.clientsService.findAll(
+  async findAll(@Request() req: any, @ZodQuery(Dtos.findAllClientsSchema) query: Dtos.FindAllClientsDto) {
+    const { clients, ...meta } = await this.clientsService.findAll(
       req.user.id,
-      limit ? Number(limit) : undefined,
-      offset ? Number(offset) : undefined,
-      search,
+      query.limit,
+      query.cursor,
+      query.search,
     );
+    
+    return { 
+      data: ClientMapper.toHttpList(clients), 
+      meta 
+    };
   }
 
   @Post()
-  async create(@Request() req: any, @Body() body: { name: string }) {
+  async create(@Request() req: any, @ZodBody(Dtos.createClientSchema) body: Dtos.CreateClientBodyDto) {
     return this.clientsService.create(req.user.id, body);
   }
 
@@ -48,7 +51,7 @@ export class ClientsController {
   async update(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: any,
+    @ZodBody(Dtos.updateClientSchema) body: Dtos.UpdateClientBodyDto,
   ) {
     return this.clientsService.update(req.user.id, id, body);
   }

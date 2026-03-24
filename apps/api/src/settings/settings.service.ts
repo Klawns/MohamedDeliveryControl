@@ -11,9 +11,15 @@ export class SettingsService {
   async getRidePresets(userId: string) {
     const presets = await this.settingsRepository.getRidePresets(userId);
 
-    // Se não tiver nenhum preset, cria os padrões
-    if (presets.length === 0) {
-      return this.seedDefaultPresets(userId);
+    // Cleanup de presets antigos/padrões se existirem (Bairro B, Shopping, etc)
+    const defaultLocations = ['Centro', 'Bairro A', 'Bairro B', 'Shopping'];
+    const legacyPresets = presets.filter(p => defaultLocations.includes(p.location));
+    
+    if (legacyPresets.length > 0) {
+      for (const p of legacyPresets) {
+        await this.settingsRepository.deleteRidePreset(userId, p.id);
+      }
+      return presets.filter(p => !defaultLocations.includes(p.location));
     }
 
     return presets;

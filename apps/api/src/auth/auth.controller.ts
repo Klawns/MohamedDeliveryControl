@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ZodBody } from '../common/decorators/zod.decorator';
 import {
   loginSchema,
   registerSchema,
@@ -56,9 +56,8 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : ('lax' as any),
+      sameSite: 'lax' as const, // Lax é mais compatível com Safari e funciona bem via proxy
       path: '/',
-      partitioned: isProduction, // CRITICAL: Permite cookies em subdomínios cruzados do Railway
     };
   }
 
@@ -125,8 +124,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('change-password')
-  @UsePipes(new ZodValidationPipe(changePasswordSchema))
-  async changePassword(@Req() req: any, @Body() body: ChangePasswordDto) {
+  async changePassword(@Req() req: any, @ZodBody(changePasswordSchema) body: ChangePasswordDto) {
     return this.authService.changePassword(
       req.user.id,
       body.currentPassword,
@@ -136,10 +134,9 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  @UsePipes(new ZodValidationPipe(profileSchema))
   async updateProfile(
     @Req() req: any,
-    @Body() body: ProfileDto,
+    @ZodBody(profileSchema) body: ProfileDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokens = await this.authService.updateProfile(req.user.id, body);
@@ -152,10 +149,9 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(loginSchema))
   async login(
     @Req() req: Request,
-    @Body() body: LoginDto,
+    @ZodBody(loginSchema) body: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(body.email, body.password);
@@ -172,10 +168,9 @@ export class AuthController {
   }
 
   @Post('register')
-  @UsePipes(new ZodValidationPipe(registerSchema))
   async register(
     @Req() req: Request,
-    @Body() body: RegisterDto,
+    @ZodBody(registerSchema) body: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokens = await this.authService.register(body);

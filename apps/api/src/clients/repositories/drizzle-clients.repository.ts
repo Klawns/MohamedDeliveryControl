@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
-import { eq, and, like, sql, desc } from 'drizzle-orm';
+import { eq, and, or, like, sql, desc, lt } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import * as schema from '@mdc/database';
 
@@ -20,26 +20,50 @@ export class DrizzleClientsRepository implements IClientsRepository {
 
   async findAll(
     userId: string,
-    limit?: number,
-    offset?: number,
+    limit: number = 20,
+    cursor?: string,
     search?: string,
-  ): Promise<{ clients: Client[]; total: number }> {
+  ): Promise<{ clients: Client[]; total: number; nextCursor?: string; hasMore: boolean }> {
     const conditions = [eq(schema.clients.userId, userId)];
 
     if (search) {
       conditions.push(like(schema.clients.name, `%${search}%`));
     }
 
+    if (cursor) {
+      try {
+        const decodedString = Buffer.from(cursor, 'base64').toString('utf-8');
+        const parsedCursor = JSON.parse(decodedString);
+
+        if (!parsedCursor.createdAt || !parsedCursor.id) {
+          throw new Error('Invalid cursor payload structure');
+        }
+
+        const cursorCreatedAt = new Date(parsedCursor.createdAt);
+        const cursorCondition = or(
+          lt(schema.clients.createdAt, cursorCreatedAt),
+          and(
+            eq(schema.clients.createdAt, cursorCreatedAt),
+            lt(schema.clients.id, parsedCursor.id)
+          )
+        );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
+      } catch (err) {
+        // Fallback for old simple-date cursors if they exist
+        conditions.push(lt(schema.clients.createdAt, new Date(cursor)));
+      }
+    }
+
     const query = this.db
       .select()
       .from(schema.clients)
       .where(and(...conditions))
-      .orderBy(desc(schema.clients.createdAt));
+      .orderBy(desc(schema.clients.createdAt), desc(schema.clients.id))
+      .limit(limit + 1);
 
-    if (limit !== undefined) query.limit(limit);
-    if (offset !== undefined) query.offset(offset);
-
-    // Count for all/filtered clients
     const countQuery = this.db
       .select({ count: sql<number>`count(*)` })
       .from(schema.clients)
@@ -47,9 +71,24 @@ export class DrizzleClientsRepository implements IClientsRepository {
 
     const [results, countResult] = await Promise.all([query, countQuery]);
 
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    
+    let nextCursorHash: string | undefined;
+    if (hasMore) {
+      const lastItem = items[items.length - 1];
+      const nextCursorData = {
+        createdAt: lastItem.createdAt?.toISOString() ?? new Date().toISOString(),
+        id: lastItem.id,
+      };
+      nextCursorHash = Buffer.from(JSON.stringify(nextCursorData)).toString('base64');
+    }
+
     return {
-      clients: results,
+      clients: items,
       total: Number(countResult[0]?.count || 0),
+      nextCursor: nextCursorHash,
+      hasMore
     };
   }
 

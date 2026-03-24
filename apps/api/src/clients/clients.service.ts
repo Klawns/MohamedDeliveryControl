@@ -21,10 +21,10 @@ export class ClientsService {
   async findAll(
     userId: string,
     limit?: number,
-    offset?: number,
+    cursor?: string,
     search?: string,
   ) {
-    return this.clientsRepository.findAll(userId, limit, offset, search);
+    return this.clientsRepository.findAll(userId, limit, cursor, search);
   }
 
   async create(userId: string, data: { name: string }) {

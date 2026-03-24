@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RidesService } from './rides.service';
 import { IRidesRepository } from './interfaces/rides-repository.interface';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 
 describe('RidesService', () => {
   let service: RidesService;
   let repoMock: any;
   let subsMock: any;
+  let cacheMock: any;
 
   beforeEach(async () => {
     repoMock = {
@@ -29,6 +31,12 @@ describe('RidesService', () => {
       }),
     };
 
+    cacheMock = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RidesService,
@@ -39,6 +47,10 @@ describe('RidesService', () => {
         {
           provide: SubscriptionsService,
           useValue: subsMock,
+        },
+        {
+          provide: CACHE_PROVIDER,
+          useValue: cacheMock,
         },
       ],
     }).compile();
@@ -55,6 +67,8 @@ describe('RidesService', () => {
       clientId: 'client-1',
       value: 25.5,
       location: 'Central Park',
+      status: 'COMPLETED',
+      paymentStatus: 'PAID',
     });
     expect(result).toEqual({ id: 'ride-123', value: 25.5 });
     expect(repoMock.create).toHaveBeenCalled();
@@ -72,6 +86,8 @@ describe('RidesService', () => {
         clientId: 'client-2',
         value: 10,
         location: 'Downtown',
+        status: 'COMPLETED',
+        paymentStatus: 'PAID',
       }),
     ).rejects.toThrow(
       'Limite de 20 corridas do plano gratuito atingido. Faça o upgrade para continuar.',
@@ -89,6 +105,8 @@ describe('RidesService', () => {
       clientId: 'client-3',
       value: 15,
       location: 'Uptown',
+      status: 'COMPLETED',
+      paymentStatus: 'PAID',
     });
     expect(result).toEqual({ id: 'ride-123', value: 25.5 });
     expect(repoMock.create).toHaveBeenCalled();

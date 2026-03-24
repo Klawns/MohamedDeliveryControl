@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
-import { eq, and, gte, lte, sql, desc, or, like, ne } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, or, like, ne, lt } from 'drizzle-orm';
 import * as schema from '@mdc/database';
 
 import { DRIZZLE } from '../../database/database.provider';
@@ -15,6 +15,8 @@ import {
 
 @Injectable()
 export class DrizzleRidesRepository implements IRidesRepository {
+  private readonly logger = new Logger(DrizzleRidesRepository.name);
+
   constructor(
     @Inject(DRIZZLE)
     private readonly db: LibSQLDatabase<typeof schema>,
@@ -22,10 +24,10 @@ export class DrizzleRidesRepository implements IRidesRepository {
 
   async findAll(
     userId: string,
-    limit?: number,
-    offset?: number,
+    limit: number = 20,
+    cursor?: string,
     filters?: FindAllFilters,
-  ): Promise<{ rides: RideWithClient[]; total: number }> {
+  ): Promise<{ rides: RideWithClient[]; total: number; nextCursor?: string; hasMore: boolean }> {
     const conditions = [eq(schema.rides.userId, userId)];
 
     if (filters?.status)
@@ -48,6 +50,42 @@ export class DrizzleRidesRepository implements IRidesRepository {
       if (searchCondition) conditions.push(searchCondition);
     }
 
+    if (cursor) {
+      try {
+        const decodedString = Buffer.from(cursor, 'base64').toString('utf-8');
+        const parsedCursor = JSON.parse(decodedString);
+
+        if (!parsedCursor.rideDate || !parsedCursor.createdAt || !parsedCursor.id) {
+          throw new Error('Invalid cursor payload structure');
+        }
+
+        const cursorRideDate = new Date(parsedCursor.rideDate);
+        const cursorCreatedAt = new Date(parsedCursor.createdAt);
+
+        this.logger.debug(`Cursor recebido descodificado: rideDate=${parsedCursor.rideDate}, createdAt=${parsedCursor.createdAt}, id=${parsedCursor.id}`);
+
+        const cursorCondition = or(
+          lt(schema.rides.rideDate, cursorRideDate),
+          and(
+            eq(schema.rides.rideDate, cursorRideDate),
+            lt(schema.rides.createdAt, cursorCreatedAt)
+          ),
+          and(
+            eq(schema.rides.rideDate, cursorRideDate),
+            eq(schema.rides.createdAt, cursorCreatedAt),
+            lt(schema.rides.id, parsedCursor.id)
+          )
+        );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
+      } catch (err: any) {
+        this.logger.error(`Falha ao decodificar cursor: ${cursor}`, err.stack);
+        throw new BadRequestException('Parâmetro cursor inválido ou malformado.');
+      }
+    }
+
     const query = this.db
       .select({
         id: schema.rides.id,
@@ -68,15 +106,11 @@ export class DrizzleRidesRepository implements IRidesRepository {
       .leftJoin(schema.clients, eq(schema.rides.clientId, schema.clients.id))
       .where(and(...conditions))
       .orderBy(
-        desc(
-          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
-        ),
+        desc(schema.rides.rideDate),
         desc(schema.rides.createdAt),
         desc(schema.rides.id),
-      );
-
-    if (limit !== undefined) query.limit(limit);
-    if (offset !== undefined) query.offset(offset);
+      )
+      .limit(limit + 1); // Buscamos um a mais para saber se tem próxima página
 
     const countQuery = this.db
       .select({ count: sql<number>`count(*)` })
@@ -85,9 +119,26 @@ export class DrizzleRidesRepository implements IRidesRepository {
 
     const [results, countResult] = await Promise.all([query, countQuery]);
 
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    
+    let nextCursorHash: string | undefined;
+    if (hasMore) {
+      const lastItem = items[items.length - 1]; // Baseado exclusivamente no último item real retornado
+      const nextCursorData = {
+        rideDate: lastItem.rideDate?.toISOString() ?? new Date().toISOString(),
+        createdAt: lastItem.createdAt?.toISOString() ?? new Date().toISOString(),
+        id: lastItem.id,
+      };
+      nextCursorHash = Buffer.from(JSON.stringify(nextCursorData)).toString('base64');
+      this.logger.debug(`Gerou próximo cursor (Base64): ${nextCursorHash} originado do ID: ${lastItem.id}`);
+    }
+
     return {
-      rides: results as RideWithClient[],
+      rides: items as RideWithClient[],
       total: Number(countResult[0]?.count || 0),
+      nextCursor: nextCursorHash,
+      hasMore
     };
   }
 
@@ -168,44 +219,86 @@ export class DrizzleRidesRepository implements IRidesRepository {
   async findByClient(
     userId: string,
     clientId: string,
-    limit?: number,
-    offset?: number,
-  ): Promise<{ rides: Ride[]; total: number }> {
+    limit: number = 20,
+    cursor?: string,
+  ): Promise<{ rides: Ride[]; total: number; nextCursor?: string; hasMore: boolean }> {
+    const conditions = [
+      eq(schema.rides.userId, userId),
+      eq(schema.rides.clientId, clientId),
+    ];
+
+    if (cursor) {
+      try {
+        const decodedString = Buffer.from(cursor, 'base64').toString('utf-8');
+        const parsedCursor = JSON.parse(decodedString);
+
+        if (!parsedCursor.rideDate || !parsedCursor.createdAt || !parsedCursor.id) {
+          throw new Error('Invalid cursor payload structure');
+        }
+
+        const cursorRideDate = new Date(parsedCursor.rideDate);
+        const cursorCreatedAt = new Date(parsedCursor.createdAt);
+
+        const cursorCondition = or(
+          lt(schema.rides.rideDate, cursorRideDate),
+          and(
+            eq(schema.rides.rideDate, cursorRideDate),
+            lt(schema.rides.createdAt, cursorCreatedAt)
+          ),
+          and(
+            eq(schema.rides.rideDate, cursorRideDate),
+            eq(schema.rides.createdAt, cursorCreatedAt),
+            lt(schema.rides.id, parsedCursor.id)
+          )
+        );
+
+        if (cursorCondition) {
+          conditions.push(cursorCondition);
+        }
+      } catch (err) {
+        // Fallback for old simple-date cursors if they exist, or just throw
+        this.logger.warn(`Failed to decode cursor for findByClient: ${cursor}. Using fallback.`);
+        conditions.push(lt(schema.rides.createdAt, new Date(cursor)));
+      }
+    }
+
     const query = this.db
       .select()
       .from(schema.rides)
-      .where(
-        and(
-          eq(schema.rides.userId, userId),
-          eq(schema.rides.clientId, clientId),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(
-        desc(
-          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
-        ),
+        desc(schema.rides.rideDate),
         desc(schema.rides.createdAt),
         desc(schema.rides.id),
-      );
-
-    if (limit !== undefined) query.limit(limit);
-    if (offset !== undefined) query.offset(offset);
+      )
+      .limit(limit + 1);
 
     const countQuery = this.db
       .select({ count: sql<number>`count(*)` })
       .from(schema.rides)
-      .where(
-        and(
-          eq(schema.rides.userId, userId),
-          eq(schema.rides.clientId, clientId),
-        ),
-      );
+      .where(and(...conditions));
 
     const [results, countResult] = await Promise.all([query, countQuery]);
 
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    
+    let nextCursorHash: string | undefined;
+    if (hasMore) {
+      const lastItem = items[items.length - 1];
+      const nextCursorData = {
+        rideDate: lastItem.rideDate?.toISOString() ?? new Date().toISOString(),
+        createdAt: lastItem.createdAt?.toISOString() ?? new Date().toISOString(),
+        id: lastItem.id,
+      };
+      nextCursorHash = Buffer.from(JSON.stringify(nextCursorData)).toString('base64');
+    }
+
     return {
-      rides: results,
+      rides: items as Ride[],
       total: Number(countResult[0]?.count || 0),
+      nextCursor: nextCursorHash,
+      hasMore
     };
   }
 
@@ -217,14 +310,25 @@ export class DrizzleRidesRepository implements IRidesRepository {
   ): Promise<{ count: number; totalValue: number; rides: RideWithClient[] }> {
     const conditions = [
       eq(schema.rides.userId, userId),
-      gte(schema.rides.createdAt, start),
-      lte(schema.rides.createdAt, end),
+      gte(schema.rides.rideDate, start),
+      lte(schema.rides.rideDate, end),
     ];
 
     if (clientId && clientId !== 'all') {
       conditions.push(eq(schema.rides.clientId, clientId));
     }
 
+    // Busca agregados no SQL (muito mais rápido)
+    const statsResult = await this.db
+      .select({
+        count: sql<number>`count(*)`,
+        total: sql<number>`sum(${schema.rides.value})`,
+      })
+      .from(schema.rides)
+      .where(and(...conditions));
+
+    // Busca as corridas (limitamos a 50 para evitar sobrecarga no dashboard, 
+    // já que o dashboard financeiro costuma exibir apenas o resumo ou as últimas)
     const results = await this.db
       .select({
         id: schema.rides.id,
@@ -245,22 +349,14 @@ export class DrizzleRidesRepository implements IRidesRepository {
       .leftJoin(schema.clients, eq(schema.rides.clientId, schema.clients.id))
       .where(and(...conditions))
       .orderBy(
-        desc(
-          sql`COALESCE(${schema.rides.rideDate}, ${schema.rides.createdAt})`,
-        ),
+        desc(schema.rides.rideDate),
         desc(schema.rides.createdAt),
-        desc(schema.rides.id),
-      );
-
-    const totalValue = results.reduce(
-      (acc, ride) => acc + (ride.value || 0),
-      0,
-    );
-    const count = results.length;
+      )
+      .limit(50);
 
     return {
-      count,
-      totalValue,
+      count: Number(statsResult[0]?.count || 0),
+      totalValue: Number(statsResult[0]?.total || 0),
       rides: results as RideWithClient[],
     };
   }

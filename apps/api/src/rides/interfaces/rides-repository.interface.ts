@@ -27,9 +27,9 @@ export interface IRidesRepository {
   findAll(
     userId: string,
     limit?: number,
-    offset?: number,
+    cursor?: string,
     filters?: FindAllFilters,
-  ): Promise<{ rides: RideWithClient[]; total: number }>;
+  ): Promise<{ rides: RideWithClient[]; total: number; nextCursor?: string; hasMore: boolean }>;
 
   create(data: CreateRideDto): Promise<Ride>;
 
@@ -56,8 +56,8 @@ export interface IRidesRepository {
     userId: string,
     clientId: string,
     limit?: number,
-    offset?: number,
-  ): Promise<{ rides: Ride[]; total: number }>;
+    cursor?: string,
+  ): Promise<{ rides: Ride[]; total: number; nextCursor?: string; hasMore: boolean }>;
 
   getStats(
     userId: string,

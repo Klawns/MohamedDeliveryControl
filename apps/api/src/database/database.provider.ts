@@ -12,6 +12,8 @@ export const databaseProvider: FactoryProvider = {
     const url = configService.get<string>('DATABASE_URL');
     const authToken = configService.get<string>('DATABASE_AUTH_TOKEN');
 
+    console.log(`[Database] Connecting to: ${url ? url.substring(0, 15) + '...' : 'MISSING'}`);
+
     if (!url) {
       throw new Error('DATABASE_URL not found in environment');
     }

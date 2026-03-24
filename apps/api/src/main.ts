@@ -2,9 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { Request, Response, NextFunction } from 'express';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Registro de Interceptor e Filtro Globais
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Habilita confiança no proxy (essencial para Railway/Render/Vercel lerem HTTPS e IPs corretamente)
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
@@ -48,7 +54,8 @@ async function bootstrap() {
     next();
   });
 
-  const port = process.env.PORT ?? 3001;
+  const port = process.env.PORT || 3000;
+  console.log(`[Bootstrap] Configured PORT: ${process.env.PORT} - Using: ${port}`);
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
 }

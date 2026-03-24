@@ -106,8 +106,8 @@ export class PaymentsService {
 
       return parsedPlans;
     } catch (error) {
-      console.error('[PaymentsService] Erro ao buscar planos:', error.message);
-      throw new Error('Falha ao carregar planos de pagamento');
+      console.error('[PaymentsService] ERROR DETAILED:', error);
+      throw new Error(`Falha ao carregar planos de pagamento: ${error.message}`);
     }
   }
 

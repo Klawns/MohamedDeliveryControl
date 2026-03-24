@@ -9,9 +9,9 @@ export interface IClientsRepository {
   findAll(
     userId: string,
     limit?: number,
-    offset?: number,
+    cursor?: string,
     search?: string,
-  ): Promise<{ clients: Client[]; total: number }>;
+  ): Promise<{ clients: Client[]; total: number; nextCursor?: string; hasMore: boolean }>;
 
   create(data: CreateClientDto): Promise<Client>;
 
