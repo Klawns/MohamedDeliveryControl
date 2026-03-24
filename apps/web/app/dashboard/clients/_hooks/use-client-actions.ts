@@ -1,70 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { clientService } from "../_services/client-service";
-import { rideService } from "../_services/ride-service";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { clientsService } from "@/services/clients-service";
+import { ridesService } from "@/services/rides-service";
+import { clientKeys, rideKeys } from "@/lib/query-keys";
+import { parseApiError } from "@/lib/api-error";
+import { toast } from "sonner"; // Assuming sonner is the standard here
 
 export function useClientActions() {
-    const [isSettling, setIsSettling] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [isDeletingRide, setIsDeletingRide] = useState(false);
+    const queryClient = useQueryClient();
 
-    const togglePin = async (clientId: string, isPinned: boolean) => {
-        try {
-            await clientService.togglePin(clientId, isPinned);
-            return true;
-        } catch (err) {
-            alert("Erro ao fixar cliente");
-            return false;
+    const { mutateAsync: togglePin, isPending: isTogglingPin } = useMutation({
+        mutationFn: ({ clientId, isPinned }: { clientId: string, isPinned: boolean }) => 
+            clientsService.togglePin(clientId, isPinned),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+            toast.success("Cliente fixado/desfixado!");
+        },
+        onError: (err) => {
+            toast.error(parseApiError(err, "Erro ao alterar fixação do cliente."));
         }
-    };
+    });
 
-    const closeDebt = async (clientId: string) => {
-        setIsSettling(true);
-        try {
-            await clientService.closeDebt(clientId);
-            return true;
-        } catch (err) {
-            alert("Erro ao fechar dívida.");
-            return false;
-        } finally {
-            setIsSettling(false);
+    const { mutateAsync: closeDebt, isPending: isSettling } = useMutation({
+        mutationFn: (clientId: string) => clientsService.closeDebt(clientId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+            queryClient.invalidateQueries({ queryKey: rideKeys.all });
+            toast.success("Dívida fechada e pagamento registrado!");
+        },
+        onError: (err) => {
+            toast.error(parseApiError(err, "Erro ao fechar dívida."));
         }
-    };
+    });
 
-    const deleteClient = async (clientId: string) => {
-        setIsDeleting(true);
-        try {
-            await clientService.deleteClient(clientId);
-            return true;
-        } catch (err) {
-            alert("Erro ao excluir cliente. Verifique se ele possui dados vinculados.");
-            return false;
-        } finally {
-            setIsDeleting(false);
+    const { mutateAsync: deleteClient, isPending: isDeleting } = useMutation({
+        mutationFn: (clientId: string) => clientsService.deleteClient(clientId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+            queryClient.invalidateQueries({ queryKey: rideKeys.all });
+            toast.success("Cliente excluído com sucesso.");
+        },
+        onError: (err) => {
+            toast.error(parseApiError(err, "Erro ao excluir cliente. Verifique pendências."));
         }
-    };
+    });
 
-    const deleteRide = async (rideId: string) => {
-        setIsDeletingRide(true);
-        try {
-            await rideService.deleteRide(rideId);
-            return true;
-        } catch (err) {
-            alert("Erro ao excluir corrida.");
-            return false;
-        } finally {
-            setIsDeletingRide(false);
+    const { mutateAsync: deleteRide, isPending: isDeletingRide } = useMutation({
+        mutationFn: (rideId: string) => ridesService.deleteRide(rideId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: rideKeys.all });
+            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+            toast.success("Corrida excluída com sucesso.");
+        },
+        onError: (err) => {
+            toast.error(parseApiError(err, "Erro ao excluir corrida."));
         }
-    };
+    });
 
     return {
         isSettling,
         isDeleting,
         isDeletingRide,
-        togglePin,
-        closeDebt,
-        deleteClient,
-        deleteRide
+        isTogglingPin,
+        togglePin: async (clientId: string, isPinned: boolean) => {
+            try { await togglePin({ clientId, isPinned }); return true; } catch { return false; }
+        },
+        closeDebt: async (clientId: string) => {
+            try { await closeDebt(clientId); return true; } catch { return false; }
+        },
+        deleteClient: async (clientId: string) => {
+            try { await deleteClient(clientId); return true; } catch { return false; }
+        },
+        deleteRide: async (rideId: string) => {
+            try { await deleteRide(rideId); return true; } catch { return false; }
+        }
     };
 }

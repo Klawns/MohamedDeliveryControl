@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Loader2 } from "lucide-react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 interface CreateUserModalProps {
     open: boolean;
@@ -36,7 +36,7 @@ export function CreateUserModal({ open, onOpenChange, onSuccess }: CreateUserMod
         const password = formData.get("password") as string;
 
         try {
-            await api.post("/admin/users", { name, email, password });
+            await apiClient.post("/admin/users", { name, email, password });
             onSuccess();
             onOpenChange(false);
             (e.target as HTMLFormElement).reset();

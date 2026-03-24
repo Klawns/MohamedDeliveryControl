@@ -54,7 +54,7 @@ export function ExportDialog({
                     </Button>
                     <Button
                         onClick={() => onConfirm(true)}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-12 w-full sm:w-auto rounded-xl"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold h-12 w-full sm:w-auto rounded-xl"
                         disabled={!pixKey.trim()}
                     >
                         <Download size={18} className="mr-2" />

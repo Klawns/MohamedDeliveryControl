@@ -17,7 +17,9 @@ export function ProgressBar({ currentStep, totalSteps }: ProgressBarProps) {
                     key={s}
                     className={cn(
                         "h-1.5 flex-1 rounded-full transition-all duration-500",
-                        s <= currentStep ? "bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]" : "bg-white/10"
+                        s <= currentStep 
+                            ? "bg-button-primary shadow-lg shadow-button-shadow" 
+                            : "bg-secondary/10"
                     )}
                 />
             ))}

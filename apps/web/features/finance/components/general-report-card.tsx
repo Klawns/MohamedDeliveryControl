@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileText, Calendar, CalendarDays, DollarSign } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
-import type { Ride } from "../../rides/hooks/use-rides"
+import type { Ride } from "@/types/rides"
 
 interface GeneralReportCardProps {
     todayTotal: number

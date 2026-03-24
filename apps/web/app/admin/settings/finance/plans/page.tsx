@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,8 +100,9 @@ export default function PlansPage() {
 
     async function loadPlans() {
         try {
-            const { data } = await api.get("/admin/settings/plans");
-            setPlans(data.map((p: any) => ({
+            const response = await apiClient.get<any[]>("/admin/settings/plans");
+            const plansData = response || [];
+            setPlans(plansData.map((p: any) => ({
                 ...p,
                 features: typeof p.features === 'string' ? JSON.parse(p.features) : p.features
             })));
@@ -116,7 +117,7 @@ export default function PlansPage() {
     async function handleUpdatePlan(id: string, data: any) {
         setIsSaving(true);
         try {
-            await api.patch(`/admin/settings/plans/${id}`, data);
+            await apiClient.patch(`/admin/settings/plans/${id}`, data);
             toast.success("Plano atualizado com sucesso!");
             await loadPlans();
         } catch (error) {

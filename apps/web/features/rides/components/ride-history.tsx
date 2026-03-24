@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { CalendarDays, Search, X, FileText, Trash2, Bike } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import type { Ride } from "../hooks/use-rides"
+import type { Ride } from "@/types/rides"
 
 interface RideHistoryProps {
     rides: Ride[]
@@ -29,7 +29,7 @@ export function RideHistory({
 
     const filteredRides = searchQuery
         ? rides.filter((ride) =>
-            ride.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+            (ride.clientName || "").toLowerCase().includes(searchQuery.toLowerCase())
         )
         : rides
 
@@ -77,11 +77,11 @@ export function RideHistory({
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onOpenReport(filteredRides[0].clientName)}
+                        onClick={() => onOpenReport(filteredRides[0].clientName || "")}
                         className="mt-3 w-full border-primary text-primary hover:bg-primary/10"
                     >
                         <FileText className="h-4 w-4 mr-2" />
-                        Gerar Relatório de "{filteredRides[0].clientName}"
+                        Gerar Relatório de "{filteredRides[0].clientName || "Cliente"}"
                     </Button>
                 )}
             </CardHeader>
@@ -113,7 +113,7 @@ export function RideHistory({
                                     <TableRow
                                         key={ride.id}
                                         className="border-border hover:bg-secondary/50 cursor-pointer"
-                                        onClick={() => onOpenReport(ride.clientName)}
+                                        onClick={() => onOpenReport(ride.clientName || "")}
                                     >
                                         <TableCell className="font-medium text-foreground">
                                             {ride.clientName}

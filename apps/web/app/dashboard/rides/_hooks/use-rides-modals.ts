@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Ride } from "../types";
-import { ridesService } from "../_services/rides-service";
+import { ridesService } from "@/services/rides-service";
+import { Ride } from "@/types/rides";
 
 interface UseRidesModalsProps {
     onSuccess: () => Promise<void>;

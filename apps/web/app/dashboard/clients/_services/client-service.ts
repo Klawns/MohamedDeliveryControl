@@ -1,4 +1,4 @@
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 export interface Client {
     id: string;
@@ -32,32 +32,31 @@ export const clientService = {
         queryParams.append("offset", params.offset.toString());
         if (params.search) queryParams.append("search", params.search);
 
-        const { data } = await api.get(`/clients?${queryParams.toString()}`);
+        const response = await apiClient.getPaginated<Client[]>(`/clients?${queryParams.toString()}`);
         return {
-            clients: data.clients || [],
-            total: data.total || 0,
+            clients: response.data || [],
+            total: response.meta?.total || 0,
         };
     },
 
     async fetchClientBalance(clientId: string): Promise<ClientBalance> {
-        const { data } = await api.get(`/clients/${clientId}/balance`);
-        return data;
+        return apiClient.get<ClientBalance>(`/clients/${clientId}/balance`);
     },
 
     async fetchClientPayments(clientId: string): Promise<any[]> {
-        const { data } = await api.get(`/clients/${clientId}/payments`);
+        const data = await apiClient.get<any[]>(`/clients/${clientId}/payments`);
         return data || [];
     },
 
     async deleteClient(clientId: string): Promise<void> {
-        await api.delete(`/clients/${clientId}`);
+        await apiClient.delete(`/clients/${clientId}`);
     },
 
     async togglePin(clientId: string, isPinned: boolean): Promise<void> {
-        await api.patch(`/clients/${clientId}`, { isPinned: !isPinned });
+        await apiClient.patch(`/clients/${clientId}`, { isPinned: !isPinned });
     },
 
     async closeDebt(clientId: string): Promise<void> {
-        await api.post(`/clients/${clientId}/close-debt`);
+        await apiClient.post(`/clients/${clientId}/close-debt`);
     }
 };

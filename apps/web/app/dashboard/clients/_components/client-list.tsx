@@ -1,86 +1,101 @@
 "use client";
 
-import { Client } from "../_services/client-service";
+import { useRef } from "react";
+import { User } from "lucide-react";
+import { Client } from "@/types/rides";
 import { ClientCard } from "./client-card";
+import { InfiniteScrollContainer } from "@/components/ui/infinite-scroll-container";
+import { HybridInfiniteList } from "@/components/ui/hybrid-infinite-list";
+import { ClientSkeleton } from "./client-skeleton";
 
-interface ClientListProps {
+interface ClientsListContainerProps {
     clients: Client[];
     isLoading: boolean;
-    page: number;
+    isFetching?: boolean;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    onLoadMore: () => void;
     total: number;
-    limit: number;
-    onPageChange: (page: number) => void;
     onEdit: (client: Client) => void;
     onPin: (client: Client) => void;
     onQuickRide: (client: Client) => void;
     onViewHistory: (client: Client) => void;
 }
 
-export function ClientList({
+export function ClientsListContainer({
     clients,
     isLoading,
-    page,
+    isFetching,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
     total,
-    limit,
-    onPageChange,
     onEdit,
     onPin,
     onQuickRide,
     onViewHistory
-}: ClientListProps) {
-    if (isLoading) {
+}: ClientsListContainerProps) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    const showSkeletons = (isLoading || (isFetching && clients.length === 0)) && !isFetchingNextPage;
+
+    if (showSkeletons) {
         return (
-            <div className="flex justify-center py-20">
-                <div className="h-10 w-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full px-2">
+                {[...Array(9)].map((_, i) => (
+                    <ClientSkeleton key={i} />
+                ))}
+            </div>
+        );
+    }
+
+    if (clients.length === 0 && !isFetching) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 bg-secondary/5 rounded-[3rem] border border-border-subtle shadow-inner mx-4">
+                <div className="p-6 bg-secondary/10 rounded-full text-text-secondary/20 border border-border-subtle/50">
+                    <User size={56} opacity={0.3} />
+                </div>
+                <h3 className="text-xl font-display font-extrabold text-text-primary tracking-tight">Nenhum cliente disponível</h3>
+                <p className="text-text-secondary text-sm font-medium italic opacity-60">Seus registros aparecerão aqui conforme forem adicionados.</p>
             </div>
         );
     }
 
     return (
-        <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {clients.map((client) => (
-                    <ClientCard
-                        key={client.id}
-                        client={client}
-                        onEdit={onEdit}
-                        onPin={onPin}
-                        onQuickRide={onQuickRide}
-                        onViewHistory={onViewHistory}
-                    />
-                ))}
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <span className="text-[10px] font-display font-bold text-text-muted uppercase tracking-[0.25em] opacity-80">
+                    {total} {total === 1 ? "cliente encontrado" : "clientes encontrados"}
+                </span>
             </div>
-
-            {total > limit && (
-                <div className="flex items-center justify-between mt-10 px-2">
-                    <p className="text-sm text-slate-500 font-medium">
-                        <span className="text-white">{(page - 1) * limit + 1}</span>-
-                        <span className="text-white">{Math.min(page * limit, total)}</span> de <span className="text-white">{total}</span> clientes
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            disabled={page === 1}
-                            onClick={() => {
-                                onPageChange(page - 1);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                            Anterior
-                        </button>
-                        <button
-                            disabled={page * limit >= total}
-                            onClick={() => {
-                                onPageChange(page + 1);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                            Próxima
-                        </button>
-                    </div>
-                </div>
-            )}
-        </>
+            
+            <InfiniteScrollContainer 
+                ref={scrollContainerRef}
+                maxHeight="calc(100vh - 220px)"
+                hideScrollbar={true}
+                className="w-full"
+            >
+                <HybridInfiniteList
+                    items={clients}
+                    renderItem={(client) => (
+                        <ClientCard
+                            key={(client as Client).id}
+                            client={client as Client}
+                            onEdit={onEdit}
+                            onPin={onPin}
+                            onQuickRide={onQuickRide}
+                            onViewHistory={onViewHistory}
+                        />
+                    )}
+                    estimateSize={220}
+                    containerRef={scrollContainerRef}
+                    hasMore={hasNextPage}
+                    onLoadMore={onLoadMore}
+                    isFetchingNextPage={isFetchingNextPage}
+                    listClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full px-2"
+                    className="pb-20"
+                />
+            </InfiniteScrollContainer>
+        </div>
     );
 }

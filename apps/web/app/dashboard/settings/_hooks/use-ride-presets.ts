@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -15,7 +15,7 @@ export function useRidePresets() {
 
     const loadPresets = useCallback(async () => {
         try {
-            const { data } = await api.get("/settings/ride-presets");
+            const data = await apiClient.get<any[]>("/settings/ride-presets");
             setPresets(data);
         } catch (err) {
             console.error("Erro ao carregar presets", err);
@@ -49,7 +49,7 @@ export function useRidePresets() {
 
         setIsSaving(true);
         try {
-            const { data } = await api.post("/settings/ride-presets", {
+            const data = await apiClient.post("/settings/ride-presets", {
                 ...newPreset,
                 label: newPreset.location,
                 value: Number(newPreset.value)
@@ -74,7 +74,7 @@ export function useRidePresets() {
 
     const deletePreset = async (id: string) => {
         try {
-            await api.delete(`/settings/ride-presets/${id}`);
+            await apiClient.delete(`/settings/ride-presets/${id}`);
             setPresets(prev => prev.filter(p => p.id !== id));
             toast({
                 title: "Atalho removido",
@@ -94,7 +94,7 @@ export function useRidePresets() {
     const updatePreset = async (id: string, updateData: { value: number; location: string }) => {
         setIsUpdating(true);
         try {
-            const { data } = await api.patch(`/settings/ride-presets/${id}`, {
+            const data = await apiClient.patch(`/settings/ride-presets/${id}`, {
                 label: updateData.location,
                 value: updateData.value,
                 location: updateData.location

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export default function GlobalSettingsPage() {
 
     async function loadConfigs() {
         try {
-            const { data } = await api.get("/admin/settings/configs");
+            const data = await apiClient.get<Record<string, string>>("/admin/settings/configs");
             setConfigs(data);
         } catch (error) {
             console.error("Erro ao carregar configs:", error);
@@ -32,7 +32,7 @@ export default function GlobalSettingsPage() {
     async function handleUpdateConfig(key: string, value: string) {
         setIsSaving(true);
         try {
-            await api.post("/admin/settings/configs", { key, value });
+            await apiClient.post("/admin/settings/configs", { key, value });
             toast.success(`${key} atualizado!`);
         } catch (error) {
             toast.error("Erro ao salvar");

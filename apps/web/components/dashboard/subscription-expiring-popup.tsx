@@ -25,7 +25,7 @@ export function SubscriptionExpiringPopup({ daysRemaining }: SubscriptionExpirin
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 100, scale: 1.1 }}
                     transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                    className="fixed bottom-6 right-6 z-[100] w-full max-w-[320px]"
+                    className="fixed z-[100] bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-full md:max-w-[320px]"
                 >
                     <div className="relative overflow-hidden p-6 rounded-3xl border border-red-500/30 bg-red-500/10 shadow-2xl shadow-red-500/10 backdrop-blur-xl">
                         {/* Background Glow */}
@@ -76,7 +76,7 @@ export function SubscriptionExpiringPopup({ daysRemaining }: SubscriptionExpirin
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-6 right-6 z-[100] p-4 rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 shadow-2xl backdrop-blur-xl hover:bg-red-500/30 transition-all group"
+                    className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[100] p-4 rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 shadow-2xl backdrop-blur-xl hover:bg-red-500/30 transition-all group"
                     title="Ver aviso de expiração"
                 >
                     <Calendar size={20} className="group-hover:animate-bounce" />

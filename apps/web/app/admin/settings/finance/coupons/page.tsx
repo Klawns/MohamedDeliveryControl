@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +45,7 @@ export default function CouponsPage() {
 
     async function loadCoupons() {
         try {
-            const { data } = await api.get("/admin/settings/promo-codes");
+            const data = await apiClient.get<any[]>("/admin/settings/promo-codes");
             setCoupons(data || []);
         } catch (error) {
             console.error("Erro ao carregar cupons:", error);
@@ -70,7 +70,7 @@ export default function CouponsPage() {
 
         setIsCreating(true);
         try {
-            await api.post("/admin/settings/promo-codes", {
+            await apiClient.post("/admin/settings/promo-codes", {
                 code,
                 notes,
                 discountKind,

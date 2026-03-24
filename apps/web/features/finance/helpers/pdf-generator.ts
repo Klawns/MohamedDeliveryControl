@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from "@/lib/utils"
-import type { Ride } from "@/features/rides/hooks/use-rides"
+import type { Ride } from "@/types/rides"
 
 export function generatePDF(clientName: string, rides: Ride[], partialPayments: Array<{ amount: number, paymentDate: string }> = []) {
     const totalDebt = rides.reduce((sum, ride) => sum + ride.value, 0)
@@ -137,11 +137,12 @@ export function generateGeneralPDF(
 
     const groupedByClient: Record<string, { rides: Ride[]; total: number }> = {}
     rides.forEach((ride) => {
-        if (!groupedByClient[ride.clientName]) {
-            groupedByClient[ride.clientName] = { rides: [], total: 0 }
+        const name = ride.clientName || "Cliente Desconhecido";
+        if (!groupedByClient[name]) {
+            groupedByClient[name] = { rides: [], total: 0 }
         }
-        groupedByClient[ride.clientName].rides.push(ride)
-        groupedByClient[ride.clientName].total += ride.value
+        groupedByClient[name].rides.push(ride)
+        groupedByClient[name].total += ride.value
     })
 
     const clientRows = Object.entries(groupedByClient)

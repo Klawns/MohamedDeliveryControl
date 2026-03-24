@@ -4,8 +4,7 @@ import { useState } from "react";
 import { ClientDetailsDrawer } from "@/components/client-details-drawer";
 
 // Services & Types
-import { Client } from "./_services/client-service";
-import { Ride } from "./_services/ride-service";
+import { Client, Ride } from "@/types/rides";
 
 // Hooks
 import { useClients } from "./_hooks/use-clients";
@@ -20,15 +19,19 @@ import { ClientModals } from "./_components/client-modals";
 export default function ClientsPage() {
     // Data Hooks
     const { 
-        clients, search, setSearch, isLoading, 
-        page, setPage, total, limit, fetchClients 
+        clients, search, setSearch, isLoading, isFetching,
+        hasNextPage, isFetchingNextPage, fetchNextPage, total, fetchClients 
     } = useClients();
     
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     
     const {
-        rides, balance, ridePage, setRidePage, rideTotal, rideLimit,
-        refreshDetails, generatePDF
+        rides, balance, isLoading: isDetailsLoading,
+        hasNextPage: hasNextRidesPage,
+        isFetchingNextPage: isFetchingNextRidesPage,
+        fetchNextPage: fetchNextRidesPage,
+        rideTotal,
+        refreshDetails, generatePDF, generateExcel
     } = useClientDetailsData(selectedClient);
 
     const {
@@ -65,7 +68,7 @@ export default function ClientsPage() {
     };
 
     const handlePinClient = async (client: Client) => {
-        const success = await togglePin(client.id, client.isPinned);
+        const success = await togglePin(client.id, !!client.isPinned);
         if (success) fetchClients();
     };
 
@@ -104,12 +107,13 @@ export default function ClientsPage() {
             <ClientListSection 
                 clients={clients}
                 isLoading={isLoading}
+                isFetching={isFetching}
                 search={search}
                 onSearchChange={setSearch}
-                page={page}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onLoadMore={fetchNextPage}
                 total={total}
-                limit={limit}
-                onPageChange={setPage}
                 onEdit={handleEditClient}
                 onPin={handlePinClient}
                 onQuickRide={(client) => {
@@ -123,9 +127,10 @@ export default function ClientsPage() {
                 client={selectedClient}
                 rides={rides}
                 balance={balance}
-                ridePage={ridePage}
-                rideTotal={rideTotal}
-                rideLimit={rideLimit}
+                isLoading={isDetailsLoading}
+                hasNextPage={hasNextRidesPage}
+                isFetchingNextPage={isFetchingNextRidesPage}
+                fetchNextPage={fetchNextRidesPage}
                 isSettling={isSettling}
                 isDeleting={isDeleting}
                 onClose={() => setSelectedClient(null)}
@@ -133,10 +138,10 @@ export default function ClientsPage() {
                 onCloseDebt={() => setIsCloseDebtConfirmOpen(true)}
                 onAddPayment={() => setIsPaymentModalOpen(true)}
                 onGeneratePDF={generatePDF}
+                onGenerateExcel={generateExcel}
                 onDeleteClient={() => setIsDeleteConfirmOpen(true)}
                 onEditRide={handleEditRide}
-                onDeleteRide={(ride) => setRideToDelete(ride as Ride)}
-                onPageChange={setRidePage}
+                onDeleteRide={(ride) => setRideToDelete(ride as unknown as Ride)}
             />
 
             <ClientModals 

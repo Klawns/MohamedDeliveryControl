@@ -25,12 +25,12 @@ export function NavigationButtons({
     rideToEdit
 }: NavigationButtonsProps) {
     return (
-        <div className="flex gap-3 mt-auto pt-8">
+        <div className="flex gap-3">
             {currentStep > 1 && (
                 <button
                     type="button"
                     onClick={onBack}
-                    className="h-14 px-6 rounded-2xl bg-white/5 border border-white/5 text-slate-400 font-bold hover:bg-white/10 active:scale-95 transition-all"
+                    className="h-14 px-6 rounded-2xl bg-secondary/10 border border-border-subtle text-text-secondary font-bold hover:bg-secondary/20 active:scale-95 transition-all shadow-sm"
                 >
                     <ChevronRight size={20} className="rotate-180" />
                 </button>
@@ -41,7 +41,7 @@ export function NavigationButtons({
                     type="button"
                     onClick={onNext}
                     disabled={!canNext}
-                    className="flex-1 h-14 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-30"
+                    className="flex-1 h-14 bg-button-primary hover:bg-button-primary-hover text-button-primary-foreground font-bold rounded-2xl shadow-lg shadow-button-shadow flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-30 uppercase tracking-widest text-xs"
                 >
                     {currentStep === 4 ? "REVISAR" : "CONTINUAR"}
                     <ChevronRight size={20} />
@@ -51,10 +51,10 @@ export function NavigationButtons({
                     type="button"
                     onClick={onSubmit}
                     disabled={isSubmitting}
-                    className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="flex-1 h-14 bg-button-primary hover:bg-button-primary-hover text-button-primary-foreground font-bold rounded-2xl shadow-lg shadow-button-shadow flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
                 >
                     {isSubmitting ? (
-                        <div className="h-6 w-6 border-[3px] border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <div className="h-6 w-6 border-[3px] border-button-primary-foreground/30 border-t-button-primary-foreground rounded-full animate-spin"></div>
                     ) : (
                         <>
                             {rideToEdit ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR E REGISTRAR'}

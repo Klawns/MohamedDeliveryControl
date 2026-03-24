@@ -7,9 +7,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { FileText } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import type { Ride } from "../../rides/hooks/use-rides"
+import type { Ride } from "@/types/rides"
 import { useState, useEffect } from "react"
-import { api } from "@/services/api"
+import { api, apiClient } from "@/services/api"
 
 interface ClientReportModalProps {
     isOpen: boolean
@@ -39,13 +39,13 @@ export function ClientReportModal({
 
     const fetchBalance = async (id: string) => {
         try {
-            const [balanceRes, paymentsRes] = await Promise.all([
-                api.get(`/clients/${id}/balance`),
-                api.get(`/clients/${id}/payments?status=UNUSED`)
+            const [balance, payments] = await Promise.all([
+                apiClient.get<any>(`/clients/${id}/balance`),
+                apiClient.get<any[]>(`/clients/${id}/payments?status=UNUSED`)
             ])
             
-            setTotalPaid(balanceRes.data.totalPaid || 0)
-            setPartialPayments(paymentsRes.data || [])
+            setTotalPaid(balance?.totalPaid || 0)
+            setPartialPayments(payments || [])
         } catch (error) {
             console.error("Erro ao buscar saldo:", error)
         }
@@ -73,7 +73,7 @@ export function ClientReportModal({
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-muted-foreground">Valor total</p>
-                                <p className="text-2xl font-bold text-primary">{formatCurrency(totalDebt)}</p>
+                                <p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalDebt)}</p>
                             </div>
                         </div>
                         {totalPaid > 0 && (

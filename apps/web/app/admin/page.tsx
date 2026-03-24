@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { DeleteUserModal } from "./components/delete-user-modal";
 import { CreateUserModal } from "./components/create-user-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
 
     async function loadStats() {
         try {
-            const { data } = await api.get("/admin/stats");
+            const data = await apiClient.get<any>("/admin/stats");
             setStats(data);
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
@@ -63,9 +63,9 @@ export default function AdminDashboardPage() {
     async function loadUsers(page: number) {
         setIsLoading(true);
         try {
-            const { data } = await api.get(`/admin/users/recent?page=${page}&limit=10`);
-            setRecentUsers(data.data);
-            setPagination(data.meta);
+            const response = await apiClient.getPaginated<any>(`/admin/users/recent?page=${page}&limit=10`);
+            setRecentUsers(response.data);
+            setPagination(response.meta);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
         } finally {
@@ -75,7 +75,7 @@ export default function AdminDashboardPage() {
 
     async function handleDeleteUser(userId: string) {
         try {
-            await api.delete(`/admin/users/${userId}`);
+            await apiClient.delete(`/admin/users/${userId}`);
             // Recarrega os dados após deletar
             loadUsers(currentPage);
             loadStats();
@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
                                                             value={u.plan || 'starter'}
                                                             onValueChange={async (newPlan) => {
                                                                 try {
-                                                                    await api.put(`/admin/users/${u.id}/plan`, { plan: newPlan });
+                                                                    await apiClient.put(`/admin/users/${u.id}/plan`, { plan: newPlan });
                                                                     loadUsers(currentPage);
                                                                     loadStats();
                                                                 } catch (error) {

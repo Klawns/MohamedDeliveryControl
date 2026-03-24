@@ -37,19 +37,19 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="bg-slate-900 border-white/10 rounded-[2rem] p-8">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-2xl font-bold text-white">
+      <AlertDialogContent className="bg-modal-background border border-border-subtle rounded-[2.5rem] p-10 shadow-2xl backdrop-blur-md">
+        <AlertDialogHeader className="space-y-4">
+          <AlertDialogTitle className="text-3xl font-black text-text-primary tracking-tight">
             {title}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-slate-400 text-base">
+          <AlertDialogDescription className="text-text-secondary text-base font-medium opacity-80 leading-relaxed">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="mt-6 flex gap-3">
+        <AlertDialogFooter className="mt-10 flex gap-4">
           <AlertDialogCancel 
             onClick={onClose}
-            className="rounded-2xl border-white/5 bg-white/5 text-white hover:bg-white/10 px-6 py-3 font-bold transition-all active:scale-95"
+            className="rounded-2xl border border-border-subtle bg-secondary/10 text-text-primary hover:bg-secondary/20 px-8 py-4 font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-sm"
           >
             {cancelText}
           </AlertDialogCancel>
@@ -60,13 +60,13 @@ export function ConfirmModal({
             }}
             disabled={isLoading}
             className={cn(
-              "rounded-2xl px-6 py-3 font-bold transition-all active:scale-95",
+              "rounded-2xl px-8 py-4 font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg",
               variant === 'danger' 
-                ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20" 
-                : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
+                ? "bg-button-destructive text-button-destructive-foreground hover:bg-button-destructive-hover shadow-destructive/20" 
+                : "bg-button-primary text-button-primary-foreground hover:bg-button-primary-hover shadow-button-shadow"
             )}
           >
-            {isLoading ? "Processando..." : confirmText}
+            {isLoading ? "PROCESSANDO..." : confirmText.toUpperCase()}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,87 +1,86 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { clientService, ClientBalance, Client } from "../_services/client-service";
-import { rideService, Ride } from "../_services/ride-service";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo, useCallback } from "react";
+import { rideKeys, clientKeys } from "@/lib/query-keys";
+import { clientsService } from "@/services/clients-service";
+import { ridesService } from "@/services/rides-service";
+import { Client, ClientBalance } from "@/types/rides";
 import { PDFService } from "@/services/pdf-service";
 import { useAuth } from "@/hooks/use-auth";
+import { useExportClientDebt } from "./use-export-client-debt";
 
 export function useClientDetailsData(client: Client | null) {
-    const [rides, setRides] = useState<Ride[]>([]);
-    const [balance, setBalance] = useState<ClientBalance | null>(null);
-    const [payments, setPayments] = useState<any[]>([]);
-    
-    // Ride Pagination
-    const [ridePage, setRidePage] = useState(1);
-    const [rideTotal, setRideTotal] = useState(0);
-    const rideLimit = 5;
-
     const { user } = useAuth();
+    const { exportToExcel } = useExportClientDebt();
+    const rideLimit = 10;
 
-    const fetchRides = useCallback(async (page: number) => {
-        if (!client) return;
-        try {
-            const result = await rideService.fetchClientRides(client.id, {
-                limit: rideLimit,
-                offset: (page - 1) * rideLimit
-            });
-            setRides(result.rides);
-            setRideTotal(result.total);
-        } catch (err) {
-            console.error("Erro ao buscar corridas", err);
-        }
-    }, [client]);
+    // 1. Corridas (Infinite Query)
+    const {
+        data: ridesData,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading: isRidesLoading,
+        refetch: refetchRides
+    } = useInfiniteQuery({
+        queryKey: client ? rideKeys.byClient(client.id) : ['rides', 'byClient', 'null'],
+        queryFn: ({ pageParam, signal }) => 
+            ridesService.getRidesByClient(client!.id, { 
+                limit: rideLimit, 
+                cursor: pageParam as string | undefined 
+            }, signal),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
+        enabled: !!client,
+        staleTime: 60000,
+    });
 
-    const fetchBalance = useCallback(async () => {
-        if (!client) return;
-        try {
-            const data = await clientService.fetchClientBalance(client.id);
-            setBalance(data);
-        } catch (err) {
-            console.error("Erro ao buscar saldo", err);
-        }
-    }, [client]);
+    // 2. Saldo (Regular Query)
+    const {
+        data: balance,
+        isLoading: isBalanceLoading,
+        refetch: refetchBalance
+    } = useQuery({
+        queryKey: client ? clientKeys.detail(client.id) : ['clients', 'detail', 'null'],
+        queryFn: () => clientsService.getClientBalance(client!.id),
+        enabled: !!client,
+        staleTime: 60000,
+    });
 
-    const fetchPayments = useCallback(async () => {
-        if (!client) return;
-        try {
-            const data = await clientService.fetchClientPayments(client.id);
-            setPayments(data);
-        } catch (err) {
-            console.error("Erro ao buscar pagamentos", err);
-        }
-    }, [client]);
+    // 3. Pagamentos (Regular Query)
+    const {
+        data: payments = [],
+        isLoading: isPaymentsLoading,
+        refetch: refetchPayments
+    } = useQuery({
+        queryKey: client ? ['clients', 'payments', client.id] : ['clients', 'payments', 'null'],
+        queryFn: () => clientsService.getClientPayments(client!.id),
+        enabled: !!client,
+        staleTime: 60000,
+    });
+
+    // Processar Corridas
+    const rides = useMemo(() => {
+        const allRides = ridesData?.pages.flatMap(page => page.data) || [];
+        return Array.from(new Map(allRides.map(r => [r.id, r])).values());
+    }, [ridesData]);
+
+    const rideTotal = ridesData?.pages[0]?.meta?.total || 0;
 
     const refreshDetails = useCallback(() => {
-        if (client) {
-            fetchRides(ridePage);
-            fetchBalance();
-            fetchPayments();
-        }
-    }, [client, ridePage, fetchRides, fetchBalance, fetchPayments]);
-
-    useEffect(() => {
-        if (client) {
-            setRidePage(1);
-            fetchRides(1);
-            fetchBalance();
-            fetchPayments();
-        }
-    }, [client, fetchRides, fetchBalance, fetchPayments]);
-
-    useEffect(() => {
-        if (client && ridePage > 1) {
-            fetchRides(ridePage);
-        }
-    }, [ridePage, client, fetchRides]);
+        refetchRides();
+        refetchBalance();
+        refetchPayments();
+    }, [refetchRides, refetchBalance, refetchPayments]);
 
     const generatePDF = async () => {
         if (!client || !balance) return;
         try {
-            const ridesForReport = await rideService.fetchRidesForReport(client.id);
+            const response = await ridesService.getRidesByClient(client.id, { limit: 100 });
             PDFService.generateClientDebtReport(
                 client,
-                ridesForReport,
+                response.data,
                 payments,
                 balance,
                 { userName: user?.name || "Motorista" }
@@ -91,15 +90,34 @@ export function useClientDetailsData(client: Client | null) {
         }
     };
 
+    const generateExcel = async () => {
+        if (!client || !balance) return;
+        try {
+            const response = await ridesService.getRidesByClient(client.id, { limit: 100 });
+            exportToExcel(
+                client,
+                response.data,
+                payments,
+                balance,
+                { userName: user?.name || "Motorista" }
+            );
+        } catch (err) {
+            alert("Erro ao gerar Planilha.");
+        }
+    };
+
     return {
         rides,
-        balance,
+        balance: balance || null,
         payments,
-        ridePage,
-        setRidePage,
         rideTotal,
         rideLimit,
+        isLoading: isRidesLoading || isBalanceLoading || isPaymentsLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
         refreshDetails,
-        generatePDF
+        generatePDF,
+        generateExcel
     };
 }

@@ -2,6 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { X, Bike } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -10,7 +11,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 
-import { RideModalProps } from "./ride-modal/types";
+import { RideModalProps } from "@/types/rides";
 import { useRideForm } from "./ride-modal/hooks/use-ride-form";
 import { ProgressBar } from "./ride-modal/components/progress-bar";
 import { NavigationButtons } from "./ride-modal/components/navigation-buttons";
@@ -28,7 +29,7 @@ export function RideModal(props: RideModalProps) {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent showCloseButton={false} className="bg-slate-900 border-white/10 p-0 overflow-hidden sm:rounded-[2.5rem] w-[calc(100%-2rem)] max-w-lg sm:max-w-[480px] gap-0 shadow-2xl">
+            <DialogContent showCloseButton={false} className="bg-modal-background border-border p-0 overflow-hidden sm:rounded-[2.5rem] w-[calc(100%-2rem)] max-w-lg sm:max-w-[480px] gap-0 shadow-2xl">
                 <DialogHeader className="sr-only">
                     <DialogTitle>{rideToEdit ? 'Editar Corrida' : 'Nova Corrida'}</DialogTitle>
                     <DialogDescription>
@@ -36,27 +37,27 @@ export function RideModal(props: RideModalProps) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-col max-h-[90vh] sm:max-h-none relative">
-                    <button
-                        onClick={onClose}
-                        className="absolute right-6 top-6 sm:right-10 sm:top-10 z-20 p-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all active:scale-95 group border border-white/5 shadow-lg"
-                        title="Fechar"
-                    >
-                        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                    </button>
+                <div className="flex flex-col h-full max-h-[90vh] sm:max-h-[85vh] relative bg-modal-background">
+                    <div className="sm:hidden w-12 h-1.5 bg-border-subtle rounded-full mx-auto my-4 shrink-0" />
 
-                    <div className="sm:hidden w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4 shrink-0" />
+                    <div className="px-6 sm:px-10 pt-4 sm:pt-10 pb-4 shrink-0 relative">
+                        <button
+                            onClick={onClose}
+                            className="absolute right-6 top-4 sm:right-10 sm:top-8 z-20 p-2.5 bg-secondary/10 hover:bg-secondary/20 rounded-xl text-text-secondary hover:text-text-primary transition-all active:scale-95 group border border-border-subtle shadow-lg"
+                            title="Fechar"
+                        >
+                            <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
 
-                    <div className="px-6 sm:px-10 pt-4 sm:pt-8 pb-4 shrink-0">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="h-12 w-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-400 font-black shadow-inner border border-blue-500/10">
+                            <div className="h-12 w-12 bg-icon-info/10 rounded-2xl flex items-center justify-center text-icon-info font-black shadow-inner border border-icon-info/10">
                                 <Bike size={24} />
                             </div>
                             <div>
-                                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tighter leading-none">
+                                <h2 className="text-xl sm:text-2xl font-display font-extrabold text-text-primary tracking-tighter leading-none">
                                     {rideToEdit ? 'Editar Corrida' : 'Nova Corrida'}
                                 </h2>
-                                <p className="text-slate-500 text-[10px] sm:text-xs mt-1.5 uppercase tracking-[0.2em] font-bold opacity-70">
+                                <p className="text-text-secondary text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-bold opacity-80">
                                     Passo {form.currentStep} de 5
                                 </p>
                             </div>
@@ -65,11 +66,14 @@ export function RideModal(props: RideModalProps) {
                         <ProgressBar currentStep={form.currentStep} totalSteps={5} />
                     </div>
 
-                    <div className="overflow-y-auto px-6 sm:px-10 pb-10 custom-scrollbar">
+                    <div className={cn(
+                        "px-6 sm:px-10 flex-1 scrollbar-hide min-h-0",
+                        form.currentStep === 1 ? "overflow-hidden" : "overflow-y-auto"
+                    )}>
                         <form 
                             onSubmit={(e) => e.preventDefault()} 
                             onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                            className="space-y-6 sm:space-y-8 min-h-[300px] flex flex-col"
+                            className="space-y-6 sm:space-y-8 pb-10"
                         >
                             <AnimatePresence mode="wait">
                                 {form.currentStep === 1 && (
@@ -104,22 +108,24 @@ export function RideModal(props: RideModalProps) {
                                     />
                                 )}
                             </AnimatePresence>
-
-                            <NavigationButtons 
-                                currentStep={form.currentStep}
-                                totalSteps={5}
-                                onBack={form.prevStep}
-                                onNext={form.nextStep}
-                                onSubmit={form.handleSubmit}
-                                isSubmitting={form.isSubmitting}
-                                canNext={
-                                    (form.currentStep === 1 && !!form.selectedClientId) ||
-                                    (form.currentStep === 2 && !!form.value) ||
-                                    (form.currentStep > 2)
-                                }
-                                rideToEdit={!!rideToEdit}
-                            />
                         </form>
+                    </div>
+
+                    <div className="px-6 sm:px-10 py-6 sm:py-8 bg-modal-background/80 backdrop-blur-md border-t border-border shrink-0 z-10">
+                        <NavigationButtons 
+                            currentStep={form.currentStep}
+                            totalSteps={5}
+                            onBack={form.prevStep}
+                            onNext={form.nextStep}
+                            onSubmit={form.handleSubmit}
+                            isSubmitting={form.isSubmitting}
+                            canNext={
+                                (form.currentStep === 1 && !!form.selectedClientId) ||
+                                (form.currentStep === 2 && !!form.value) ||
+                                (form.currentStep > 2)
+                            }
+                            rideToEdit={!!rideToEdit}
+                        />
                     </div>
                 </div>
             </DialogContent>

@@ -31,15 +31,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // Renderização de Loading Inicial
     if (isLoading || !isAuthenticated) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="h-10 w-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
         <ClientsProvider>
-            <div className="min-h-screen bg-[#020617] text-slate-50 flex overflow-hidden">
+            <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
                 {/* 2. Gerenciador de Modais e Popups */}
                 <PopupsManager 
                     user={user}
@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     logout={logout}
                 />
 
-                <main className="flex-1 relative overflow-y-auto flex flex-col min-w-0">
+                <main className="flex-1 relative overflow-y-auto flex flex-col min-w-0 scrollbar-hide">
                     {/* 4. Banners de Status de Assinatura */}
                     <StatusBanners 
                         isExpired={sub.isExpired}

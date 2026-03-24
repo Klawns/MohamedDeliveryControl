@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, CreditCard, Phone, User as UserIcon, ShieldCheck, ArrowRight } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 import {
     Dialog,
@@ -165,8 +165,8 @@ function CheckoutContent() {
     useEffect(() => {
         const loadPlans = async () => {
             try {
-                const response = await api.get("/payments/plans");
-                setPlans(response.data);
+                const response = await apiClient.get<any[]>("/payments/plans");
+                setPlans(response || []);
             } catch (err) {
                 console.error("Erro ao carregar planos:", err);
             } finally {
@@ -200,14 +200,14 @@ function CheckoutContent() {
             
             /* 
             // CÓDIGO ORIGINAL BLOQUEADO:
-            const response = await api.post("/payments/checkout", {
+            const data = await apiClient.post<any>("/payments/checkout", {
                 plan: planId,
                 couponCode: couponCode || undefined,
                 taxId: data.taxId.replace(/\D/g, ""),
-                cellphone: data.cellphone.replace(/\D/g, "")
+                cellphone: data.cellphone.replace(/\D/g, ""),
             });
-            if (response.data.url) {
-                window.location.href = response.data.url;
+            if (data.url) {
+                window.location.href = data.url;
             } else {
                 setError("Não foi possível gerar o link de pagamento.");
                 setIsCreatingCheckout(false);

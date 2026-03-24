@@ -1,22 +1,12 @@
-import { Ride, Client as BaseClient } from "@/app/dashboard/rides/types";
-
+import { Ride } from "@/types/rides";
 export type { Ride };
-export type Client = BaseClient;
+export type { Client, RidePreset, PaymentStatus, RideStatus } from "@/types/rides";
 
 export interface DashboardStats {
     count: number;
     totalValue: number;
     rides: Ride[];
 }
-
-export interface RidePreset {
-    id: string;
-    value: number;
-    location: string;
-}
-
-export type PaymentStatus = 'PENDING' | 'PAID';
-export type RideStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 
 export interface MobileDashboardProps {
     onRideCreated: () => void;

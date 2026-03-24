@@ -39,11 +39,11 @@ export function SimulatorRideForm({ client, presets, onComplete }: SimulatorRide
         <div className="space-y-4 md:space-y-6">
             <div className="p-3 md:p-4 bg-blue-600/10 border border-blue-500/20 rounded-xl md:rounded-2xl flex items-center gap-3">
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                    {client.name.charAt(0)}
+                    {client.name?.charAt(0) ?? "?"}
                 </div>
                 <div>
                     <p className="text-[9px] md:text-xs text-blue-400 font-bold uppercase tracking-widest">Cliente Ativo</p>
-                    <p className="text-white font-black text-sm md:text-base leading-none">{client.name}</p>
+                    <p className="text-white font-black text-sm md:text-base leading-none">{client.name || "Sem nome"}</p>
                 </div>
             </div>
 
@@ -99,7 +99,7 @@ export function SimulatorRideForm({ client, presets, onComplete }: SimulatorRide
             <Button
                 disabled={!val}
                 onClick={onComplete}
-                className="w-full h-12 md:h-14 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl md:rounded-2xl shadow-lg shadow-emerald-500/20 text-base md:text-lg transition-all active:scale-95"
+                className="w-full h-12 md:h-14 bg-primary hover:bg-primary/90 text-white font-black rounded-xl md:rounded-2xl shadow-lg shadow-primary/20 text-base md:text-lg transition-all active:scale-95"
             >
                 Finalizar Registro <Zap className="ml-2 fill-current" size={18} />
             </Button>

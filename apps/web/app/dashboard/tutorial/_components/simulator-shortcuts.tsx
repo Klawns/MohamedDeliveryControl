@@ -32,31 +32,29 @@ export function SimulatorShortcuts({ presets, onAdd }: SimulatorShortcutsProps) 
             <div className="bg-slate-900 border border-white/10 rounded-3xl md:rounded-[2.5rem] p-5 md:p-6 shadow-2xl space-y-4 md:space-y-6">
                 <div className="space-y-3 md:space-y-4">
                     <h4 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Configurar Novo Atalho</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="relative">
-                                <DollarSign size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                                <Input
-                                    type="number"
-                                    value={newVal}
-                                    onChange={e => setNewVal(e.target.value)}
-                                    placeholder="Valor"
-                                    className="bg-slate-950 border-white/10 pl-8 h-11 md:h-12 rounded-xl text-xs md:text-sm"
-                                />
-                            </div>
-                            <div className="relative">
-                                <MapPin size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                                <Input
-                                    value={newLoc}
-                                    onChange={e => setNewLoc(e.target.value)}
-                                    placeholder="Local"
-                                    className="bg-slate-950 border-white/10 pl-8 h-11 md:h-12 rounded-xl text-xs md:text-sm"
-                                />
-                            </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+                        <div className="relative">
+                            <DollarSign size={14} className="absolute left-3 top-3 md:top-3.5 text-slate-500" />
+                            <Input
+                                type="number"
+                                value={newVal}
+                                onChange={e => setNewVal(e.target.value)}
+                                placeholder="Valor"
+                                className="bg-slate-950 border-white/10 pl-8 h-10 md:h-12 rounded-xl text-xs md:text-sm"
+                            />
+                        </div>
+                        <div className="relative">
+                            <MapPin size={14} className="absolute left-3 top-3 md:top-3.5 text-slate-500" />
+                            <Input
+                                value={newLoc}
+                                onChange={e => setNewLoc(e.target.value)}
+                                placeholder="Local"
+                                className="bg-slate-950 border-white/10 pl-8 h-10 md:h-12 rounded-xl text-xs md:text-sm"
+                            />
                         </div>
                     </div>
-                    <Button onClick={handleAdd} className="w-full h-11 md:h-12 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-lg shadow-blue-600/20 text-xs md:text-sm">
-                        Adicionar Atalho <Plus className="ml-2" size={14} />
+                    <Button onClick={handleAdd} className="w-full h-10 md:h-12 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-lg shadow-blue-600/20 text-xs md:text-sm">
+                        Adicionar Atalho <Plus className="ml-1 md:ml-2" size={14} />
                     </Button>
                 </div>
 

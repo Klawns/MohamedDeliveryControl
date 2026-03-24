@@ -1,18 +1,34 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/services/api";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { uploadImage } from "@/lib/upload";
 import { useAuth } from "@/hooks/use-auth";
-import { Client, RidePreset, PaymentStatus, RideStatus, RideModalProps } from "../types";
+import { toLocalInputValue, toISOFromLocalInput } from "@/lib/date-utils";
+import { parseApiError } from "@/lib/api-error";
+import { Client, RidePreset, PaymentStatus, RideStatus, RideModalProps } from "@/types/rides";
+import { rideModalService } from "../services/ride-modal-service";
+import { toast } from "sonner";
 
 export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }: Partial<RideModalProps>) {
     const { verify, user } = useAuth();
+    const queryClient = useQueryClient();
     
-    // Data states
-    const [clients, setClients] = useState<Client[]>([]);
-    const [presets, setPresets] = useState<RidePreset[]>([]);
-    const [isLoadingData, setIsLoadingData] = useState(false);
+    // Queries para dados iniciais
+    const { data: clientsData, isLoading: isLoadingClients } = useQuery({
+        queryKey: ["clients"],
+        queryFn: () => rideModalService.getClients(),
+        enabled: isOpen && !!user && !clientId,
+    });
+
+    const { data: presets = [], isLoading: isLoadingPresets } = useQuery({
+        queryKey: ["ride-presets"],
+        queryFn: () => rideModalService.getRidePresets(),
+        enabled: isOpen && !!user,
+    });
+
+    const clients = useMemo(() => clientsData?.clients || [], [clientsData]);
+    const isLoadingData = isLoadingClients || isLoadingPresets;
     
     // Form states
     const [selectedClientId, setSelectedClientId] = useState(clientId || "");
@@ -22,21 +38,18 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
     const [photo, setPhoto] = useState<string | null>(null);
     const [rideDate, setRideDate] = useState("");
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("PAID");
-    const [status, setStatus] = useState<RideStatus>("COMPLETED");
     const [isCustomValue, setIsCustomValue] = useState(false);
     
     // UI Phase states
     const [currentStep, setCurrentStep] = useState(1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Client creation states
     const [newClientName, setNewClientName] = useState("");
     const [isCreatingClient, setIsCreatingClient] = useState(false);
-    const [clientPage, setClientPage] = useState(0);
-    const clientsPerPage = 12;
+    // clientPage e clientsPerPage removidos
 
     const resetForm = useCallback(() => {
-        if (!clientId) setSelectedClientId("");
+        setSelectedClientId(clientId || "");
         setValue("");
         setLocation("");
         setNotes("");
@@ -44,45 +57,18 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
         setIsCustomValue(false);
         setPhoto(null);
         setPaymentStatus("PAID");
-        setStatus("COMPLETED");
         setCurrentStep(clientId ? 2 : 1);
     }, [clientId]);
 
-    const loadInitialData = useCallback(async () => {
-        if (!user) return;
-        setIsLoadingData(true);
-        try {
-            const promises: Promise<any>[] = [];
-            if (!clientId) promises.push(api.get("/clients"));
-            promises.push(api.get("/settings/ride-presets"));
-
-            const results = await Promise.all(promises);
-
-            if (!clientId) {
-                setClients(results[0].data.clients || []);
-                setPresets(results[1].data || []);
-            } else {
-                setPresets(results[0].data || []);
-            }
-        } catch (err) {
-            console.error("Erro ao carregar dados iniciais do modal", err);
-        } finally {
-            setIsLoadingData(false);
-        }
-    }, [clientId, user]);
-
     useEffect(() => {
         if (isOpen && user) {
-            loadInitialData();
-
             if (rideToEdit) {
                 setSelectedClientId(rideToEdit.clientId || rideToEdit.client?.id || "");
                 setValue(rideToEdit.value.toString());
                 setLocation(rideToEdit.location || "");
                 setNotes(rideToEdit.notes || "");
-                setRideDate(rideToEdit.rideDate ? rideToEdit.rideDate.substring(0, 16) : "");
-                setPaymentStatus(rideToEdit.paymentStatus);
-                setStatus(rideToEdit.status);
+                setRideDate(toLocalInputValue(rideToEdit.rideDate || ""));
+                setPaymentStatus(rideToEdit.paymentStatus || "PAID");
                 setPhoto(rideToEdit.photo || null);
                 setIsCustomValue(true);
                 setCurrentStep(2);
@@ -90,20 +76,22 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
                 resetForm();
             }
         }
-    }, [isOpen, clientId, rideToEdit, user, loadInitialData, resetForm]);
+    }, [isOpen, clientId, rideToEdit, user, resetForm]);
 
     const handleCreateClient = async () => {
         if (!newClientName) return;
         setIsCreatingClient(true);
         try {
-            const { data } = await api.post("/clients", { name: newClientName });
-            setClients((prev) => [...prev, data]);
+            const data = await rideModalService.createClient(newClientName);
+            // Invalida a query de clientes para que a lista seja atualizada
+            queryClient.invalidateQueries({ queryKey: ["clients"] });
             setSelectedClientId(data.id);
             setNewClientName("");
             setIsCreatingClient(false);
             setCurrentStep(2);
+            toast.success("Cliente cadastrado com sucesso");
         } catch (err) {
-            alert("Erro ao cadastrar cliente. Tente novamente.");
+            toast.error(parseApiError(err, "Erro ao cadastrar cliente. Tente novamente."));
             setIsCreatingClient(false);
         }
     };
@@ -119,16 +107,9 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
         }
     };
 
-    const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
-        e?.preventDefault();
-
-        if (!selectedClientId || !value) {
-            alert("Erro: Informe o cliente e o valor da corrida.");
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
+    // Mutação para salvar a corrida (Create ou Update)
+    const { mutateAsync: saveRide, isPending: isSubmitting } = useMutation({
+        mutationFn: async () => {
             let uploadedPhotoUrl = photo;
 
             if (photo && photo.startsWith('data:image')) {
@@ -148,30 +129,48 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
             const payload = {
                 clientId: selectedClientId,
                 value: Number(value),
-                location: location || "Não informada",
+                location: location || "",
                 notes: notes || null,
                 photo: uploadedPhotoUrl || null,
-                status,
+                status: 'COMPLETED' as RideStatus,
                 paymentStatus,
-                rideDate: rideDate || null
+                rideDate: rideDate ? toISOFromLocalInput(rideDate) : null,
             };
 
             if (rideToEdit) {
-                await api.patch(`/rides/${rideToEdit.id}`, payload);
+                return rideModalService.updateRide(rideToEdit.id, payload);
             } else {
-                await api.post("/rides", payload);
+                return rideModalService.createRide(payload);
             }
-
-            await verify();
-
+        },
+        onSuccess: async () => {
+            toast.success(rideToEdit ? "Corrida atualizada" : "Corrida registrada");
+            
+            // Invalida caches relacionados
+            queryClient.invalidateQueries({ queryKey: ["rides"] });
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["rides-count"] });
+            
+            await verify(); // Atualiza contador de assinatura no AuthContext
+            
             if (!rideToEdit) resetForm();
             onSuccess?.();
             onClose?.();
-        } catch (err) {
-            alert(`Erro ao ${rideToEdit ? 'atualizar' : 'registrar'} corrida. Tente novamente.`);
-        } finally {
-            setIsSubmitting(false);
+        },
+        onError: (err) => {
+            toast.error(parseApiError(err, `Erro ao ${rideToEdit ? 'atualizar' : 'registrar'} corrida.`));
         }
+    });
+
+    const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+        e?.preventDefault();
+
+        if (!selectedClientId || !value) {
+            toast.error("Informe o cliente e o valor da corrida.");
+            return;
+        }
+
+        await saveRide();
     };
 
     const handlePresetClick = (preset: RidePreset) => {
@@ -209,8 +208,6 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
         setRideDate,
         paymentStatus,
         setPaymentStatus,
-        status,
-        setStatus,
         isCustomValue,
         setIsCustomValue,
         
@@ -226,9 +223,6 @@ export function useRideForm({ isOpen, onClose, onSuccess, clientId, rideToEdit }
         setNewClientName,
         isCreatingClient,
         setIsCreatingClient,
-        clientPage,
-        setClientPage,
-        clientsPerPage,
         
         // Handlers
         handleCreateClient,

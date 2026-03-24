@@ -38,9 +38,6 @@ export default function DashboardPage() {
                 stats={dashboard.stats}
                 monthRides={dashboard.monthRides}
                 isLoading={dashboard.isLoading}
-                activitiesPage={dashboard.activitiesPage}
-                setActivitiesPage={dashboard.setActivitiesPage}
-                itemsPerPage={dashboard.itemsPerPage}
                 handleEditRide={dashboard.handleEditRide}
                 setRideToDelete={dashboard.setRideToDelete}
             />

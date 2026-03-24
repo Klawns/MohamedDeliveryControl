@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 interface Plan {
     id: string;
@@ -26,8 +26,8 @@ export function Pricing() {
     useEffect(() => {
         async function loadPlans() {
             try {
-                const response = await api.get("/payments/plans");
-                setPlans(response.data);
+                const response = await apiClient.get<Plan[]>("/payments/plans");
+                setPlans(response || []);
             } catch (error) {
                 console.error("Erro ao carregar planos:", error);
             } finally {

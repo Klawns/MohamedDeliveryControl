@@ -13,13 +13,13 @@ export interface MenuItem {
 }
 
 const ALL_MENU_ITEMS: MenuItem[] = [
-    { icon: LayoutDashboard, label: "Visão Geral", color: "text-blue-400", href: "/dashboard", roles: ["user"] },
-    { icon: Users, label: "Clientes", color: "text-emerald-400", href: "/dashboard/clients", roles: ["user"] },
-    { icon: Bike, label: "Corridas", color: "text-violet-400", href: "/dashboard/rides", roles: ["user"] },
-    { icon: Wallet, label: "Financeiro", color: "text-amber-400", href: "/dashboard/finance", roles: ["user"] },
-    { icon: Settings, label: "Configurações", color: "text-slate-400", href: "/dashboard/settings", roles: ["user"] },
-    { icon: Sparkles, label: "Tutorial", color: "text-violet-400", href: "/dashboard/tutorial", roles: ["user"] },
-    { icon: Shield, label: "Administração", color: "text-red-400", href: "/admin", roles: ["admin"] },
+    { icon: LayoutDashboard, label: "Visão Geral", color: "text-icon-info", href: "/dashboard", roles: ["user"] },
+    { icon: Users, label: "Clientes", color: "text-icon-success", href: "/dashboard/clients", roles: ["user"] },
+    { icon: Bike, label: "Corridas", color: "text-icon-brand", href: "/dashboard/rides", roles: ["user"] },
+    { icon: Wallet, label: "Financeiro", color: "text-icon-warning", href: "/dashboard/finance", roles: ["user"] },
+    { icon: Settings, label: "Configurações", color: "text-icon-brand", href: "/dashboard/settings", roles: ["user"] },
+    { icon: Sparkles, label: "Tutorial", color: "text-icon-brand", href: "/dashboard/tutorial", roles: ["user"] },
+    { icon: Shield, label: "Administração", color: "text-icon-destructive", href: "/admin", roles: ["admin"] },
 ];
 
 /**

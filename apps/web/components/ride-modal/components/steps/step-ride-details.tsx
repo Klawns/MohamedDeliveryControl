@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DollarSign, Star, MapPin } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { RidePreset } from "../../types";
+import { RidePreset } from "@/types/rides";
 
 const QUICK_VALUES = [10, 12, 15, 20, 25, 30];
 
@@ -39,18 +39,18 @@ export function StepRideDetails({
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
         >
-            <div className="flex items-center gap-3 bg-slate-950/30 p-4 rounded-2xl border border-white/5">
-                <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-black uppercase text-xs">
+            <div className="flex items-center gap-3 bg-secondary/10 p-4 rounded-2xl border border-border-subtle shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-icon-info/10 flex items-center justify-center text-icon-info font-bold uppercase text-xs border border-icon-info/10">
                     {clientName?.substring(0, 2) || "CL"}
                 </div>
                 <div>
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5">Cliente Selecionado</p>
-                    <p className="text-white font-bold">{clientName || "Cliente"}</p>
+                    <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest leading-none mb-0.5 opacity-70">Cliente Selecionado</p>
+                    <p className="text-text-primary font-bold tracking-tight">{clientName || "Cliente"}</p>
                 </div>
             </div>
 
             <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
                     <DollarSign size={12} /> Valor e Localização
                 </label>
 
@@ -67,18 +67,17 @@ export function StepRideDetails({
                                         handlePresetClick(matchingPreset);
                                     } else {
                                         setValue(String(v));
-                                        setLocation("Central");
                                         setIsCustomValue(false);
                                     }
                                 }}
                                 className={cn(
-                                    "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95",
+                                    "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95 shadow-sm",
                                     value === String(v) && !isCustomValue
-                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
-                                        : "bg-slate-950/50 border-white/5 text-slate-400 hover:bg-slate-900"
+                                        ? "bg-button-primary border-button-primary text-button-primary-foreground shadow-button-shadow"
+                                        : "bg-secondary/10 border-border-subtle text-text-secondary hover:bg-secondary/20 hover:text-text-primary"
                                 )}
                             >
-                                <span className="text-base font-black">R$ {v}</span>
+                                <span className="text-base font-bold">R$ {v}</span>
                             </button>
                         );
                     })}
@@ -90,25 +89,25 @@ export function StepRideDetails({
                             setLocation("");
                         }}
                         className={cn(
-                            "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95",
+                            "p-3.5 rounded-2xl border flex flex-col items-center justify-center transition-all group active:scale-95 shadow-sm",
                             isCustomValue
-                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/25"
-                                : "bg-slate-950/50 border-white/5 text-slate-400 hover:bg-slate-900"
+                                ? "bg-button-primary border-button-primary text-button-primary-foreground shadow-button-shadow"
+                                : "bg-secondary/10 border-border-subtle text-text-secondary hover:bg-secondary/20 hover:text-text-primary"
                         )}
                     >
-                        <span className="text-sm font-black">OUTRO</span>
+                        <span className="text-sm font-bold uppercase tracking-widest text-[10px]">OUTRO</span>
                     </button>
                 </div>
 
                 <div className="flex items-center gap-2 px-1">
-                    <Star size={10} className="text-blue-500/50" />
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                        Valores e locais fixos podem ser alterados nas <Link href="/dashboard/settings" className="text-blue-500 hover:underline">Configurações</Link>
+                    <Star size={10} className="text-icon-info/50 shadow-sm" />
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-tighter opacity-70">
+                        Valores e locais fixos podem ser alterados nas <Link href="/dashboard/settings" className="text-icon-info hover:underline hover:opacity-100 transition-all">Configurações</Link>
                     </p>
                 </div>
 
                 <AnimatePresence>
-                    {value !== "" && (
+                    {(value !== "" || isCustomValue) && (
                         <motion.div
                             initial={{ height: 0, opacity: 0, marginTop: 0 }}
                             animate={{ height: "auto", opacity: 1, marginTop: 16 }}
@@ -117,28 +116,28 @@ export function StepRideDetails({
                         >
                             {isCustomValue && (
                                 <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-base">R$</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-bold text-base opacity-50">R$</span>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={value}
                                         onChange={(e) => { setValue(e.target.value); setIsCustomValue(true); }}
                                         placeholder="Valor Personalizado"
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-xl font-black focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                        className="w-full bg-secondary/10 border border-border-subtle rounded-2xl py-4 pl-12 pr-4 text-text-primary text-xl font-bold focus:outline-none focus:border-icon-info/50 transition-all placeholder:text-text-secondary/30 shadow-inner"
                                     />
                                 </div>
                             )}
 
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
-                                    <MapPin size={12} className="text-blue-500" /> Localização da Corrida
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
+                                    <MapPin size={12} className="text-icon-info" /> Localização da Corrida
                                 </label>
                                 <input
                                     type="text"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
-                                    placeholder="Onde será a corrida? (Ex: Centro, Shopping...)"
-                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 text-white text-sm font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
+                                    placeholder="Digite a localização"
+                                    className="w-full bg-secondary/10 border border-border-subtle rounded-2xl py-4 px-5 text-text-primary text-sm font-bold focus:outline-none focus:border-icon-info/50 transition-all placeholder:text-text-secondary/30 shadow-inner"
                                 />
                             </div>
                         </motion.div>

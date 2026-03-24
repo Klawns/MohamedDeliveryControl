@@ -2,7 +2,7 @@
 
 import { RideModal } from "@/components/ride-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
-import { Ride } from "../rides/types";
+import { Ride } from "@/types/rides";
 
 interface DashboardModalsProps {
     isRideModalOpen: boolean;

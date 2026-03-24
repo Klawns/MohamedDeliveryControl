@@ -2,9 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/services/api";
 import { uploadImage } from "@/lib/upload";
-import { Client, Ride, PaymentStatus, RideStatus } from "../types";
+import { ridesService } from "@/services/rides-service";
+import { toISOFromLocalInput } from "@/lib/date-utils";
+import { parseApiError } from "@/lib/api-error";
+import { Client, Ride, PaymentStatus, RideStatus } from "@/types/rides";
 
 interface RideRegistrationProps {
     onSuccess: () => void;
@@ -19,7 +21,6 @@ export function useRideRegistration({ onSuccess }: RideRegistrationProps) {
     const [customValue, setCustomValue] = useState("");
     const [customLocation, setCustomLocation] = useState("");
     const [showCustomForm, setShowCustomForm] = useState(false);
-    const [rideStatus, setRideStatus] = useState<RideStatus>('COMPLETED');
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('PAID');
     const [rideDate, setRideDate] = useState("");
     const [notes, setNotes] = useState("");
@@ -58,7 +59,7 @@ export function useRideRegistration({ onSuccess }: RideRegistrationProps) {
         if (!selectedClient) return;
 
         let finalValue = Number(customValue);
-        let finalLocation = customLocation || "Central";
+        let finalLocation = customLocation || "";
 
         if (!finalValue) {
             toast({ title: "Selecione um valor", variant: "destructive" });
@@ -82,15 +83,15 @@ export function useRideRegistration({ onSuccess }: RideRegistrationProps) {
                 }
             }
 
-            await api.post("/rides", {
+            await ridesService.createRide({
                 clientId: selectedClient.id,
                 value: finalValue,
                 location: finalLocation,
                 notes: notes || undefined,
                 photo: uploadedPhotoUrl || undefined,
-                status: rideStatus,
+                status: 'COMPLETED' as RideStatus,
                 paymentStatus: paymentStatus,
-                rideDate: rideDate || undefined
+                rideDate: rideDate ? toISOFromLocalInput(rideDate) : undefined
             });
 
             toast({ 
@@ -101,22 +102,22 @@ export function useRideRegistration({ onSuccess }: RideRegistrationProps) {
             resetForm();
             onSuccess();
         } catch (err) {
-            toast({ title: "Erro ao registrar", variant: "destructive" });
+            toast({ title: parseApiError(err, "Erro ao registrar"), variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
-    }, [selectedClient, customValue, customLocation, photo, notes, rideStatus, paymentStatus, rideDate, toast, resetForm, onSuccess]);
+    }, [selectedClient, customValue, customLocation, photo, notes, paymentStatus, rideDate, toast, resetForm, onSuccess]);
 
     const handleDeleteRide = useCallback(async () => {
         if (!rideToDelete) return;
         setIsDeleting(true);
         try {
-            await api.delete(`/rides/${rideToDelete.id}`);
+            await ridesService.deleteRide(rideToDelete.id);
             toast({ title: "Corrida excluída" });
             onSuccess();
             setRideToDelete(null);
         } catch (err) {
-            toast({ title: "Erro ao excluir", variant: "destructive" });
+            toast({ title: parseApiError(err, "Erro ao excluir"), variant: "destructive" });
         } finally {
             setIsDeleting(false);
         }
@@ -129,7 +130,6 @@ export function useRideRegistration({ onSuccess }: RideRegistrationProps) {
         customValue, setCustomValue,
         customLocation, setCustomLocation,
         showCustomForm, setShowCustomForm,
-        rideStatus, setRideStatus,
         paymentStatus, setPaymentStatus,
         rideDate, setRideDate,
         notes, setNotes,

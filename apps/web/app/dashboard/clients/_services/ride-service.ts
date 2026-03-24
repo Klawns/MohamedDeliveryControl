@@ -1,4 +1,4 @@
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 export interface Ride {
     id: string;
@@ -27,19 +27,19 @@ export const rideService = {
         queryParams.append("limit", params.limit.toString());
         queryParams.append("offset", params.offset.toString());
 
-        const { data } = await api.get(`/rides/client/${clientId}?${queryParams.toString()}`);
+        const response = await apiClient.getPaginated<Ride[]>(`/rides/client/${clientId}?${queryParams.toString()}`);
         return {
-            rides: data.rides || [],
-            total: data.total || 0,
+            rides: response.data || [],
+            total: response.meta?.total || 0,
         };
     },
 
     async deleteRide(rideId: string): Promise<void> {
-        await api.delete(`/rides/${rideId}`);
+        await apiClient.delete(`/rides/${rideId}`);
     },
 
     async fetchRidesForReport(clientId: string): Promise<Ride[]> {
-        const { data } = await api.get(`/rides/client/${clientId}?limit=100`);
-        return data.rides || [];
+        const response = await apiClient.getPaginated<Ride[]>(`/rides/client/${clientId}?limit=100`);
+        return response.data || [];
     }
 };

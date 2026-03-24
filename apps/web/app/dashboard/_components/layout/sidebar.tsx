@@ -35,14 +35,14 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+                        className="fixed inset-0 bg-overlay-background/60 backdrop-blur-sm z-40 lg:hidden"
                     />
                 )}
             </AnimatePresence>
 
             <aside
                 className={cn(
-                    "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-900/40 backdrop-blur-xl border-r border-white/5 transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
+                    "fixed lg:relative inset-y-0 left-0 z-50 bg-sidebar-background backdrop-blur-xl border-r border-sidebar-border transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
                     isOpen ? "w-72 translate-x-0" : "w-0 lg:w-24 -translate-x-full lg:translate-x-0"
                 )}
             >
@@ -50,33 +50,52 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                     <div className="flex items-center justify-between mb-10 overflow-hidden h-12">
                         <AnimatePresence mode="wait">
                             {isOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    className="flex items-center gap-3 shrink-0"
+                                <Link 
+                                    href="/dashboard"
+                                    aria-label="Ir para o Dashboard"
+                                    className="flex items-center gap-3 shrink-0 active:scale-95 transition-transform"
                                 >
-                                    <div className="relative w-10 h-10 shrink-0">
-                                        <Image
-                                            src="/assets/logo8.jpg"
-                                            alt="Rotta Logo"
-                                            fill
-                                            className="object-cover rounded-lg"
-                                        />
-                                    </div>
-                                    <span className="font-black text-xl tracking-tighter uppercase whitespace-nowrap italic">Rotta App</span>
-                                </motion.div>
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="flex items-center gap-3"
+                                    >
+                                        <div className="relative w-10 h-10 shrink-0">
+                                            <Image
+                                                src="/assets/logo8.jpg"
+                                                alt="Rotta Logo"
+                                                fill
+                                                className="object-cover rounded-lg"
+                                            />
+                                        </div>
+                                        <span className="font-display font-extrabold text-xl tracking-tighter uppercase whitespace-nowrap italic text-text-primary">Rotta App</span>
+                                    </motion.div>
+                                </Link>
                             )}
                         </AnimatePresence>
-                        <button
-                            onClick={() => setIsOpen(!isOpen)}
-                            className={cn(
-                                "p-2 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white bg-white/5 active:scale-90",
-                                !isOpen && "hidden lg:flex"
-                            )}
-                        >
-                            {isOpen ? <X size={20} /> : <Menu size={20} />}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {/* Desktop Toggle */}
+                            <button
+                                onClick={() => setIsOpen(!isOpen)}
+                                className={cn(
+                                    "hidden lg:flex p-2 hover:bg-sidebar-accent rounded-xl transition-all text-sidebar-foreground-muted hover:text-sidebar-foreground bg-sidebar-accent/50 active:scale-90 border border-transparent hover:border-sidebar-border",
+                                    !isOpen && "flex"
+                                )}
+                                aria-label={isOpen ? "Recolher Sidebar" : "Expandir Sidebar"}
+                            >
+                                {isOpen ? <X size={20} /> : <Menu size={20} />}
+                            </button>
+
+                            {/* Mobile Close Button - Only visible on mobile when open */}
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="lg:hidden p-2.5 bg-icon-destructive/10 text-icon-destructive hover:bg-icon-destructive hover:text-white rounded-xl transition-all active:scale-95 border border-icon-destructive/10"
+                                aria-label="Fechar Menu"
+                            >
+                                <X size={22} />
+                            </button>
+                        </div>
                     </div>
 
                     <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
@@ -86,15 +105,29 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                                 href={item.href}
                                 onClick={handleMenuClick}
                                 className={cn(
-                                    "flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group active:scale-95",
-                                    pathname === item.href && "bg-white/5 text-white shadow-inner",
+                                    "flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-sidebar-accent/50 transition-all group active:scale-95 border border-transparent",
+                                    pathname === item.href && "bg-sidebar-accent-active text-sidebar-foreground-primary shadow-sm border-sidebar-border-active",
                                     !isOpen && "lg:justify-center lg:px-0"
                                 )}
                                 title={!isOpen ? item.label : ""}
                             >
-                                <item.icon size={22} className={cn(item.color, "shrink-0")} />
+                                <item.icon 
+                                    size={22} 
+                                    className={cn(
+                                        "shrink-0 transition-all duration-300",
+                                        item.color,
+                                        pathname === item.href 
+                                            ? "brightness-110 saturate-125 scale-110" 
+                                            : "opacity-60 group-hover:opacity-100 group-hover:scale-105 saturate-[0.8]"
+                                    )} 
+                                />
                                 {isOpen && (
-                                    <span className="font-medium text-slate-300 group-hover:text-white transition-colors">{item.label}</span>
+                                    <span className={cn(
+                                        "font-medium transition-colors",
+                                        pathname === item.href ? "text-sidebar-foreground-primary" : "text-sidebar-foreground-muted group-hover:text-sidebar-foreground"
+                                    )}>
+                                        {item.label}
+                                    </span>
                                 )}
                             </Link>
                         ))}
@@ -104,7 +137,7 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                                 <Link
                                     href="/pricing"
                                     onClick={handleMenuClick}
-                                    className="mx-4 mt-6 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-95 group"
+                                    className="mx-4 mt-6 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-button-primary text-button-primary-foreground font-black text-xs uppercase tracking-widest hover:bg-button-primary-hover transition-all shadow-lg shadow-button-shadow active:scale-95 group"
                                 >
                                     <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
                                     Fazer Upgrade
@@ -113,16 +146,16 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                         )}
                     </nav>
 
-                    <div className="pt-6 border-t border-white/5 mt-auto">
+                    <div className="pt-6 border-t border-sidebar-border mt-auto">
                         <div className={cn("flex items-center gap-3 px-4 py-3 mb-4", !isOpen && "lg:justify-center lg:px-0")}>
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-violet-500 flex items-center justify-center font-bold text-sm shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-icon-brand/10 text-icon-brand flex items-center justify-center font-bold text-sm shrink-0 border border-icon-brand/20 transition-colors">
                                 {user?.name?.charAt(0).toUpperCase() || 'U'}
                             </div>
                             {isOpen && (
                                 <div className="overflow-hidden">
-                                    <p className="font-semibold truncate">{user?.name}</p>
+                                    <p className="font-semibold truncate text-text-primary">{user?.name}</p>
                                     <div className="flex items-center gap-2 mt-0.5">
-                                        <p className="text-[10px] text-slate-500 truncate leading-none">{user?.email}</p>
+                                        <p className="text-[10px] text-sidebar-foreground-muted truncate leading-none font-medium">{user?.email}</p>
                                     </div>
                                 </div>
                             )}
@@ -130,12 +163,12 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
                         <button
                             onClick={logout}
                             className={cn(
-                                "w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all group",
+                                "w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-icon-destructive/10 text-sidebar-foreground-muted hover:text-icon-destructive transition-all group active:scale-95",
                                 !isOpen && "lg:justify-center lg:px-0"
                             )}
                             title={!isOpen ? "Sair" : ""}
                         >
-                            <LogOut size={20} className="shrink-0" />
+                            <LogOut size={20} className="shrink-0 group-hover:-translate-x-1 transition-transform" />
                             {isOpen && <span className="font-medium">Sair</span>}
                         </button>
                     </div>

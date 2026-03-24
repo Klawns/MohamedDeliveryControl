@@ -2,14 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 
-export interface Ride {
-  id: string
-  clientName: string
-  value: number
-  createdAt: string
-  rideDate?: string
-  paid: boolean
-}
+import { Ride } from "@/types/rides"
 
 const STORAGE_KEY = "delivery-rides"
 

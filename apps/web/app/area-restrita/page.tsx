@@ -5,7 +5,7 @@ import { ArrowRight, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 export default function AreaRestritaPage() {
     const { login } = useAuth();
@@ -22,8 +22,8 @@ export default function AreaRestritaPage() {
         const password = formData.get("password") as string;
 
         try {
-            const response = await api.post("/auth/login", { email, password });
-            const { user } = response.data;
+            const data = await apiClient.post<any>("/auth/login", { email, password });
+            const { user } = data;
             login(user, "/admin");
         } catch (err: any) {
             setError(err.response?.data?.message || "Erro no acesso administrativo.");

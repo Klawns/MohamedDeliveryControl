@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { TutorialModal } from "@/components/dashboard/tutorial-modal";
 import { StarterLimitPopup } from "@/components/dashboard/starter-limit-popup";
 import { SubscriptionExpiringPopup } from "@/components/dashboard/subscription-expiring-popup";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 import { User } from "@/hooks/use-auth";
 
 interface PopupsManagerProps {
@@ -42,7 +42,7 @@ export function PopupsManager({
         if (!user) return;
         
         try {
-            await api.patch("/settings/tutorial-seen");
+            await apiClient.patch("/settings/tutorial-seen");
             updateUser({ ...user, hasSeenTutorial: true });
         } catch (err) {
             console.error("[PopupsManager] Erro ao marcar tutorial como visto:", err);

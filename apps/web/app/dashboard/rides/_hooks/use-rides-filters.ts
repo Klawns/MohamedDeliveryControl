@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { RidesFilterState } from "../types";
+import { RidesFilterState } from "@/types/rides";
 
 export function useRidesFilters() {
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<string>("all");
     const [paymentFilter, setPaymentFilter] = useState<string>("all");
     const [clientFilter, setClientFilter] = useState<string>("all");
     const [startDate, setStartDate] = useState("");
@@ -13,7 +12,6 @@ export function useRidesFilters() {
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
     const hasActiveFilters = 
-        statusFilter !== "all" || 
         paymentFilter !== "all" || 
         clientFilter !== "all" || 
         startDate !== "" || 
@@ -21,7 +19,6 @@ export function useRidesFilters() {
         search !== "";
 
     const clearFilters = useCallback(() => {
-        setStatusFilter("all");
         setPaymentFilter("all");
         setClientFilter("all");
         setStartDate("");
@@ -30,17 +27,15 @@ export function useRidesFilters() {
 
     const filterState = useMemo((): RidesFilterState => ({
         search,
-        statusFilter,
         paymentFilter,
         clientFilter,
         startDate,
         endDate
-    }), [search, statusFilter, paymentFilter, clientFilter, startDate, endDate]);
+    }), [search, paymentFilter, clientFilter, startDate, endDate]);
 
     return {
         filterState,
         setSearch,
-        setStatusFilter,
         setPaymentFilter,
         setClientFilter,
         setStartDate,

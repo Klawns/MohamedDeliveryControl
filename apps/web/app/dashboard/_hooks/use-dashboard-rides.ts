@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/services/api";
-import { Ride } from "../rides/types";
+import { api, apiClient } from "@/services/api";
+import { Ride } from "@/types/rides";
 
 interface UseDashboardRidesProps {
     onRideDeleted?: () => void;
@@ -29,7 +29,7 @@ export function useDashboardRides({ onRideDeleted }: UseDashboardRidesProps = {}
         
         setIsDeletingRide(true);
         try {
-            await api.delete(`/rides/${rideToDelete.id}`);
+            await apiClient.delete(`/rides/${rideToDelete.id}`);
             toast({ title: "Corrida excluída com sucesso" });
             
             if (onRideDeleted) {

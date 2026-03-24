@@ -4,7 +4,7 @@ import { useRides } from "./hooks/use-rides";
 import { RidesHeader } from "./components/rides-header";
 import { FrequentClients } from "./components/frequent-clients";
 import { RidesFilters } from "./components/rides-filters";
-import { RidesList } from "./components/rides-list";
+import { RidesListContainer } from "./components/rides-list";
 import { RidesPagination } from "./components/rides-pagination";
 import { RideModal } from "@/components/ride-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -24,13 +24,17 @@ export default function RidesPage() {
         clients,
         frequentClients,
         isLoading,
+        isFetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        ridesError,
         isFrequentLoading,
         totalCount,
         
         // Filtros
         filterState,
         setSearch,
-        setStatusFilter,
         setPaymentFilter,
         setClientFilter,
         setStartDate,
@@ -39,11 +43,6 @@ export default function RidesPage() {
         setIsFiltersOpen,
         hasActiveFilters,
         clearFilters,
-        
-        // Paginação
-        page,
-        setPage,
-        pageSize,
         
         // Modais
         isRideModalOpen,
@@ -82,7 +81,6 @@ export default function RidesPage() {
             <RidesFilters 
                 filters={filterState}
                 setSearch={setSearch}
-                setStatusFilter={setStatusFilter}
                 setPaymentFilter={setPaymentFilter}
                 setClientFilter={setClientFilter}
                 setStartDate={setStartDate}
@@ -95,22 +93,20 @@ export default function RidesPage() {
             />
 
             {/* Listagem de corridas com ações de edição/deleção */}
-            <RidesList 
+            <RidesListContainer 
                 rides={rides}
                 isLoading={isLoading}
+                isFetching={isFetching}
+                hasNextPage={hasNextPage}
+                onLoadMore={fetchNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                error={ridesError}
+                retry={fetchData}
                 onEdit={handleEditRide}
                 onDelete={setRideToDelete}
                 onTogglePayment={togglePaymentStatus}
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={clearFilters}
-            />
-
-            {/* Controles de paginação */}
-            <RidesPagination 
-                page={page}
-                setPage={setPage}
-                totalCount={totalCount}
-                pageSize={pageSize}
             />
 
             {/* Modal para Criação/Edição */}

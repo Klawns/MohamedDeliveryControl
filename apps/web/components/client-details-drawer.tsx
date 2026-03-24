@@ -1,41 +1,20 @@
 "use client";
 
+import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, X, Bike, Trash2, Calendar, ChevronRight, FileText, DollarSign, Pencil } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+import { HybridInfiniteList } from "@/components/ui/hybrid-infinite-list";
 
-interface Client {
-    id: string;
-    name: string;
-    userId: string;
-    isPinned: boolean;
-    createdAt: string;
-}
-
-interface Ride {
-    id: string;
-    clientId: string;
-    value: number;
-    notes?: string;
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
-    paymentStatus: 'PENDING' | 'PAID';
-    rideDate?: string;
-    createdAt: string;
-}
-
-interface ClientBalance {
-    totalDebt: number;
-    totalPaid: number;
-    remainingBalance: number;
-}
+import { Client, Ride, ClientBalance } from "@/types/rides";
 
 interface ClientDetailsDrawerProps {
     client: Client | null;
     rides: Ride[];
     balance: ClientBalance | null;
-    ridePage: number;
-    rideTotal: number;
-    rideLimit: number;
+    isLoading: boolean;
+    isFetchingNextPage: boolean;
+    hasNextPage: boolean;
     isSettling: boolean;
     isDeleting: boolean;
     onClose: () => void;
@@ -43,19 +22,20 @@ interface ClientDetailsDrawerProps {
     onCloseDebt: () => void;
     onAddPayment: () => void;
     onGeneratePDF: () => void;
+    onGenerateExcel: () => void;
     onDeleteClient: () => void;
     onEditRide: (ride: Ride) => void;
     onDeleteRide: (ride: Ride) => void;
-    onPageChange: (page: number) => void;
+    fetchNextPage: () => void;
 }
 
 export function ClientDetailsDrawer({
     client,
     rides,
     balance,
-    ridePage,
-    rideTotal,
-    rideLimit,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
     isSettling,
     isDeleting,
     onClose,
@@ -63,11 +43,25 @@ export function ClientDetailsDrawer({
     onCloseDebt,
     onAddPayment,
     onGeneratePDF,
+    onGenerateExcel,
     onDeleteClient,
     onEditRide,
     onDeleteRide,
-    onPageChange,
+    fetchNextPage,
 }: ClientDetailsDrawerProps) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (client) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [client]);
+
     if (!client) return null;
 
     return (
@@ -78,29 +72,30 @@ export function ClientDetailsDrawer({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+                    className="absolute inset-0 bg-overlay-background backdrop-blur-sm"
                 />
                 <motion.div
+                    ref={scrollContainerRef}
                     initial={{ x: "100%" }}
                     animate={{ x: 0 }}
                     exit={{ x: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className="bg-[#020617] border-l border-white/10 w-full max-w-xl relative z-10 shadow-2xl h-screen overflow-y-auto"
+                    className="bg-drawer-background border-l border-border w-full max-w-xl relative z-10 shadow-2xl h-screen overflow-y-auto scrollbar-hide"
                 >
                     <div className="p-8 lg:p-12 space-y-10">
                         <header className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="p-4 bg-blue-600/10 rounded-2xl text-blue-400">
+                                <div className="p-4 bg-icon-info/10 rounded-2xl text-icon-info font-black shadow-inner border border-icon-info/10">
                                     <User size={32} />
                                 </div>
                                 <div>
-                                    <h2 className="text-3xl font-bold text-white tracking-tight">{client.name}</h2>
-                                    <p className="text-slate-500">ID: {client.id.split("-")[0]}</p>
+                                    <h2 className="text-3xl font-bold text-text-primary tracking-tight">{client.name}</h2>
+                                    <p className="text-text-secondary text-sm font-medium">ID: {client.id.split("-")[0]}</p>
                                 </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 hover:bg-white/5 rounded-xl text-slate-500 transition-colors"
+                                className="p-2 hover:bg-secondary/10 rounded-xl text-text-secondary hover:text-text-primary transition-colors active:scale-95 border border-transparent hover:border-border-subtle"
                             >
                                 <X size={24} />
                             </button>
@@ -109,7 +104,7 @@ export function ClientDetailsDrawer({
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={onNewRide}
-                                className="flex flex-col items-center gap-2 p-6 bg-blue-600 hover:bg-blue-500 rounded-[2rem] text-white transition-all group shadow-xl shadow-blue-600/20 active:scale-95"
+                                className="flex flex-col items-center gap-2 p-6 bg-button-primary hover:bg-button-primary-hover rounded-[2rem] text-button-primary-foreground transition-all group shadow-xl shadow-button-shadow active:scale-95"
                             >
                                 <Bike size={24} className="group-hover:scale-110 transition-transform" />
                                 <span className="font-bold">Nova Corrida</span>
@@ -117,48 +112,55 @@ export function ClientDetailsDrawer({
                             <button
                                 onClick={onDeleteClient}
                                 disabled={isDeleting}
-                                className="flex flex-col items-center gap-2 p-6 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-[2rem] transition-all group border border-red-500/10 active:scale-95 disabled:opacity-50"
+                                className="flex flex-col items-center gap-2 p-6 bg-button-destructive-subtle hover:bg-button-destructive text-icon-destructive hover:text-button-destructive-foreground rounded-[2rem] transition-all group border border-border-destructive/10 active:scale-95 disabled:opacity-50 shadow-lg shadow-destructive/5 hover:shadow-destructive/20"
                             >
                                 <Trash2 size={24} className="group-hover:scale-110 transition-transform" />
                                 <span className="font-bold">{isDeleting ? "Excluindo..." : "Excluir Cliente"}</span>
                             </button>
                         </div>
 
-                        <section className="bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 space-y-6">
-                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest text-center">Controle Financeiro</h3>
+                        <section className="bg-background/50 border border-border-subtle rounded-[2.5rem] p-8 space-y-6">
+                            <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest text-center opacity-80">Controle Financeiro</h3>
                             
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                                 <button
                                     onClick={onAddPayment}
-                                    className="flex flex-col items-center gap-3 p-6 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-3xl transition-all group border border-emerald-500/10 active:scale-95 shadow-lg shadow-emerald-600/0 hover:shadow-emerald-600/20"
+                                    className="flex flex-col items-center gap-3 p-6 bg-icon-brand/10 hover:bg-icon-brand text-icon-brand hover:text-white rounded-3xl transition-all group border border-icon-brand/10 active:scale-95 shadow-lg shadow-brand/0 hover:shadow-brand/20"
                                 >
                                     <DollarSign size={24} className="group-hover:scale-110 transition-transform" />
                                     <span className="font-black text-[10px] uppercase">Pagar Parcial</span>
                                 </button>
                                 <button
                                     onClick={onGeneratePDF}
-                                    className="flex flex-col items-center gap-3 p-6 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-3xl transition-all group border border-blue-500/10 active:scale-95 shadow-lg shadow-blue-600/0 hover:shadow-blue-600/20"
+                                    className="flex flex-col items-center gap-3 p-6 bg-icon-info/10 hover:bg-icon-info text-icon-info hover:text-white rounded-3xl transition-all group border border-icon-info/10 active:scale-95 shadow-lg shadow-info/0 hover:shadow-info/20"
                                 >
                                     <FileText size={24} className="group-hover:scale-110 transition-transform" />
-                                    <span className="font-black text-[10px] uppercase">Gerar PDF</span>
+                                    <span className="font-black text-[10px] uppercase">PDF</span>
+                                </button>
+                                <button
+                                    onClick={onGenerateExcel}
+                                    className="flex flex-col items-center gap-3 p-6 bg-icon-success/10 hover:bg-icon-success text-icon-success hover:text-white rounded-3xl transition-all group border border-icon-success/10 active:scale-95 shadow-lg shadow-success/0 hover:shadow-success/20"
+                                >
+                                    <FileText size={24} className="group-hover:scale-110 transition-transform" />
+                                    <span className="font-black text-[10px] uppercase">Planilha</span>
                                 </button>
                             </div>
 
                             {balance && (
-                                <div className="space-y-4 pt-4 border-t border-white/5">
+                                <div className="space-y-4 pt-4 border-t border-border-subtle">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Total em Corridas Pendentes</span>
-                                        <span className="text-white font-black">{formatCurrency(balance.totalDebt)}</span>
+                                        <span className="text-text-secondary font-bold uppercase text-[10px] tracking-wider">Total em Corridas Pendentes</span>
+                                        <span className="text-text-primary font-black">{formatCurrency(balance.totalDebt)}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-emerald-500/80 font-bold uppercase text-[10px] tracking-wider">Total Pago (Parcial)</span>
-                                        <span className="text-emerald-400 font-black">- {formatCurrency(balance.totalPaid)}</span>
+                                        <span className="text-icon-brand/80 font-bold uppercase text-[10px] tracking-wider">Total Pago (Parcial)</span>
+                                        <span className="text-icon-brand font-black">- {formatCurrency(balance.totalPaid)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pt-4 border-t border-emerald-500/20">
-                                        <span className="font-black text-white text-xs uppercase tracking-widest text-slate-400">Saldo devedor</span>
+                                    <div className="flex justify-between items-center pt-4 border-t border-border-strong">
+                                        <span className="font-black text-text-primary text-xs uppercase tracking-widest opacity-60">Saldo devedor</span>
                                         <span className={cn(
                                             "font-black text-2xl tracking-tighter",
-                                            balance.remainingBalance > 0 ? "text-amber-400" : "text-emerald-400"
+                                            balance.remainingBalance > 0 ? "text-icon-warning" : "text-icon-success"
                                         )}>
                                             {formatCurrency(balance.remainingBalance)}
                                         </span>
@@ -168,7 +170,7 @@ export function ClientDetailsDrawer({
                                         <button
                                             onClick={onCloseDebt}
                                             disabled={isSettling}
-                                            className="w-full py-5 bg-white text-slate-950 hover:bg-emerald-400 font-black rounded-2xl transition-all active:scale-95 disabled:opacity-50 mt-2 uppercase tracking-widest text-xs"
+                                            className="w-full py-5 bg-button-primary text-button-primary-foreground hover:bg-button-primary-hover font-black rounded-2xl transition-all active:scale-95 disabled:opacity-50 mt-2 uppercase tracking-widest text-xs shadow-lg shadow-button-shadow"
                                         >
                                             {isSettling ? "PROCESSANDO..." : "QUITAR DÍVIDA TOTAL"}
                                         </button>
@@ -179,88 +181,61 @@ export function ClientDetailsDrawer({
 
                         <section className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-bold text-white">Histórico de Corridas</h3>
-                                <span className="text-xs font-bold text-slate-500 uppercase bg-white/5 px-3 py-1 rounded-full">{rideTotal} totais</span>
+                                <h3 className="text-xl font-bold text-text-primary">Histórico de Corridas</h3>
+                                <span className="text-xs font-bold text-text-secondary uppercase bg-secondary/10 px-3 py-1 rounded-full border border-border-subtle">Recentes</span>
                             </div>
 
-                            <div className="space-y-4">
-                                {rides.length === 0 ? (
-                                    <div className="text-center py-10 border-2 border-dashed border-white/5 rounded-3xl">
-                                        <p className="text-slate-500 text-sm">Nenhuma corrida registrada para este cliente.</p>
+                            <HybridInfiniteList<Ride>
+                                items={rides}
+                                estimateSize={110}
+                                containerRef={scrollContainerRef}
+                                hasMore={hasNextPage}
+                                onLoadMore={fetchNextPage}
+                                isLoading={isLoading && rides.length === 0}
+                                isFetchingNextPage={isFetchingNextPage}
+                                gap={16}
+                                className="pb-10"
+                                renderItem={(ride: Ride) => (
+                                    <div key={ride.id} className="flex items-center gap-4 p-5 bg-card-background/50 rounded-2xl border border-border-subtle group hover:bg-card-background transition-colors shadow-sm hover:shadow-md">
+                                        <div className="p-3 bg-icon-info/10 rounded-xl text-icon-info border border-icon-info/10">
+                                            <Calendar size={20} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-text-primary truncate">ID: {String(ride.id).split("-")[0]}</h4>
+                                            <p className="text-[10px] text-text-secondary mt-0.5 font-medium">{new Date(ride.rideDate || ride.createdAt).toLocaleString()}</p>
+                                            <div className="flex gap-2 mt-2">
+                                                <span className={cn(
+                                                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-full border",
+                                                    ride.paymentStatus === 'PAID' 
+                                                        ? "bg-icon-success/10 text-icon-success border-icon-success/10" 
+                                                        : "bg-icon-warning/10 text-icon-warning border-icon-warning/10"
+                                                )}>
+                                                    {ride.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex items-center gap-3">
+                                            <p className="font-extrabold text-text-primary text-lg tracking-tight">{formatCurrency(ride.value)}</p>
+                                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => onEditRide(ride)}
+                                                    className="p-2 bg-icon-info/10 hover:bg-icon-info text-icon-info hover:text-white rounded-lg transition-all active:scale-90 border border-icon-info/10"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => onDeleteRide(ride)}
+                                                    className="p-2 bg-icon-destructive/10 hover:bg-icon-destructive text-icon-destructive hover:text-white rounded-lg transition-all active:scale-90 border border-icon-destructive/10"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <>
-                                        {rides.map((ride) => (
-                                            <div key={ride.id} className="flex items-center gap-4 p-5 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/10 transition-colors">
-                                                <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-                                                    <Calendar size={20} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="font-semibold text-white truncate">ID: {ride.id.split("-")[0]}</h4>
-                                                    <p className="text-[10px] text-slate-500 mt-0.5">{new Date(ride.rideDate || ride.createdAt).toLocaleString()}</p>
-                                                    <div className="flex gap-2 mt-2">
-                                                        <span className={cn(
-                                                            "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
-                                                            ride.status === 'COMPLETED' ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
-                                                        )}>
-                                                            {ride.status === 'COMPLETED' ? 'OK' : 'Pendente'}
-                                                        </span>
-                                                        <span className={cn(
-                                                            "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
-                                                            ride.paymentStatus === 'PAID' ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                                                        )}>
-                                                            {ride.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right flex items-center gap-3">
-                                                    <p className="font-extrabold text-white text-lg">{formatCurrency(ride.value)}</p>
-                                                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => onEditRide(ride)}
-                                                            className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition-all active:scale-90"
-                                                            title="Editar"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => onDeleteRide(ride)}
-                                                            className="p-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg transition-all active:scale-90"
-                                                            title="Excluir"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {rideTotal > rideLimit && (
-                                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                                    Página <span className="text-white">{ridePage}</span> de <span className="text-white">{Math.ceil(rideTotal / rideLimit)}</span>
-                                                </p>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        disabled={ridePage === 1}
-                                                        onClick={() => onPageChange(ridePage - 1)}
-                                                        className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                                    >
-                                                        Anterior
-                                                    </button>
-                                                    <button
-                                                        disabled={ridePage * rideLimit >= rideTotal}
-                                                        onClick={() => onPageChange(ridePage + 1)}
-                                                        className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                                    >
-                                                        Próxima
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
                                 )}
-                            </div>
+                            />
                         </section>
                     </div>
                 </motion.div>

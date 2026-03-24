@@ -10,7 +10,7 @@ interface ClientSearchProps {
 export function ClientSearch({ value, onChange }: ClientSearchProps) {
     return (
         <div className="relative group max-w-2xl">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-blue-400 transition-colors text-slate-500">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-primary transition-colors text-text-muted">
                 <Search size={20} />
             </div>
             <input
@@ -18,7 +18,7 @@ export function ClientSearch({ value, onChange }: ClientSearchProps) {
                 placeholder="Buscar por nome do cliente..."
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                className="w-full bg-muted/50 border border-border-subtle rounded-2xl py-4 pl-12 pr-4 text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all font-medium"
             />
         </div>
     );

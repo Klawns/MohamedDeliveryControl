@@ -1,48 +1,63 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { clientService, Client } from "../_services/client-service";
+import { useState, useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { clientsService } from "@/services/clients-service";
+import { clientKeys } from "@/lib/query-keys";
+import { Client } from "@/types/rides";
 
 export function useClients() {
-    const [clients, setClients] = useState<Client[]>([]);
     const [search, setSearch] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
-    
-    // Pagination
-    const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
-    const limit = 9;
+    const limit = 16; // Aumentado conforme análise do usuário
+    const filters = useMemo(() => ({ search, limit }), [search, limit]);
 
-    const fetchClients = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const result = await clientService.fetchClients({
-                limit,
-                offset: (page - 1) * limit,
-                search
-            });
-            setClients(result.clients);
-            setTotal(result.total);
-        } catch (err) {
-            console.error("Erro ao buscar clientes", err);
-        } finally {
-            setIsLoading(false);
+    const {
+        data,
+        isLoading,
+        isFetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        refetch
+    } = useInfiniteQuery({
+        queryKey: clientKeys.infinite(filters),
+        queryFn: ({ pageParam, signal }) => clientsService.getClients({
+            ...filters,
+            cursor: pageParam as string | undefined
+        }, signal),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
+        staleTime: 300000, // 5 minutos
+        gcTime: 600000,   // 10 minutos
+    });
+
+    const allClients = data?.pages.flatMap(page => {
+        // Validação temporária durante transição V2
+        if (!Array.isArray(page.data)) {
+            console.error('Formato inválido em page.data', page);
+            return [];
         }
-    }, [page, search]);
-
-    useEffect(() => {
-        fetchClients();
-    }, [fetchClients]);
+        return page.data;
+    }) || [];
+    // Deduplicação robusta por ID (garantindo string e removendo undefined)
+    const clients = Array.from(new Map(
+        allClients
+            .filter(c => c && c.id)
+            .map(c => [String(c.id), c])
+    ).values());
+    const total = data?.pages[0]?.meta?.total || 0;
 
     return {
         clients,
         search,
         setSearch,
         isLoading,
-        page,
-        setPage,
+        isFetching,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
         total,
         limit,
-        fetchClients
+        fetchClients: refetch
     };
 }

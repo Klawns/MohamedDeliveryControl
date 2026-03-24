@@ -37,8 +37,8 @@ export function FinanceFilters({
     setEndDate,
 }: FinanceFiltersProps) {
     return (
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-slate-900/40 p-4 rounded-[2rem] border border-white/5 backdrop-blur-md">
-            <div className="flex bg-slate-950/50 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-muted/40 p-4 rounded-[2rem] border border-border-subtle backdrop-blur-md shadow-sm">
+            <div className="flex bg-card-background p-1.5 rounded-2xl border border-border-subtle w-full md:w-auto overflow-x-auto no-scrollbar shadow-inner">
                 {PERIODS.map((p) => (
                     <button
                         key={p.id}
@@ -47,7 +47,7 @@ export function FinanceFilters({
                             "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
                             selectedPeriod === p.id
                                 ? `${p.color} text-white shadow-lg`
-                                : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                                : "text-text-muted hover:text-text-primary hover:bg-hover-accent"
                         )}
                     >
                         {p.label}
@@ -55,17 +55,17 @@ export function FinanceFilters({
                 ))}
             </div>
 
-            <div className="hidden md:block w-px h-8 bg-white/10 mx-2" />
+            <div className="hidden md:block w-px h-8 bg-border-subtle mx-2" />
 
             <div className="w-full md:w-64">
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                    <SelectTrigger className="h-12 bg-slate-950/50 border-white/5 rounded-xl pl-4 text-white font-bold hover:bg-white/5 transition-all outline-none ring-0 border">
+                    <SelectTrigger className="h-12 bg-card-background border-border-subtle rounded-xl pl-4 text-text-primary font-bold hover:bg-hover-accent transition-all outline-none ring-0 border shadow-sm">
                         <div className="flex items-center gap-3">
-                            <UserIcon size={16} className="text-blue-400" />
+                            <UserIcon size={16} className="text-primary" />
                             <SelectValue placeholder="Cliente" />
                         </div>
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-white/10 text-white rounded-xl">
+                    <SelectContent className="bg-card-background border border-border-subtle text-text-primary rounded-xl shadow-xl">
                         <SelectItem value="all">Todos os Clientes</SelectItem>
                         {clients.map(client => (
                             <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
@@ -86,13 +86,13 @@ export function FinanceFilters({
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="h-12 bg-slate-950/50 border-white/5 rounded-xl text-white font-bold w-full md:w-40"
+                            className="h-12 bg-card-background border-border-subtle rounded-xl text-text-primary font-bold w-full md:w-40 shadow-sm"
                         />
                         <Input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="h-12 bg-slate-950/50 border-white/5 rounded-xl text-white font-bold w-full md:w-40"
+                            className="h-12 bg-card-background border-border-subtle rounded-xl text-text-primary font-bold w-full md:w-40 shadow-sm"
                         />
                     </motion.div>
                 )}

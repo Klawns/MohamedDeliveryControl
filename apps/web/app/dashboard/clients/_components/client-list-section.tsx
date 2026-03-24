@@ -1,16 +1,17 @@
 import { ClientSearch } from "./client-search";
-import { ClientList } from "./client-list";
-import { Client } from "../_services/client-service";
+import { ClientsListContainer } from "./client-list";
+import { Client } from "@/types/rides";
 
 interface ClientListSectionProps {
     clients: Client[];
     isLoading: boolean;
+    isFetching?: boolean;
     search: string;
     onSearchChange: (value: string) => void;
-    page: number;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    onLoadMore: () => void;
     total: number;
-    limit: number;
-    onPageChange: (page: number) => void;
     onEdit: (client: Client) => void;
     onPin: (client: Client) => void;
     onQuickRide: (client: Client) => void;
@@ -20,12 +21,13 @@ interface ClientListSectionProps {
 export function ClientListSection({
     clients,
     isLoading,
+    isFetching,
     search,
     onSearchChange,
-    page,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
     total,
-    limit,
-    onPageChange,
     onEdit,
     onPin,
     onQuickRide,
@@ -35,13 +37,14 @@ export function ClientListSection({
         <>
             <ClientSearch value={search} onChange={onSearchChange} />
 
-            <ClientList 
+            <ClientsListContainer 
                 clients={clients}
                 isLoading={isLoading}
-                page={page}
+                isFetching={isFetching}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onLoadMore={onLoadMore}
                 total={total}
-                limit={limit}
-                onPageChange={onPageChange}
                 onEdit={onEdit}
                 onPin={onPin}
                 onQuickRide={onQuickRide}

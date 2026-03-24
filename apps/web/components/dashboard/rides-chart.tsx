@@ -50,13 +50,13 @@ export function RidesChart({ rides, className }: RidesChartProps) {
     // if (!rides.length) return null;
 
     return (
-        <div className={cn("bg-slate-900/40 rounded-3xl border border-white/5 p-6 space-y-4 flex flex-col", className)}>
+        <div className={cn("bg-card/40 rounded-3xl border border-border p-6 space-y-4 flex flex-col min-h-0", className)}>
             <div className="flex items-center justify-between px-2">
                 <div>
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Desempenho (7 dias)</h3>
-                    <p className="text-xl font-black text-white mt-1">{formatCurrency(totalPeriod)}</p>
+                    <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest">Desempenho (7 dias)</h3>
+                    <p className="text-xl font-black text-foreground mt-1">{formatCurrency(totalPeriod)}</p>
                 </div>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_var(--primary)]" />
             </div>
 
             <div className="h-[280px] w-full mt-4 lg:flex-1 lg:h-auto">
@@ -64,16 +64,16 @@ export function RidesChart({ rides, className }: RidesChartProps) {
                     <AreaChart data={chartData}>
                         <defs>
                             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                         <XAxis
                             dataKey="date"
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                            tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontWeight: 'bold' }}
                             dy={10}
                         />
                         <YAxis hide />
@@ -81,9 +81,9 @@ export function RidesChart({ rides, className }: RidesChartProps) {
                             content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                     return (
-                                        <div className="bg-slate-900 border border-white/10 p-3 rounded-2xl shadow-2xl backdrop-blur-md">
-                                            <p className="text-[10px] font-black text-slate-500 uppercase mb-1">{payload[0].payload.fullDate}</p>
-                                            <p className="text-lg font-black text-emerald-400">{formatCurrency(payload[0].value as number)}</p>
+                                        <div className="bg-card border border-border p-3 rounded-2xl shadow-2xl backdrop-blur-md">
+                                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">{payload[0].payload.fullDate}</p>
+                                            <p className="text-lg font-black text-primary">{formatCurrency(payload[0].value as number)}</p>
                                         </div>
                                     );
                                 }
@@ -93,7 +93,7 @@ export function RidesChart({ rides, className }: RidesChartProps) {
                         <Area
                             type="monotone"
                             dataKey="value"
-                            stroke="#10b981"
+                            stroke="var(--color-primary)"
                             strokeWidth={4}
                             fillOpacity={1}
                             fill="url(#colorValue)"

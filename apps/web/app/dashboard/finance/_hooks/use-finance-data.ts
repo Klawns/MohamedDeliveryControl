@@ -1,52 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useClients } from "@/providers/clients-provider";
-import { financeService } from "../_services/finance-service";
-import { FinanceStats, PeriodId, Period, PERIODS } from "../_types";
+import { ridesService } from "@/services/rides-service";
+import { PeriodId, Period, PERIODS } from "../_types";
 
 export function useFinanceData() {
     const { user } = useAuth();
     const { clients } = useClients();
+    
+    // Filtros
     const [selectedClientId, setSelectedClientId] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<PeriodId>("month");
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
-    const [viewStats, setViewStats] = useState<FinanceStats | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        if (!user) return;
-        if (selectedPeriod === "custom" && (!startDate || !endDate)) return;
-
-        let cancelled = false;
-
-        const loadStats = async () => {
-            setIsLoading(true);
-            try {
-                const stats = await financeService.fetchStats({
-                    period: selectedPeriod,
-                    clientId: selectedClientId,
-                    startDate,
-                    endDate,
-                });
-
-                if (cancelled) return;
-                setViewStats(stats);
-            } catch (err) {
-                console.error("Erro ao carregar dados financeiros", err);
-            } finally {
-                if (!cancelled) setIsLoading(false);
-            }
-        };
-
-        loadStats();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedClientId, selectedPeriod, startDate, endDate, user]);
+    // Query para buscar estatísticas
+    const { 
+        data: viewStats = null, 
+        isLoading,
+        isFetching,
+        refetch
+    } = useQuery({
+        queryKey: ["dashboard-stats", selectedPeriod, selectedClientId, startDate, endDate],
+        queryFn: () => ridesService.getStats({
+            period: selectedPeriod,
+            clientId: selectedClientId !== "all" ? selectedClientId : undefined,
+            start: selectedPeriod === "custom" ? startDate : undefined,
+            end: selectedPeriod === "custom" ? endDate : undefined,
+        }),
+        enabled: !!user && (selectedPeriod !== "custom" || (!!startDate && !!endDate)),
+        staleTime: 60000, // Estatísticas podem ser cacheadas por 1 minuto
+    });
 
     const currentPeriod: Period = PERIODS.find((p) => p.id === selectedPeriod) || PERIODS[0];
 
@@ -63,6 +50,8 @@ export function useFinanceData() {
         setEndDate,
         viewStats,
         isLoading,
+        isFetching,
+        refetch,
         currentPeriod,
     };
 }

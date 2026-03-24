@@ -46,9 +46,6 @@ export function useDashboard() {
 
         // UI & Device
         isMobile: ui.isMobile,
-        activitiesPage: ui.activitiesPage,
-        setActivitiesPage: ui.setActivitiesPage,
-        itemsPerPage: ui.itemsPerPage,
 
         // Ride Actions
         isRideModalOpen: rides.isRideModalOpen,

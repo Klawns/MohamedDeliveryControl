@@ -1,26 +1,46 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useClients } from "@/providers/clients-provider";
+import { useState, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/services/api";
-import { Client } from "../types";
+import { api, apiClient } from "@/services/api";
+import { Client } from "@/types/rides";
 import { CLIENTS_PER_PAGE } from "../constants";
+import { useInfiniteClients } from "./use-infinite-clients";
 
 export function useClientSelection() {
     const { toast } = useToast();
-    const { clients, refetchClients } = useClients();
+    
+    const {
+        data: clientsData,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading: isLoadingClients,
+        isError: isClientsError,
+        error: clientsError,
+        refetch: refetchClients
+    } = useInfiniteClients({
+        limit: CLIENTS_PER_PAGE
+    });
+
+    const clients = useMemo(() => {
+        const allClients = clientsData?.pages.flatMap(page => page.data || []) || [];
+        return Array.from(new Map(
+            allClients
+                .filter(c => c && c.id)
+                .map(c => [String(c.id), c])
+        ).values());
+    }, [clientsData]);
     
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [newClientName, setNewClientName] = useState("");
     const [isCreatingClient, setIsCreatingClient] = useState(false);
-    const [clientPage, setClientPage] = useState(0);
 
     const handleCreateClient = useCallback(async (onCreated?: (client: Client) => void) => {
         if (!newClientName) return;
         setIsCreatingClient(true);
         try {
-            const { data } = await api.post("/clients", { name: newClientName });
+            const data = await apiClient.post<Client>("/clients", { name: newClientName });
             await refetchClients();
             setIsClientModalOpen(false);
             setNewClientName("");
@@ -33,15 +53,15 @@ export function useClientSelection() {
         }
     }, [newClientName, refetchClients, toast]);
 
-    const totalPages = Math.ceil(clients.length / CLIENTS_PER_PAGE);
-    const paginatedClients = clients.slice(clientPage * CLIENTS_PER_PAGE, (clientPage + 1) * CLIENTS_PER_PAGE);
-
     return {
         clients,
-        paginatedClients,
-        clientPage,
-        setClientPage,
-        totalPages,
+        isLoadingClients,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        isClientsError,
+        clientsError,
+        refetchClients,
         isClientModalOpen,
         setIsClientModalOpen,
         newClientName,

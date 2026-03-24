@@ -49,34 +49,34 @@ export function EditRidePresetModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-slate-900 border-white/10 text-white rounded-[2rem] w-[95%] max-w-sm mx-auto p-8">
+            <DialogContent className="bg-card-background border-border-subtle text-text-primary rounded-[2rem] w-[95%] max-w-sm mx-auto p-8 shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold flex items-center gap-2 text-white">
-                        <Pencil size={20} className="text-blue-400" />
+                    <DialogTitle className="text-xl font-bold flex items-center gap-2 text-text-primary">
+                        <Pencil size={20} className="text-primary" />
                         Editar Atalho
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-6 py-6 border-y border-white/5 my-4">
+                <div className="space-y-6 py-6 border-y border-border-subtle my-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Valor Sugerido (R$)</Label>
+                        <Label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Valor Sugerido (R$)</Label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">R$</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold text-sm">R$</span>
                             <input
                                 type="number"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
-                                className="w-full bg-slate-950 border border-white/10 h-12 pl-12 rounded-xl focus:ring-blue-500 font-bold text-white text-sm outline-none transition-all"
+                                className="w-full bg-muted border border-border-subtle h-12 pl-12 rounded-xl focus:ring-primary font-bold text-text-primary text-sm outline-none transition-all"
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Localidade Padrão</Label>
+                        <Label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Localidade Padrão</Label>
                         <Input
                             value={editLocation}
                             onChange={(e) => setEditLocation(e.target.value)}
-                            className="bg-slate-950 border-white/10 h-12 rounded-xl focus:ring-blue-500"
+                            className="bg-muted border-border-subtle h-12 rounded-xl focus:ring-primary text-text-primary font-medium"
                             placeholder="Ex: Centro, Bairro..."
                         />
                     </div>
@@ -86,14 +86,14 @@ export function EditRidePresetModal({
                     <Button
                         variant="ghost"
                         onClick={onClose}
-                        className="flex-1 h-12 rounded-xl text-slate-500 font-bold hover:bg-white/5"
+                        className="flex-1 h-12 rounded-xl text-text-muted font-bold hover:bg-hover-accent"
                     >
                         Cancelar
                     </Button>
                     <Button
                         onClick={handleSave}
                         disabled={isUpdating}
-                        className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-600/20"
+                        className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/20"
                     >
                         {isUpdating ? "Salvando..." : "Salvar Alterações"}
                     </Button>

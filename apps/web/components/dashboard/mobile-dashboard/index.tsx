@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/services/api";
+import { ridesService } from "@/services/rides-service";
 import { useToast } from "@/hooks/use-toast";
 
 // Hooks
@@ -29,11 +29,14 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
     // Data Hook
     const {
         presets,
-        setPresets,
         recentRides,
-        historyPage,
-        setHistoryPage,
         isLoadingHistory,
+        isLoadingStats,
+        hasNextPage: hasNextRides,
+        fetchNextPage: fetchNextRides,
+        isFetchingNextPage: isFetchingNextPageRides,
+        historyError,
+        refetchHistory,
         stats,
         refreshData
     } = useMobileDashboardData(user);
@@ -66,10 +69,13 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
 
     // Client Selection Hook
     const {
-        paginatedClients,
-        clientPage,
-        setClientPage,
-        totalPages,
+        clients,
+        isLoadingClients,
+        hasNextPage: hasNextClients,
+        fetchNextPage: fetchNextClients,
+        isClientsError,
+        clientsError,
+        refetchClients,
         isClientModalOpen,
         setIsClientModalOpen,
         newClientName,
@@ -80,8 +86,8 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
 
     const handleDeletePreset = async (presetId: string) => {
         try {
-            await api.delete(`/settings/ride-presets/${presetId}`);
-            setPresets(prev => prev.filter(p => p.id !== presetId));
+            await ridesService.deleteRidePreset(presetId);
+            refreshData();
             toast({ title: "Preset removido" });
         } catch (err) {
             toast({ title: "Erro ao remover preset", variant: "destructive" });
@@ -95,16 +101,19 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
                 today={stats.today} 
                 week={stats.week} 
                 month={stats.month} 
+                isLoading={isLoadingStats}
             />
 
             {/* 2. Client Selection */}
             <ClientGrid
-                clients={paginatedClients}
+                clients={clients}
                 selectedClient={selectedClient}
                 onSelect={setSelectedClient}
-                page={clientPage}
-                setPage={setClientPage}
-                totalPages={totalPages}
+                isLoading={isLoadingClients}
+                hasMore={hasNextClients}
+                onLoadMore={fetchNextClients}
+                error={clientsError}
+                retry={refetchClients}
                 openCreateModal={() => setIsClientModalOpen(true)}
                 isCreateModalOpen={isClientModalOpen}
                 setIsCreateModalOpen={setIsClientModalOpen}
@@ -122,7 +131,7 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
                     onSelectPreset={(id, val, loc) => {
                         setSelectedPresetId(id);
                         setCustomValue(String(val));
-                        setCustomLocation(loc);
+                        if (loc) setCustomLocation(loc);
                     }}
                     onDeletePreset={handleDeletePreset}
                     customValue={customValue}
@@ -151,8 +160,11 @@ export default function MobileDashboard({ onRideCreated }: MobileDashboardProps)
                 rides={recentRides}
                 onEdit={setRideToEdit}
                 onDelete={setRideToDelete}
-                page={historyPage}
-                setPage={setHistoryPage}
+                isLoading={isLoadingHistory || isFetchingNextPageRides}
+                hasMore={hasNextRides}
+                onLoadMore={fetchNextRides}
+                error={historyError}
+                retry={refetchHistory}
             />
 
             {/* 5. PDF Export */}

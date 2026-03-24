@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/services/api";
+import { api, apiClient } from "@/services/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -53,8 +53,8 @@ export default function LoginPage() {
                                 const password = formData.get("password") as string;
 
                                 try {
-                                    const response = await api.post("/auth/login", { email, password });
-                                    login(response.data.user);
+                                    const data = await apiClient.post<any>("/auth/login", { email, password });
+                                    login(data.user);
                                 } catch (error: any) {
                                     alert(error.response?.data?.message || "Erro ao fazer login");
                                 }
@@ -100,8 +100,10 @@ export default function LoginPage() {
 
                         <button
                             onClick={() => {
-                                const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-                                window.location.href = isProd ? "/api/auth/google" : `${API_URL}/auth/google`;
+                                // Usamos o prefixo /api que é roteado via rewrite do Next.js (next.config.mjs)
+                                // para o backend, garantindo consistência entre dev e prod e evitando 
+                                // problemas de conexão direta com o porto do backend em dev.
+                                window.location.href = "/api/auth/google";
                             }}
                             className="w-full bg-white text-slate-950 hover:bg-slate-100 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 group shadow-xl shadow-white/5"
                         >

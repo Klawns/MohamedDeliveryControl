@@ -43,7 +43,7 @@ export default function TutorialPage() {
     const canContinue = currentStep !== 2 || !!selectedClient;
 
     return (
-        <div className="max-w-2xl mx-auto min-h-[90vh] flex flex-col justify-center py-6 md:py-12 px-4 text-white">
+        <div className="max-w-2xl mx-auto min-h-[90vh] flex flex-col justify-center py-4 md:py-12 px-4 text-white">
             <TutorialProgress 
                 currentStep={currentStep} 
                 totalSteps={steps.length} 
@@ -56,14 +56,14 @@ export default function TutorialPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
                     transition={{ ease: "circOut", duration: 0.5 }}
-                    className="flex-1 space-y-6 md:space-y-10"
+                    className="flex-1 space-y-4 md:space-y-10"
                 >
                     <TutorialHeader 
                         title={currentStepData.title} 
-                        Icon={CurrentIcon} 
+                        Icon={currentStepData.icon} 
                     />
 
-                    <div className="min-h-[300px] md:min-h-[350px]">
+                    <div className="min-h-[250px] md:min-h-[350px]">
                         {currentStepData.content}
                     </div>
                 </motion.div>

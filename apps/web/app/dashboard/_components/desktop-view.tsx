@@ -7,7 +7,7 @@ import { RecentActivities } from "./recent-activities";
 import { QuickActions } from "./quick-actions";
 import { FinanceCard } from "./finance-card";
 import { RidesChart } from "@/components/dashboard/rides-chart";
-import { Ride } from "../rides/types";
+import { Ride } from "@/types/rides";
 
 interface DashboardDesktopViewProps {
     user: User | null;
@@ -20,9 +20,6 @@ interface DashboardDesktopViewProps {
     };
     monthRides: Ride[];
     isLoading: boolean;
-    activitiesPage: number;
-    setActivitiesPage: (page: number) => void;
-    itemsPerPage: number;
     handleEditRide: (ride: Ride) => void;
     setRideToDelete: (ride: Ride) => void;
 }
@@ -38,9 +35,6 @@ export function DashboardDesktopView({
     stats,
     monthRides,
     isLoading,
-    activitiesPage,
-    setActivitiesPage,
-    itemsPerPage,
     handleEditRide,
     setRideToDelete
 }: DashboardDesktopViewProps) {
@@ -59,18 +53,20 @@ export function DashboardDesktopView({
                 isLoading={isLoading} 
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch min-h-0">
                 <RecentActivities 
+                    key={`activities-${period}`}
                     rides={stats.rides}
                     isLoading={isLoading}
-                    activitiesPage={activitiesPage}
-                    setActivitiesPage={setActivitiesPage}
-                    itemsPerPage={itemsPerPage}
                     onEditRide={handleEditRide}
                     onDeleteRide={setRideToDelete}
                 />
 
-                <RidesChart rides={monthRides} className="h-full" />
+                <RidesChart 
+                    key={`chart-${period}`}
+                    rides={monthRides} 
+                    className="h-full" 
+                />
 
                 <QuickActions />
 

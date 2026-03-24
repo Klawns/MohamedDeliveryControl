@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PaymentStatus } from "../../types";
+import { PaymentStatus } from "@/types/rides";
 
 interface StepPaymentStatusProps {
     paymentStatus: PaymentStatus;
@@ -23,26 +23,30 @@ export function StepPaymentStatus({
             className="space-y-8"
         >
             <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
                     <DollarSign size={12} /> Status do Pagamento
                 </label>
-                <div className="grid grid-cols-2 gap-3 p-1 bg-slate-950/50 rounded-[2rem] border border-white/5">
+                <div className="grid grid-cols-2 gap-3 p-1.5 bg-secondary/10 rounded-[2rem] border border-border-subtle shadow-inner">
                     <button
                         type="button"
                         onClick={() => setPaymentStatus('PENDING')}
                         className={cn(
-                            "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest",
-                            paymentStatus === 'PENDING' ? "bg-red-500 text-white shadow-lg shadow-red-500/20 scale-[1.02]" : "text-slate-600 hover:text-slate-400"
+                            "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest active:scale-95",
+                            paymentStatus === 'PENDING' 
+                                ? "bg-warning text-white shadow-lg shadow-warning/20 scale-[1.02]" 
+                                : "text-text-secondary hover:text-text-primary hover:bg-secondary/20"
                         )}
                     >
-                        Não Pago
+                        Pendente
                     </button>
                     <button
                         type="button"
                         onClick={() => setPaymentStatus('PAID')}
                         className={cn(
-                            "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest",
-                            paymentStatus === 'PAID' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.02]" : "text-slate-600 hover:text-slate-400"
+                            "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest active:scale-95",
+                            paymentStatus === 'PAID' 
+                                ? "bg-button-primary text-button-primary-foreground shadow-lg shadow-button-shadow scale-[1.02]" 
+                                : "text-text-secondary hover:text-text-primary hover:bg-secondary/20"
                         )}
                     >
                         Pago

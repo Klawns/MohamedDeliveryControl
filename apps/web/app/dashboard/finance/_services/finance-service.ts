@@ -1,4 +1,4 @@
-import { api } from "@/services/api";
+import { apiClient } from "@/services/api";
 import { FinanceStats, PeriodId } from "../_types";
 
 export interface FetchStatsParams {
@@ -27,7 +27,6 @@ function buildStatsPath(params: FetchStatsParams): string {
 export const financeService = {
     async fetchStats(params: FetchStatsParams): Promise<FinanceStats> {
         const path = buildStatsPath(params);
-        const { data } = await api.get(path);
-        return data;
+        return apiClient.get<FinanceStats>(path);
     },
 };

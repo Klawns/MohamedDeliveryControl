@@ -2,8 +2,7 @@ import { ClientModal } from "@/components/client-modal";
 import { RideModal } from "@/components/ride-modal";
 import { PaymentModal } from "@/components/payment-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
-import { Client } from "../_services/client-service";
-import { Ride } from "../_services/ride-service";
+import { Client, Ride } from "@/types/rides";
 
 interface ClientModalsProps {
     selectedClient: Client | null;

@@ -10,7 +10,7 @@ export function NavigationStep() {
             </div>
             <p className="text-slate-400 leading-relaxed text-sm">
                 No menu lateral (ou no topo em mobile), você navega entre suas listas.
-                <span className="text-emerald-400 font-bold block mt-2">Dica: O Dashboard mostra um resumo rápido do dia assim que você abre o app.</span>
+                <span className="text-primary font-bold block mt-2">Dica: O Dashboard mostra um resumo rápido do dia assim que você abre o app.</span>
             </p>
         </div>
     );
