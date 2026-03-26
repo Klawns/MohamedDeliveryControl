@@ -6,6 +6,7 @@ export interface ClientResponseDto {
   phone: string | null;
   address: string | null;
   isPinned: boolean;
+  balance: number;
   createdAt: Date;
 }
 
@@ -17,6 +18,7 @@ export class ClientMapper {
       phone: entity.phone ?? null,
       address: entity.address ?? null,
       isPinned: !!entity.isPinned,
+      balance: entity.balance ?? 0,
       createdAt: new Date(entity.createdAt),
     };
   }
