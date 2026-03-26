@@ -38,9 +38,6 @@ export function DangerZone() {
             <div className="grid gap-6">
                 {/* Delete All Clients */}
                 <div className="p-8 bg-card-background border border-destructive/10 rounded-[2.5rem] flex flex-col gap-6 transition-all hover:border-destructive/30 group relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Users size={120} className="text-destructive" />
-                    </div>
                     
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8 w-full">
                         <div className="space-y-3 relative z-10 text-center md:text-left">
@@ -90,9 +87,6 @@ export function DangerZone() {
 
                 {/* Delete All Rides */}
                 <div className="p-8 bg-card-background border border-destructive/10 rounded-[2.5rem] flex flex-col gap-6 transition-all hover:border-destructive/30 group relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Trash2 size={120} className="text-destructive" />
-                    </div>
 
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8 w-full">
                         <div className="space-y-3 relative z-10 text-center md:text-left">
