@@ -36,7 +36,7 @@ export function StepExtraInfo({
                 </label>
 
                 {/* Opcionais Card */}
-                <div className="bg-secondary/10 rounded-[2.5rem] border border-border-subtle p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+                <div className="bg-secondary/10 rounded-[2.5rem] border border-border-subtle p-4 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-icon-info/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                     
                     <div className="flex items-center justify-between px-1 relative z-10">
@@ -44,7 +44,7 @@ export function StepExtraInfo({
                             <h4 className="text-text-primary font-display font-extrabold text-sm tracking-tight">Informações Adicionais</h4>
                             <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest mt-0.5 opacity-70">Complemente o registro da corrida</p>
                         </div>
-                        <label className="flex items-center gap-2 px-4 py-2.5 bg-icon-info/10 hover:bg-icon-info/20 border border-icon-info/20 rounded-2xl text-icon-info cursor-pointer transition-all active:scale-95 group shadow-sm">
+                        <label className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-icon-info/10 hover:bg-icon-info/20 border border-icon-info/20 rounded-2xl text-icon-info cursor-pointer transition-all active:scale-95 group shadow-sm">
                             <Camera size={16} className="group-hover:rotate-12 transition-transform" />
                             <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Anexar Foto</span>
                             <span className="text-[10px] font-bold uppercase tracking-widest sm:hidden">Foto</span>
@@ -62,12 +62,12 @@ export function StepExtraInfo({
                         <div className="space-y-2.5">
                             <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Data e Hora da Corrida</label>
                             <div className="relative group">
-                                <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-icon-info/50 group-focus-within:text-icon-info transition-colors" size={18} />
+                                <Calendar className="absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 text-icon-info/50 group-focus-within:text-icon-info transition-colors" size={18} />
                                 <input
                                     type="datetime-local"
                                     value={rideDate}
                                     onChange={(e) => setRideDate(e.target.value)}
-                                    className="w-full bg-secondary/20 border border-border-subtle rounded-2xl py-4 pl-14 pr-5 text-sm text-text-primary focus:outline-none focus:border-icon-info/50 transition-all font-bold [color-scheme:dark] shadow-inner"
+                                    className="w-full bg-secondary/20 border border-border-subtle rounded-2xl py-4 pl-11 sm:pl-14 pr-3 sm:pr-5 text-xs sm:text-sm text-text-primary focus:outline-none focus:border-icon-info/50 transition-all font-bold [color-scheme:dark] shadow-inner"
                                 />
                             </div>
                         </div>
@@ -83,13 +83,13 @@ export function StepExtraInfo({
                                     <div className="space-y-2.5">
                                         <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Observações suplementares</label>
                                         <div className="relative group">
-                                            <FileText className="absolute left-5 top-5 text-icon-info/50 group-focus-within:text-icon-info transition-colors" size={18} />
+                                            <FileText className="absolute left-3.5 sm:left-5 top-5 text-icon-info/50 group-focus-within:text-icon-info transition-colors" size={18} />
                                             <textarea
                                                 value={notes}
                                                 onChange={(e) => setNotes(e.target.value)}
                                                 placeholder="Notas sobre a corrida..."
                                                 rows={2}
-                                                className="w-full bg-secondary/20 border border-border-subtle rounded-2xl py-4 pl-14 pr-5 text-sm text-text-primary focus:outline-none focus:border-icon-info/50 transition-all resize-none placeholder:text-text-secondary/30 font-bold shadow-inner"
+                                                className="w-full bg-secondary/20 border border-border-subtle rounded-2xl py-4 pl-11 sm:pl-14 pr-3 sm:pr-5 text-xs sm:text-sm text-text-primary focus:outline-none focus:border-icon-info/50 transition-all resize-none placeholder:text-text-secondary/30 font-bold shadow-inner"
                                             />
                                         </div>
                                     </div>
