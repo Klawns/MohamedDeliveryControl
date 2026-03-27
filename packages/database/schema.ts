@@ -35,7 +35,7 @@ export const pgUsers = pgTable('users', {
 export const pgRefreshTokens = pgTable('refresh_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   token: pgText('token').notNull().unique(),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   expiresAt: pgTimestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: pgTimestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -45,7 +45,7 @@ export const pgRefreshTokens = pgTable('refresh_tokens', {
 export const pgClients = pgTable('clients', {
   id: uuid('id').primaryKey().defaultRandom(),
   displayId: pgSerial('display_id'),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   name: pgText('name').notNull(),
   phone: pgText('phone'),
   address: pgText('address'),
@@ -58,8 +58,8 @@ export const pgClients = pgTable('clients', {
 
 export const pgBalanceTransactions = pgTable('balance_transactions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  clientId: pgText('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   amount: pgNumeric('amount', { precision: 10, scale: 2 }).notNull(),
   type: transactionTypeEnum('type').notNull(),
   origin: transactionOriginEnum('origin').notNull(),
@@ -73,8 +73,8 @@ export const pgBalanceTransactions = pgTable('balance_transactions', {
 export const pgRides = pgTable('rides', {
   id: uuid('id').primaryKey().defaultRandom(),
   displayId: pgSerial('display_id'),
-  clientId: pgText('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   value: pgNumeric('value', { precision: 10, scale: 2 }).notNull(),
   location: pgText('location'),
   notes: pgText('notes'),
@@ -93,7 +93,7 @@ export const pgRides = pgTable('rides', {
 
 export const pgRidePresets = pgTable('ride_presets', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   label: pgText('label').notNull(),
   value: pgNumeric('value', { precision: 10, scale: 2 }).notNull(),
   location: pgText('location').notNull(),
@@ -104,7 +104,7 @@ export const pgRidePresets = pgTable('ride_presets', {
 
 export const pgSubscriptions = pgTable('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   plan: planEnum('plan').notNull(),
   status: subscriptionStatusEnum('status').notNull(),
   rideCount: pgInteger('ride_count').notNull().default(0),
@@ -135,8 +135,8 @@ export const pgSystemConfigs = pgTable('system_configs', {
 
 export const pgClientPayments = pgTable('client_payments', {
   id: uuid('id').primaryKey().defaultRandom(),
-  clientId: pgText('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
-  userId: pgText('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').notNull().references(() => pgClients.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id, { onDelete: 'cascade' }),
   amount: pgNumeric('amount', { precision: 10, scale: 2 }).notNull(),
   paymentDate: pgTimestamp('payment_date', { withTimezone: true }).notNull().defaultNow(),
   status: paymentUsedStatusEnum('status').notNull().default('UNUSED'),
