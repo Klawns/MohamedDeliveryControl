@@ -10,6 +10,7 @@ import { DrizzleAdminRepository } from './repositories/drizzle-admin.repository'
 import { IAdminRepository } from './interfaces/admin-repository.interface';
 import { DrizzleAdminSettingsRepository } from './repositories/drizzle-admin-settings.repository';
 import { IAdminSettingsRepository } from './interfaces/admin-settings-repository.interface';
+import { AdminBootstrapService } from './admin-bootstrap.service';
 
 import { UsersModule } from '../users/users.module';
 
@@ -18,6 +19,7 @@ import { UsersModule } from '../users/users.module';
   providers: [
     AdminService,
     AdminSettingsService,
+    AdminBootstrapService,
     {
       provide: IAdminRepository,
       useClass: DrizzleAdminRepository,

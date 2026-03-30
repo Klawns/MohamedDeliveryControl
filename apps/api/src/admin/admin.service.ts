@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PAYMENT_PROVIDER } from '../payments/providers/payment-provider.interface';
 import type { IPaymentProvider } from '../payments/providers/payment-provider.interface';
 import { IAdminRepository } from './interfaces/admin-repository.interface';
@@ -15,8 +16,6 @@ import type { CreateUserDto } from '../users/interfaces/users-repository.interfa
 
 @Injectable()
 export class AdminService {
-  private readonly adminEmail = 'admin@mdc.com';
-
   constructor(
     @Inject(IAdminRepository)
     private readonly adminRepository: IAdminRepository,
@@ -26,9 +25,17 @@ export class AdminService {
     private readonly paymentsRepository: IPaymentsRepository,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly usersService: UsersService,
+    private readonly configService: ConfigService,
     @Inject(CACHE_PROVIDER)
     private readonly cache: ICacheProvider,
   ) {}
+
+  private get adminEmail() {
+    return (
+      this.configService.get<string>('ADMIN_BOOTSTRAP_EMAIL')?.trim() ||
+      'admin@mdc.com'
+    );
+  }
 
   async getStats() {
     const usersCount = await this.adminRepository.getUsersCount(

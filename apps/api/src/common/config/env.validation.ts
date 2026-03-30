@@ -13,6 +13,10 @@ const optionalString = z.preprocess(
   normalizeOptionalString,
   z.string().min(1).optional(),
 );
+const optionalEmail = z.preprocess(
+  normalizeOptionalString,
+  z.string().email().optional(),
+);
 
 const optionalInt = z.preprocess((value) => {
   if (value === '' || value === undefined || value === null) {
@@ -74,6 +78,8 @@ const envSchema = z
     GOOGLE_CLIENT_ID: optionalString,
     GOOGLE_CLIENT_SECRET: optionalString,
     GOOGLE_CALLBACK_URL: optionalString,
+    ADMIN_BOOTSTRAP_EMAIL: optionalEmail,
+    ADMIN_BOOTSTRAP_PASSWORD: optionalString,
 
     REDIS_URL: optionalString,
     REDISURL: optionalString,
@@ -201,6 +207,26 @@ const envSchema = z
 
     if (env.GOOGLE_CALLBACK_URL) {
       validateUrl(env.GOOGLE_CALLBACK_URL, 'GOOGLE_CALLBACK_URL');
+    }
+
+    if (
+      (env.ADMIN_BOOTSTRAP_EMAIL && !env.ADMIN_BOOTSTRAP_PASSWORD) ||
+      (!env.ADMIN_BOOTSTRAP_EMAIL && env.ADMIN_BOOTSTRAP_PASSWORD)
+    ) {
+      requireField(
+        'ADMIN_BOOTSTRAP_EMAIL',
+        'ADMIN_BOOTSTRAP_EMAIL e ADMIN_BOOTSTRAP_PASSWORD devem ser definidos juntos.',
+      );
+    }
+
+    if (
+      env.ADMIN_BOOTSTRAP_PASSWORD &&
+      env.ADMIN_BOOTSTRAP_PASSWORD.length < 8
+    ) {
+      requireField(
+        'ADMIN_BOOTSTRAP_PASSWORD',
+        'ADMIN_BOOTSTRAP_PASSWORD deve ter pelo menos 8 caracteres.',
+      );
     }
 
     if (env.DB_PROVIDER === 'sqlite' && !env.DATABASE_URL) {

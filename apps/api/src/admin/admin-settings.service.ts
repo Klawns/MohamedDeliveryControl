@@ -10,12 +10,16 @@ import {
   type PricingPlanUpdate,
 } from './interfaces/admin-settings-repository.interface';
 import type { CreateCouponDto } from './dto/admin.dto';
+import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
+import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
 
 @Injectable()
 export class AdminSettingsService {
   constructor(
     @Inject(IAdminSettingsRepository)
     private readonly adminSettingsRepository: IAdminSettingsRepository,
+    @Inject(CACHE_PROVIDER)
+    private readonly cache: ICacheProvider,
     @Inject(PAYMENT_PROVIDER)
     private provider: IPaymentProvider,
   ) {}
@@ -55,6 +59,7 @@ export class AdminSettingsService {
   }
 
   async seedInitialData() {
-    return this.adminSettingsRepository.seedInitialData();
+    await this.adminSettingsRepository.seedInitialData();
+    await this.cache.del('pricing:all_plans');
   }
 }

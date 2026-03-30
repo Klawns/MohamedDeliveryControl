@@ -35,7 +35,7 @@ export type AdminUpdateUserPlanDto = z.infer<typeof adminUpdateUserPlanSchema>;
 export const updatePricingPlanSchema = z
   .object({
     name: z.string().min(1).optional(),
-    price: z.number().int().positive().optional(),
+    price: z.number().int().min(0).optional(),
     interval: z.string().optional(),
     description: z.string().optional(),
     features: z.string().optional(),

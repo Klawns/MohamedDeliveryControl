@@ -48,6 +48,38 @@ describe('validateEnv', () => {
     ).toThrow('POSTGRES_SSL_REJECT_UNAUTHORIZED');
   });
 
+  it('accepts bootstrap admin credentials when both are present', () => {
+    const env = validateEnv(
+      createValidEnv({
+        ADMIN_BOOTSTRAP_EMAIL: 'admin_rotta@gmail.com',
+        ADMIN_BOOTSTRAP_PASSWORD: 'senha-forte-123',
+      }),
+    );
+
+    expect(env.ADMIN_BOOTSTRAP_EMAIL).toBe('admin_rotta@gmail.com');
+  });
+
+  it('rejects partial bootstrap admin configuration', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          ADMIN_BOOTSTRAP_EMAIL: 'admin_rotta@gmail.com',
+        }),
+      ),
+    ).toThrow('ADMIN_BOOTSTRAP_EMAIL');
+  });
+
+  it('rejects weak bootstrap admin passwords', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          ADMIN_BOOTSTRAP_EMAIL: 'admin_rotta@gmail.com',
+          ADMIN_BOOTSTRAP_PASSWORD: '1234567',
+        }),
+      ),
+    ).toThrow('ADMIN_BOOTSTRAP_PASSWORD');
+  });
+
   it('rejects partial google oauth configuration', () => {
     expect(() =>
       validateEnv(
