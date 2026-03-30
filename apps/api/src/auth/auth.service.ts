@@ -1,163 +1,148 @@
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { RefreshTokenService } from './refresh-token/refresh-token.service';
-import * as bcrypt from 'bcrypt';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { UsersService } from '../users/users.service';
-import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
-import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
-import { IRidesRepository } from '../rides/interfaces/rides-repository.interface';
+import type { User } from '../users/interfaces/users-repository.interface';
+import { AuthProfileService } from './auth-profile.service';
+import type { ProfileDto, RegisterDto, UserResponseDto } from './dto/auth.dto';
+import { RefreshTokenService } from './refresh-token/refresh-token.service';
+import type {
+  AuthenticatedUser,
+  AuthTokensResponse,
+  GoogleUserProfile,
+} from './auth.types';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
-    private refreshTokenService: RefreshTokenService,
-    private subscriptionsService: SubscriptionsService,
-    @Inject(IRidesRepository)
-    private ridesRepository: IRidesRepository,
-    @Inject(CACHE_PROVIDER)
-    private cache: ICacheProvider,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+    private readonly refreshTokenService: RefreshTokenService,
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly authProfileService: AuthProfileService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(
+    email: string,
+    pass: string,
+  ): Promise<AuthenticatedUser | null> {
     const user = await this.usersService.findByEmail(email);
+
     if (user && (await bcrypt.compare(pass, user.password))) {
       const { password, ...result } = user;
+      void password;
       return result;
     }
+
     return null;
   }
 
-  private async buildUserPayload(user: any) {
-    const subscription =
-      user.role !== 'admin'
-        ? await this.subscriptionsService.findByUserId(user.id)
-        : null;
-
-    const rideCount = subscription?.rideCount || 0;
-
-    const now = new Date();
-    const isExpired = subscription?.validUntil
-      ? new Date(subscription.validUntil) < now
-      : false;
-
+  private buildUserPayload(user: Pick<User, 'id' | 'role'>) {
     return {
-      email: user.email,
       sub: user.id,
-      name: user.name,
       role: user.role,
-      taxId: user.taxId,
-      cellphone: user.cellphone,
-      hasSeenTutorial: user.hasSeenTutorial,
-      subscription: subscription
-        ? {
-            plan: subscription.plan,
-            status: isExpired ? 'expired' : subscription.status,
-            validUntil: subscription.validUntil,
-            rideCount,
-          }
-        : null,
     };
   }
 
-  async login(user: any) {
-    const payload = await this.buildUserPayload(user);
+  async login(user: Pick<User, 'id' | 'role'>): Promise<AuthTokensResponse> {
+    const payload = this.buildUserPayload(user);
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = await this.refreshTokenService.create(user.id);
+    const profile = await this.authProfileService.getRequiredProfile(user.id);
 
-    console.log(
-      `[AuthService] Login realizado com sucesso para: ${user.email}. Role: ${user.role}`,
+    this.logger.log(
+      `Login realizado com sucesso para usuário ID: ${user.id}. Role: ${user.role}`,
     );
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        taxId: user.taxId,
-        cellphone: user.cellphone,
-        subscription: payload.subscription,
-      },
+      user: profile,
     };
   }
 
-  async refresh(oldToken: string) {
-    const refreshTokenData = await this.refreshTokenService.validate(oldToken);
+  async refresh(oldToken: string): Promise<AuthTokensResponse> {
+    const refreshTokenData =
+      await this.refreshTokenService.validateAndRevoke(oldToken);
     const user = await this.usersService.findById(refreshTokenData.userId);
 
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    const payload = await this.buildUserPayload(user);
-
+    const payload = this.buildUserPayload(user);
     const accessToken = this.jwtService.sign(payload);
-    const newRefreshToken = await this.refreshTokenService.create(user.id);
-
-    console.log(
-      `[AuthService] Refresh realizado com sucesso para: ${user.email}. Role: ${user.role}`,
+    const newRefreshToken = await this.refreshTokenService.create(
+      user.id,
+      refreshTokenData.familyId,
     );
 
-    // Rotação: revogar o token antigo imediatamente após o uso
-    await this.refreshTokenService.revoke(oldToken);
+    this.logger.log(
+      `Refresh realizado com sucesso para usuário ID: ${user.id}. Session: ${refreshTokenData.familyId}`,
+    );
 
     return {
       access_token: accessToken,
       refresh_token: newRefreshToken,
+      user: await this.authProfileService.getRequiredProfile(user.id),
     };
   }
 
-  async register(data: any) {
+  async register(data: RegisterDto): Promise<AuthTokensResponse> {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const user = await this.usersService.create({
       ...data,
       password: hashedPassword,
     });
+
     await this.subscriptionsService.updateOrCreate(user.id, 'starter');
+
     return this.login(user);
   }
 
-  async validateGoogleUser(profile: any) {
-    console.log(
-      '[AuthService] Google Profile recebido:',
-      JSON.stringify(profile),
-    );
+  async validateGoogleUser(
+    profile: GoogleUserProfile,
+    cellphone?: string,
+  ): Promise<AuthTokensResponse> {
+    this.logger.debug('Google Profile recebido', { profile });
+
     const fullName = [profile.firstName, profile.lastName]
       .filter(Boolean)
       .join(' ');
     let user = await this.usersService.findByEmail(profile.email);
 
     if (!user) {
-      console.log(
-        '[AuthService] Criando novo usuário via Google:',
-        profile.email,
-        'Nome:',
-        fullName,
-      );
+      this.logger.log('Criando novo usuário via Google');
       user = await this.usersService.create({
         email: profile.email,
         name: fullName,
-        password: '', // Sem senha para usuários social
+        password: '',
+        ...(cellphone ? { cellphone } : {}),
       });
       await this.subscriptionsService.updateOrCreate(user.id, 'starter');
     } else {
-      console.log(
-        '[AuthService] Usuário Google encontrado no banco:',
-        user.email,
-        'ID:',
-        user.id,
-        'Nome atual:',
-        user.name,
-      );
+      this.logger.log('Usuário Google encontrado e autenticado');
+
+      const updates: Partial<User> = {};
+
       if (user.name && user.name.endsWith(' undefined')) {
-        const cleanedName = user.name.replace(' undefined', '').trim();
-        await this.usersService.update(user.id, { name: cleanedName });
-        user.name = cleanedName;
+        updates.name = user.name.replace(' undefined', '').trim();
+      }
+
+      if (cellphone && !user.cellphone) {
+        updates.cellphone = cellphone;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await this.usersService.update(user.id, updates);
+        user = {
+          ...user,
+          ...updates,
+        };
       }
     }
 
@@ -168,21 +153,31 @@ export class AuthService {
     return this.subscriptionsService.findByUserId(userId);
   }
 
-  async updateProfile(userId: string, data: any) {
+  async updateProfile(
+    userId: string,
+    data: ProfileDto,
+  ): Promise<AuthTokensResponse> {
     await this.usersService.update(userId, data);
-    await this.cache.del(`profile:${userId}`); // Invalida o cache
+    await this.authProfileService.invalidateProfile(userId);
+
     const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado.');
+    }
+
     return this.login(user);
   }
 
   async tutorialSeen(userId: string) {
     await this.usersService.update(userId, { hasSeenTutorial: true });
-    await this.cache.del(`profile:${userId}`); // Invalida o cache do perfil
+    await this.authProfileService.invalidateProfile(userId);
     return { success: true };
   }
 
   async changePassword(userId: string, currentPass: string, newPass: string) {
     const user = await this.usersService.findById(userId);
+
     if (!user || !(await bcrypt.compare(currentPass, user.password))) {
       throw new UnauthorizedException('Senha atual incorreta');
     }
@@ -195,31 +190,19 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     if (refreshToken) {
-      await this.refreshTokenService.revoke(refreshToken);
+      try {
+        await this.refreshTokenService.revoke(refreshToken);
+      } catch (error: unknown) {
+        this.logger.error(
+          `Falha ao revogar token no logout: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+        );
+      }
     }
+
     return { message: 'Logout realizado' };
   }
 
-  async getLatestProfile(userId: string) {
-    const cacheKey = `profile:${userId}`;
-
-    // 1. Tenta carregar do Redis
-    const cachedProfile = await this.cache.get<any>(cacheKey);
-    if (cachedProfile) {
-      return cachedProfile;
-    }
-
-    // 2. Busca do Banco (Turso)
-    const user = await this.usersService.findById(userId);
-    if (!user) return null;
-
-    const finalProfile = await this.buildUserPayload(user);
-    // Adiciona o id ao perfil retornado, pois o buildUserPayload o nomeia como "sub" no JWT
-    Object.assign(finalProfile, { id: user.id });
-
-    // 3. Guarda e expira naturalmente em 10 minutos (Dá espaço para não quebrar a sincronização)
-    await this.cache.set(cacheKey, finalProfile, 600);
-
-    return finalProfile;
+  async getLatestProfile(userId: string): Promise<UserResponseDto | null> {
+    return this.authProfileService.getLatestProfile(userId);
   }
 }

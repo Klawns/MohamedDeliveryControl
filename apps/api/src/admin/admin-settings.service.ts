@@ -1,7 +1,15 @@
-import { Injectable, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PAYMENT_PROVIDER } from '../payments/providers/payment-provider.interface';
 import type { IPaymentProvider } from '../payments/providers/payment-provider.interface';
-import { IAdminSettingsRepository } from './interfaces/admin-settings-repository.interface';
+import {
+  IAdminSettingsRepository,
+  type PricingPlanUpdate,
+} from './interfaces/admin-settings-repository.interface';
+import type { CreateCouponDto } from './dto/admin.dto';
 
 @Injectable()
 export class AdminSettingsService {
@@ -12,16 +20,20 @@ export class AdminSettingsService {
     private provider: IPaymentProvider,
   ) {}
 
-  async listCoupons() {
+  async listCoupons(): Promise<unknown[]> {
     if (!this.provider.listCoupons) {
-      throw new Error('Provedor de pagamento não suporta listagem de cupons');
+      throw new ServiceUnavailableException(
+        'Promo codes are unavailable while the payment provider is disabled or unsupported.',
+      );
     }
     return this.provider.listCoupons();
   }
 
-  async createCoupon(data: any) {
+  async createCoupon(data: CreateCouponDto): Promise<unknown> {
     if (!this.provider.createCoupon) {
-      throw new Error('Provedor de pagamento não suporta criação de cupons');
+      throw new ServiceUnavailableException(
+        'Promo codes are unavailable while the payment provider is disabled or unsupported.',
+      );
     }
     return this.provider.createCoupon(data);
   }
@@ -30,7 +42,7 @@ export class AdminSettingsService {
     return this.adminSettingsRepository.getPlans();
   }
 
-  async updatePlan(id: string, data: any) {
+  async updatePlan(id: string, data: PricingPlanUpdate): Promise<void> {
     return this.adminSettingsRepository.updatePlan(id, data);
   }
 

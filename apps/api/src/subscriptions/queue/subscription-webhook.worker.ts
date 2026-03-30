@@ -23,7 +23,7 @@ export class SubscriptionWebhookWorker extends WorkerHost {
   }
 
   async process(job: Job<WebhookJobData>): Promise<void> {
-    const { userId, plan, eventId } = job.data;
+    const { userId, plan } = job.data;
 
     this.logger.log(
       `Processando Worker de Assinatura - Job ID: ${job.id} | Usuário: ${userId} | Plano: ${plan}`,
@@ -42,8 +42,10 @@ export class SubscriptionWebhookWorker extends WorkerHost {
       // Invalidate the cache so the frontend /auth/me polling gets the new plan immediately
       await this.cache.del(`profile:${userId}`);
       this.logger.log(`Assinatura Processada com Sucesso - Job ID: ${job.id}`);
-    } catch (error) {
-      this.logger.error(`Falha ao processar job de assinatura ${job.id}: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Falha ao processar job de assinatura ${job.id}: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      );
       throw error;
     }
   }

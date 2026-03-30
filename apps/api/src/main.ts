@@ -1,22 +1,55 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { Request, Response, NextFunction } from 'express';
+import { Logger } from 'nestjs-pino';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+function getTrustProxySetting(rawValue?: string) {
+  const raw = rawValue?.trim();
+
+  if (!raw || raw === 'false' || raw === '0') {
+    return false;
+  }
+
+  if (raw === 'true') {
+    return true;
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return Number(raw);
+  }
+
+  return raw;
+}
+
+interface ExpressAppLike {
+  set(name: string, value: string | number | boolean): void;
+}
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    bufferLogs: true,
+  });
+  const configService = app.get(ConfigService);
 
-  // Registro de Interceptor e Filtro Globais
+  app.use(helmet());
+
+  const logger = app.get(Logger);
+  app.useLogger(logger);
   app.useGlobalInterceptors(new ResponseInterceptor());
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const httpApp = app
+    .getHttpAdapter()
+    .getInstance() as unknown as ExpressAppLike;
+  httpApp.set(
+    'trust proxy',
+    getTrustProxySetting(configService.get<string>('TRUST_PROXY')),
+  );
 
-  // Habilita confiança no proxy (essencial para Railway/Render/Vercel lerem HTTPS e IPs corretamente)
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
-
-  const frontendUrl = process.env.FRONTEND_URL;
-  if (!frontendUrl && process.env.NODE_ENV === 'production') {
+  const frontendUrl = configService.get<string>('FRONTEND_URL');
+  if (!frontendUrl && configService.get<string>('NODE_ENV') === 'production') {
     throw new Error('FRONTEND_URL must be defined');
   }
 
@@ -25,38 +58,38 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      const allowed = [frontendUrl, 'http://localhost:3000']
+      const envUrls = (frontendUrl || '').split(',').map((url) => url.trim());
+      const allowed = [
+        ...envUrls,
+        'http://localhost:3000',
+        'http://localhost:5173',
+      ]
         .filter(Boolean)
-        .map((u) => u!.trim().replace(/\/$/, ''));
-      if (!origin || allowed.includes(origin.trim().replace(/\/$/, ''))) {
+        .map((url) => url.replace(/\/$/, ''));
+
+      const currentOrigin = origin?.replace(/\/$/, '');
+
+      if (!origin || allowed.includes(currentOrigin!)) {
         callback(null, true);
       } else {
-        console.error(
+        logger.error(
           `[CORS] Bloqueado: ${origin}. Permitidos: ${allowed.join(', ')}`,
         );
         callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders:
+      'Content-Type, Accept, Authorization, X-Requested-With, x-session-mode',
   });
 
   app.use(cookieParser());
 
-  // Middleware de diagnóstico
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const isProd = process.env.NODE_ENV === 'production';
-    const hasAccessToken = !!(
-      req.cookies['access_token'] || req.cookies['admin_access_token']
-    );
-    console.log(
-      `[Request] ${req.method} ${req.url} - Origin: ${req.get('origin')} - Has Cookies: ${hasAccessToken}`,
-    );
-    next();
-  });
-
-  const port = process.env.PORT || 3000;
-  console.log(`[Bootstrap] Configured PORT: ${process.env.PORT} - Using: ${port}`);
+  const port = configService.get<number>('PORT') || 3000;
+  logger.log(`[Bootstrap] Configured PORT: ${port}`);
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
-bootstrap();
+
+void bootstrap();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-redundant-type-constituents -- Response normalization handles heterogeneous controller payloads at runtime. */
 import {
   Injectable,
   NestInterceptor,
@@ -15,7 +16,7 @@ export interface Response<T> {
 /**
  * Interceptor global de resposta para padronização V2.
  * Garante o formato { data: T, meta: { ... } }.
- * 
+ *
  * Lógica de Normalização:
  * 1. Identifica o conteúdo real (unwrap de chaves 'clients', 'rides', etc).
  * 2. Envelopa no padrão { data, meta }.
@@ -36,20 +37,28 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
 
         // 1. Extração de Metadados e Dados (Unwrapping de objetos Drizzle/Legados)
         if (typeof result === 'object' && !Array.isArray(result)) {
-           // Se o resultado já veio no envelope { data, meta }
-           if ('data' in result) {
-               finalData = result.data;
-               finalMeta = result.meta || {};
-           }
+          // Se o resultado já veio no envelope { data, meta }
+          if ('data' in result) {
+            finalData = result.data;
+            finalMeta = result.meta || {};
+          }
 
-           // Se ainda houver aninhamento interno (ex: data: { clients: [...] } ou result: { clients: [...] })
-           if (finalData && typeof finalData === 'object' && !Array.isArray(finalData)) {
-               const { clients, rides, items, ...rest } = finalData as any;
-               if (clients !== undefined || rides !== undefined || items !== undefined) {
-                   finalData = clients || rides || items;
-                   finalMeta = { ...finalMeta, ...rest };
-               }
-           }
+          // Se ainda houver aninhamento interno (ex: data: { clients: [...] } ou result: { clients: [...] })
+          if (
+            finalData &&
+            typeof finalData === 'object' &&
+            !Array.isArray(finalData)
+          ) {
+            const { clients, rides, items, ...rest } = finalData;
+            if (
+              clients !== undefined ||
+              rides !== undefined ||
+              items !== undefined
+            ) {
+              finalData = clients || rides || items;
+              finalMeta = { ...finalMeta, ...rest };
+            }
+          }
         }
 
         // 2. Formatação Final V2

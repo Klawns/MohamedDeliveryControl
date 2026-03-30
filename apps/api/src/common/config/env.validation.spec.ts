@@ -1,0 +1,60 @@
+import { validateEnv } from './env.validation';
+
+const createValidEnv = (overrides: Record<string, unknown> = {}) => ({
+  NODE_ENV: 'development',
+  PORT: '3000',
+  FRONTEND_URL: 'http://localhost:3000',
+  DB_PROVIDER: 'sqlite',
+  DATABASE_URL: 'file:local.db',
+  JWT_SECRET: 'super-secret-token',
+  STORAGE_TYPE: 'R2',
+  R2_ACCOUNT_ID: 'account-id',
+  R2_ACCESS_KEY_ID: 'access-key',
+  R2_SECRET_ACCESS_KEY: 'secret-key',
+  R2_BUCKET: 'bucket-name',
+  R2_PUBLIC_URL: 'https://cdn.example.com',
+  ...overrides,
+});
+
+describe('validateEnv', () => {
+  it('accepts a valid sqlite configuration', () => {
+    const env = validateEnv(createValidEnv());
+
+    expect(env.DB_PROVIDER).toBe('sqlite');
+    expect(env.PORT).toBe(3000);
+  });
+
+  it('rejects production without frontend url', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          NODE_ENV: 'production',
+          FRONTEND_URL: '',
+        }),
+      ),
+    ).toThrow('FRONTEND_URL');
+  });
+
+  it('rejects insecure postgres TLS in production', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          NODE_ENV: 'production',
+          DB_PROVIDER: 'postgres',
+          DATABASE_URL: 'postgresql://user:pass@db.example.com:5432/app',
+          POSTGRES_SSL_REJECT_UNAUTHORIZED: 'false',
+        }),
+      ),
+    ).toThrow('POSTGRES_SSL_REJECT_UNAUTHORIZED');
+  });
+
+  it('rejects partial google oauth configuration', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          GOOGLE_CLIENT_ID: 'client-id',
+        }),
+      ),
+    ).toThrow('GOOGLE_CLIENT_ID');
+  });
+});

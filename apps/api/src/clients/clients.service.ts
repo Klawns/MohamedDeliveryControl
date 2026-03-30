@@ -1,4 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   IClientsRepository,
@@ -7,6 +12,9 @@ import {
 import { IClientPaymentsRepository } from './interfaces/client-payments-repository.interface';
 import { IRidesRepository } from '../rides/interfaces/rides-repository.interface';
 import { IBalanceTransactionsRepository } from './interfaces/balance-transactions-repository.interface';
+import { DRIZZLE } from '../database/database.provider';
+import type { DrizzleClient } from '../database/database.provider';
+import { UserDashboardCacheService } from '../cache/user-dashboard-cache.service';
 
 @Injectable()
 export class ClientsService {
@@ -19,7 +27,23 @@ export class ClientsService {
     private readonly ridesRepository: IRidesRepository,
     @Inject(IBalanceTransactionsRepository)
     private readonly balanceTransactionsRepository: IBalanceTransactionsRepository,
+    @Inject(DRIZZLE) private readonly drizzle: DrizzleClient,
+    private readonly userDashboardCacheService: UserDashboardCacheService,
   ) {}
+
+  private async getClientOrThrow(
+    userId: string,
+    clientId: string,
+    executor?: unknown,
+  ) {
+    const client = await this.clientsRepository.findOne(userId, clientId, executor);
+
+    if (!client) {
+      throw new NotFoundException('Cliente não encontrado.');
+    }
+
+    return client;
+  }
 
   async findAll(
     userId: string,
@@ -30,50 +54,71 @@ export class ClientsService {
     return this.clientsRepository.findAll(userId, limit, cursor, search);
   }
 
-  async create(userId: string, data: { name: string }) {
-    return this.clientsRepository.create({
+  async create(
+    userId: string,
+    data: { name: string; phone?: string | null; address?: string | null },
+  ) {
+    const client = await this.clientsRepository.create({
       userId,
       name: data.name,
+      phone: data.phone ?? null,
+      address: data.address ?? null,
     } as CreateClientDto);
+
+    await this.userDashboardCacheService.invalidate(userId);
+    return client;
   }
 
   async findOne(userId: string, id: string) {
-    return this.clientsRepository.findOne(userId, id);
+    return this.getClientOrThrow(userId, id);
   }
 
   async update(userId: string, id: string, data: Partial<CreateClientDto>) {
-    return this.clientsRepository.update(userId, id, data);
+    await this.getClientOrThrow(userId, id);
+    const updatedClient = await this.clientsRepository.update(userId, id, data);
+
+    if (!updatedClient) {
+      throw new NotFoundException('Cliente não encontrado.');
+    }
+
+    await this.userDashboardCacheService.invalidate(userId);
+    return updatedClient;
   }
 
   async delete(userId: string, id: string) {
-    return this.clientsRepository.delete(userId, id);
+    await this.getClientOrThrow(userId, id);
+    await this.clientsRepository.delete(userId, id);
+    await this.userDashboardCacheService.invalidate(userId);
+    return { success: true };
   }
 
   async deleteAll(userId: string) {
-    return this.clientsRepository.deleteAll(userId);
+    await this.clientsRepository.deleteAll(userId);
+    await this.userDashboardCacheService.invalidate(userId);
+    return { success: true };
   }
 
   async getClientBalance(userId: string, clientId: string) {
-    // 1. Get total pending debt and count from DB
-    const { totalDebt, pendingRidesCount } = await this.ridesRepository.getPendingDebtStats(clientId, userId);
+    const { totalDebt, pendingRidesCount } =
+      await this.ridesRepository.getPendingDebtStats(clientId, userId);
 
-    // 2. Get total unused payments and count from DB
-    const { totalPaid, unusedPaymentsCount } = await this.clientPaymentsRepository.getUnusedPaymentsStats(clientId, userId);
+    const { totalPaid, unusedPaymentsCount } =
+      await this.clientPaymentsRepository.getUnusedPaymentsStats(
+        clientId,
+        userId,
+      );
 
-    // 3. Get persisted balance from client
-    const client = await this.clientsRepository.findOne(userId, clientId);
-    const persistedBalance = client?.balance || 0;
-
-    // 4. Calculate remaining balance (debt to be paid)
-    // If totalPaid > totalDebt, remainingBalance is 0
+    const client = await this.getClientOrThrow(userId, clientId);
+    const persistedBalance = client.balance || 0;
     const remainingBalance = Math.max(0, totalDebt - totalPaid);
 
     return {
       totalDebt,
       totalPaid,
       remainingBalance,
-      // Crédito disponível real (Saldo persistido + sobra de pagamentos não usados)
-      clientBalance: Number(persistedBalance) + Math.max(0, Number(totalPaid) - Number(totalDebt)),
+      clientBalance:
+        Number(persistedBalance) +
+        Math.max(0, Number(totalPaid) - Number(totalDebt)),
       pendingRides: pendingRidesCount,
       unusedPayments: unusedPaymentsCount,
     };
@@ -85,6 +130,8 @@ export class ClientsService {
     amount: number,
     notes?: string,
   ) {
+    await this.getClientOrThrow(userId, clientId);
+
     const result = await this.clientPaymentsRepository.create({
       id: randomUUID(),
       clientId,
@@ -93,54 +140,89 @@ export class ClientsService {
       notes: notes || 'Pagamento parcial',
     });
 
-    // 2. Tentar conciliação automática se o total pago agora cobrir a dívida
-    const { totalDebt } = await this.ridesRepository.getPendingDebtStats(clientId, userId);
-    const { totalPaid } = await this.clientPaymentsRepository.getUnusedPaymentsStats(clientId, userId);
+    const { totalDebt } = await this.ridesRepository.getPendingDebtStats(
+      clientId,
+      userId,
+    );
+    const { totalPaid } =
+      await this.clientPaymentsRepository.getUnusedPaymentsStats(
+        clientId,
+        userId,
+      );
 
     if (Number(totalPaid) >= Number(totalDebt)) {
-      // Reconciliar automaticamente as dívidas com os pagamentos
-      // Isso consolida o saldo mesmo se a dívida for zero (pré-pagamento)
       await this.closeDebt(userId, clientId);
+      return result;
     }
 
+    await this.userDashboardCacheService.invalidate(userId);
     return result;
   }
 
   async closeDebt(userId: string, clientId: string) {
-    // 1. Get stats before closing to calculate potential overflow
-    const { totalDebt } = await this.ridesRepository.getPendingDebtStats(clientId, userId);
-    const { totalPaid } = await this.clientPaymentsRepository.getUnusedPaymentsStats(clientId, userId);
-
-    // 2. Mark all pending as PAID in DB directly
-    const settledCount = await this.ridesRepository.markAllAsPaidForClient(clientId, userId);
-
-    // 3. Mark all unused partial payments as USED
-    await this.clientPaymentsRepository.markAsUsed(clientId, userId);
-
-    // 4. Handle overflow (Credit generation)
-    const overflow = totalPaid - totalDebt;
-    if (overflow > 0) {
-      const client = await this.clientsRepository.findOne(userId, clientId);
-      if (client) {
-        // Update client balance
-        await this.clientsRepository.update(userId, clientId, {
-          balance: Number(client.balance || 0) + overflow,
-        });
-
-        // Record transaction
-        await this.balanceTransactionsRepository.create({
-          id: randomUUID(),
+    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
+      const client = await this.getClientOrThrow(userId, clientId, tx);
+      const { totalDebt } = await this.ridesRepository.getPendingDebtStats(
+        clientId,
+        userId,
+        tx,
+      );
+      const { totalPaid } =
+        await this.clientPaymentsRepository.getUnusedPaymentsStats(
           clientId,
           userId,
-          amount: overflow,
-          type: 'CREDIT',
-          origin: 'PAYMENT_OVERFLOW',
-          description: `Crédito gerado por pagamento excedente ao quitar dívida.`,
-        });
-      }
-    }
+          tx,
+        );
 
-    return { success: true, settledRides: settledCount, generatedBalance: overflow > 0 ? overflow : 0 };
+      if (Number(totalPaid) < Number(totalDebt)) {
+        throw new BadRequestException(
+          'Pagamento insuficiente para quitar a dívida.',
+        );
+      }
+
+      const settledCount = await this.ridesRepository.markAllAsPaidForClient(
+        clientId,
+        userId,
+        tx,
+      );
+
+      await this.clientPaymentsRepository.markAsUsed(clientId, userId, tx);
+
+      const overflow = Number(totalPaid) - Number(totalDebt);
+      if (overflow > 0) {
+        await this.clientsRepository.update(
+          userId,
+          clientId,
+          {
+            balance: Number(client.balance || 0) + overflow,
+          },
+          tx,
+        );
+
+        await this.balanceTransactionsRepository.create(
+          {
+            id: randomUUID(),
+            clientId,
+            userId,
+            amount: overflow,
+            type: 'CREDIT',
+            origin: 'PAYMENT_OVERFLOW',
+            description:
+              'Crédito gerado por pagamento excedente ao quitar dívida.',
+          },
+          tx,
+        );
+      }
+
+      return {
+        success: true,
+        settledRides: settledCount,
+        generatedBalance: overflow > 0 ? overflow : 0,
+      };
+    });
+
+    await this.userDashboardCacheService.invalidate(userId);
+    return result;
   }
 
   async getClientPayments(
@@ -148,10 +230,7 @@ export class ClientsService {
     clientId: string,
     status?: 'UNUSED' | 'USED',
   ) {
+    await this.getClientOrThrow(userId, clientId);
     return this.clientPaymentsRepository.findByClient(clientId, userId, status);
-  }
-
-  async getBalanceTransactions(userId: string, clientId: string) {
-    return this.balanceTransactionsRepository.findByClient(clientId, userId);
   }
 }

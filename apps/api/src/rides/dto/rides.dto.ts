@@ -6,7 +6,10 @@ export const createRideSchema = z.object({
   location: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   photo: z.string().optional().nullable(),
-  status: z.enum(['PENDING', 'COMPLETED', 'CANCELLED']).optional().default('COMPLETED'),
+  status: z
+    .enum(['PENDING', 'COMPLETED', 'CANCELLED'])
+    .optional()
+    .default('COMPLETED'),
   paymentStatus: z.enum(['PENDING', 'PAID']).optional().default('PAID'),
   rideDate: z.string().optional().nullable(),
   useBalance: z.boolean().optional().default(false),

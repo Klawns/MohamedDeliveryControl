@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/unbound-method -- Jest assertions intentionally reference mock methods directly. */
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
-import { IUsersRepository } from './interfaces/users-repository.interface';
+import {
+  IUsersRepository,
+  type IUsersRepository as IUsersRepositoryContract,
+} from './interfaces/users-repository.interface';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let repoMock: any;
+  let repoMock: jest.Mocked<IUsersRepositoryContract>;
 
   beforeEach(async () => {
     repoMock = {
@@ -17,8 +21,9 @@ describe('UsersService', () => {
       create: jest
         .fn()
         .mockResolvedValue({ id: '1', email: 'test@example.com' }),
+      findAll: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({

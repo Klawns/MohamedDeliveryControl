@@ -1,46 +1,64 @@
-import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Ride service aggregates runtime-shaped repository results and normalized DTO payloads. */
+import {
+  Injectable,
+  Inject,
+  ForbiddenException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { IRidesRepository } from './interfaces/rides-repository.interface';
-import { IClientsRepository } from '../clients/interfaces/clients-repository.interface';
-import { IBalanceTransactionsRepository } from '../clients/interfaces/balance-transactions-repository.interface';
-import { IClientPaymentsRepository } from '../clients/interfaces/client-payments-repository.interface';
-import { AppLogger } from '../common/utils/logger.singleton';
 import { getDatesFromPeriod } from '../common/utils/date.util';
 import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
 import { RideMapper } from './mappers/ride.mapper';
-import type { CreateRideDto, UpdateRideDto, UpdateRideStatusDto, GetStatsDto } from './dto/rides.dto';
+import { DRIZZLE } from '../database/database.provider';
+import type { DrizzleClient } from '../database/database.provider';
+import { UserDashboardCacheService } from '../cache/user-dashboard-cache.service';
+import { RideAccountingService } from './services/ride-accounting.service';
+import { RideStatusService } from './services/ride-status.service';
+import type {
+  CreateRideDto,
+  UpdateRideDto,
+  UpdateRideStatusDto,
+  GetStatsDto,
+} from './dto/rides.dto';
+import type { Ride } from './interfaces/rides-repository.interface';
 
 @Injectable()
 export class RidesService {
-  private readonly logger = AppLogger.getInstance();
+  private readonly logger = new Logger(RidesService.name);
 
   constructor(
     @Inject(IRidesRepository)
     private readonly ridesRepository: IRidesRepository,
-    private subscriptionsService: SubscriptionsService,
+    private readonly subscriptionsService: SubscriptionsService,
     @Inject(CACHE_PROVIDER) private readonly cache: ICacheProvider,
-    @Inject(IClientsRepository)
-    private readonly clientsRepository: IClientsRepository,
-    @Inject(IBalanceTransactionsRepository)
-    private readonly balanceTransactionsRepository: IBalanceTransactionsRepository,
-    @Inject(IClientPaymentsRepository)
-    private readonly clientPaymentsRepository: IClientPaymentsRepository,
+    @Inject(DRIZZLE) private readonly drizzle: DrizzleClient,
+    private readonly userDashboardCacheService: UserDashboardCacheService,
+    private readonly rideAccountingService: RideAccountingService,
+    private readonly rideStatusService: RideStatusService,
   ) {}
 
-  private async invalidateUserCache(userId: string) {
-    const keys = [
-      `stats:${userId}:today`,
-      `stats:${userId}:week`,
-      `stats:${userId}:month`,
-      `stats:${userId}:year`,
-      `frequent-clients:${userId}`
-    ];
-    
-    // Explicitly delete known keys instead of wildcard for performance and control
-    await Promise.all(keys.map(key => this.cache.del(key)));
-    this.logger.debug(`[RidesService] Cache iterativo invalidado para usuário ${userId}`, 'RidesService');
+  private async getRideOrThrow(
+    userId: string,
+    id: string,
+    executor?: unknown,
+  ): Promise<Ride> {
+    const ride = await this.ridesRepository.findOne(userId, id, executor);
+
+    if (!ride) {
+      throw new NotFoundException('Corrida não encontrada.');
+    }
+
+    return ride;
+  }
+
+  private async invalidateRideMutations(userId: string) {
+    await this.userDashboardCacheService.invalidate(userId);
+    await this.cache.del(`profile:${userId}`);
   }
 
   async findAll(
@@ -65,163 +83,231 @@ export class RidesService {
     return this.ridesRepository.findAll(userId, limit, cursor, parsedFilters);
   }
 
-  async create(
-    userId: string,
-    data: CreateRideDto,
-  ) {
-    this.logger.log(`[RidesService] Criando corrida para usuário ${userId}`, 'RidesService');
+  async create(userId: string, data: CreateRideDto) {
+    this.logger.log(
+      `[RidesService] Criando corrida para usuário ${userId}`,
+      'RidesService',
+    );
 
     const sub = await this.subscriptionsService.findByUserId(userId);
 
     if (!sub) {
-      this.logger.warn(`[RidesService] Plano não encontrado para usuário ${userId}`, 'RidesService');
+      this.logger.warn(
+        `[RidesService] Plano não encontrado para usuário ${userId}`,
+        'RidesService',
+      );
       throw new ForbiddenException('Plano não encontrado.');
     }
 
-    if (sub.plan === 'starter' && sub.rideCount >= 20) {
-      this.logger.warn(`[RidesService] Limite de corridas atingido para usuário ${userId}`, 'RidesService');
-      throw new ForbiddenException(
-        'Limite de 20 corridas do plano gratuito atingido. Faça o upgrade para continuar.',
+    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
+      const paidWithBalance = data.useBalance
+        ? await this.rideAccountingService.consumeClientBalance(
+            userId,
+            data.clientId,
+            data.value,
+            tx,
+          )
+        : (await this.rideAccountingService.getClientOrThrow(
+            userId,
+            data.clientId,
+            tx,
+          ),
+          0);
+
+      const {
+        rideTotal,
+        paidWithBalance: normalizedPaidWithBalance,
+        debtValue,
+        paymentStatus,
+      } = this.rideAccountingService.resolvePaymentSnapshot({
+        value: data.value,
+        paidWithBalance,
+        paymentStatus: data.paymentStatus,
+      });
+
+      return this.ridesRepository.create(
+        {
+          id: randomUUID(),
+          clientId: data.clientId,
+          value: rideTotal,
+          paidWithBalance: normalizedPaidWithBalance,
+          debtValue,
+          location: data.location,
+          notes: data.notes,
+          status: data.status || 'COMPLETED',
+          paymentStatus,
+          rideDate: data.rideDate ? new Date(data.rideDate) : new Date(),
+          photo: data.photo,
+          userId,
+        } as any,
+        tx,
       );
-    }
-
-    let paidWithBalance = 0;
-    const rideTotal = data.value;
-
-    // Lógica de uso de saldo
-    if (data.useBalance) {
-      const client = await this.clientsRepository.findOne(userId, data.clientId);
-      const currentBalance = Number(client?.balance || 0);
-
-      if (currentBalance > 0) {
-        paidWithBalance = Math.min(currentBalance, rideTotal);
-        
-        // Deduzir do saldo do cliente
-        await this.clientsRepository.update(userId, data.clientId, {
-          balance: currentBalance - paidWithBalance,
-        });
-
-        // Registrar transação de débito
-        await this.balanceTransactionsRepository.create({
-          id: randomUUID(),
-          clientId: data.clientId,
-          userId,
-          amount: paidWithBalance,
-          type: 'DEBIT',
-          origin: 'RIDE_USAGE',
-          description: `Uso de saldo para a corrida.`,
-        });
-
-        // Criar registro de pagamento parcial correspondente ao uso do saldo
-        // Isso é importante para manter compatibilidade com o histórico de pagamentos
-        await this.clientPaymentsRepository.create({
-          id: randomUUID(),
-          clientId: data.clientId,
-          userId,
-          amount: paidWithBalance,
-          notes: `Pago com saldo (Abatimento: ${paidWithBalance})`,
-          status: 'UNUSED', // Marcamos como UNUSED para que o cálculo de dívida o considere se necessário
-        });
-      }
-    }
-
-    const debtValue = rideTotal - paidWithBalance;
-    const finalPaymentStatus = debtValue > 0 ? 'PENDING' : 'PAID';
-
-    const result = await this.ridesRepository.create({
-      id: randomUUID(),
-      clientId: data.clientId,
-      value: rideTotal,
-      paidWithBalance,
-      debtValue,
-      location: data.location,
-      notes: data.notes,
-      status: data.status || 'COMPLETED',
-      paymentStatus: finalPaymentStatus,
-      rideDate: data.rideDate ? new Date(data.rideDate) : new Date(),
-      photo: data.photo,
-      userId,
-    } as any);
+    });
 
     if (result) {
-      await this.subscriptionsService.incrementRideCount(userId);
-      await this.invalidateUserCache(userId);
-      await this.cache.del(`profile:${userId}`);
-      this.logger.log(`[RidesService] Corrida ${result.id} criada com sucesso`, 'RidesService');
+      await this.invalidateRideMutations(userId);
+      this.logger.log(
+        `[RidesService] Corrida ${result.id} criada com sucesso`,
+        'RidesService',
+      );
     }
 
     return result;
   }
 
-  async update(
-    userId: string,
-    id: string,
-    data: UpdateRideDto,
-  ) {
+  async update(userId: string, id: string, data: UpdateRideDto) {
     this.logger.log(`[RidesService] Atualizando corrida ${id}`, 'RidesService');
 
-    const updateData: any = { ...data };
-    
-    if (data.rideDate !== undefined) {
-      updateData.rideDate = !data.rideDate ? null : new Date(data.rideDate);
-    }
+    const existingRide = await this.getRideOrThrow(userId, id);
+    const { nextClientId, refundAmount, updateData } =
+      this.rideStatusService.prepareRideUpdate(existingRide, data);
 
-    const result = await this.ridesRepository.update(userId, id, updateData);
+    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
+      if (data.clientId !== undefined) {
+        await this.rideAccountingService.getClientOrThrow(
+          userId,
+          nextClientId,
+          tx,
+        );
+      }
+
+      await this.rideAccountingService.refundClientBalance(
+        userId,
+        existingRide.clientId,
+        refundAmount,
+        id,
+        tx,
+      );
+
+      return this.ridesRepository.update(userId, id, updateData, tx);
+    });
 
     if (!result) {
       throw new NotFoundException('Corrida não encontrada.');
     }
 
-    await this.invalidateUserCache(userId);
-    this.logger.log(`[RidesService] Corrida ${id} atualizada com sucesso`, 'RidesService');
+    await this.invalidateRideMutations(userId);
+    this.logger.log(
+      `[RidesService] Corrida ${id} atualizada com sucesso`,
+      'RidesService',
+    );
     return result;
   }
 
   async delete(userId: string, id: string) {
     this.logger.log(`[RidesService] Removendo corrida ${id}`, 'RidesService');
-    const result = await this.ridesRepository.delete(userId, id);
+    const existingRide = await this.getRideOrThrow(userId, id);
+    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
+      await this.rideAccountingService.refundClientBalance(
+        userId,
+        existingRide.clientId,
+        Number(existingRide.paidWithBalance ?? 0),
+        id,
+        tx,
+      );
 
-    if (result) {
-      await this.invalidateUserCache(userId);
-      this.logger.log(`[RidesService] Corrida ${id} removida com sucesso`, 'RidesService');
-    } else {
+      return this.ridesRepository.delete(userId, id, tx);
+    });
+
+    if (!result) {
       throw new NotFoundException('Corrida não encontrada.');
     }
 
+    await this.invalidateRideMutations(userId);
+    this.logger.log(
+      `[RidesService] Corrida ${id} removida com sucesso`,
+      'RidesService',
+    );
     return result;
   }
 
   async deleteAll(userId: string) {
-    this.logger.log(`[RidesService] Removendo TODAS as corridas do usuário ${userId}`, 'RidesService');
-    await this.ridesRepository.deleteAll(userId);
-    await this.invalidateUserCache(userId);
-    this.logger.log(`[RidesService] Todas as corridas do usuário ${userId} removidas com sucesso`, 'RidesService');
+    this.logger.log(
+      `[RidesService] Removendo TODAS as corridas do usuário ${userId}`,
+      'RidesService',
+    );
+
+    await this.drizzle.db.transaction(async (tx: any) => {
+      const ridesWithBalance = await tx
+        .select({
+          id: this.drizzle.schema.rides.id,
+          clientId: this.drizzle.schema.rides.clientId,
+          paidWithBalance: this.drizzle.schema.rides.paidWithBalance,
+        })
+        .from(this.drizzle.schema.rides)
+        .where(eq(this.drizzle.schema.rides.userId, userId));
+
+      const refundByClient = new Map<string, number>();
+
+      for (const ride of ridesWithBalance) {
+        const paidWithBalance = Number(ride.paidWithBalance ?? 0);
+
+        if (paidWithBalance <= 0) {
+          continue;
+        }
+
+        refundByClient.set(
+          ride.clientId,
+          (refundByClient.get(ride.clientId) ?? 0) + paidWithBalance,
+        );
+      }
+
+      for (const [clientId, amount] of refundByClient.entries()) {
+        await this.rideAccountingService.refundClientBalance(
+          userId,
+          clientId,
+          amount,
+          'bulk-delete',
+          tx,
+        );
+      }
+
+      await this.ridesRepository.deleteAll(userId, tx);
+    });
+
+    await this.invalidateRideMutations(userId);
+    this.logger.log(
+      `[RidesService] Todas as corridas do usuário ${userId} removidas com sucesso`,
+      'RidesService',
+    );
     return { success: true };
   }
 
-  async updateStatus(
-    userId: string,
-    id: string,
-    data: UpdateRideStatusDto,
-  ) {
-    const result = await this.ridesRepository.updateStatus(userId, id, data);
-    if (result) await this.invalidateUserCache(userId);
+  async updateStatus(userId: string, id: string, data: UpdateRideStatusDto) {
+    const existingRide = await this.getRideOrThrow(userId, id);
+    const updateData = this.rideStatusService.prepareStatusUpdate(
+      existingRide,
+      data,
+    );
+
+    const result = await this.ridesRepository.updateStatus(userId, id, updateData);
+
+    if (!result) {
+      throw new NotFoundException('Corrida não encontrada.');
+    }
+
+    await this.invalidateRideMutations(userId);
     return result;
   }
 
   async getFrequentClients(userId: string) {
     const cacheKey = `frequent-clients:${userId}`;
     const cached = await this.cache.get<any>(cacheKey);
-    
+
     if (cached) {
-      this.logger.debug(`[RidesService] CACHE HIT: ${cacheKey}`, 'RidesService');
+      this.logger.debug(
+        `[RidesService] CACHE HIT: ${cacheKey}`,
+        'RidesService',
+      );
       return cached;
     }
-    
-    this.logger.debug(`[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB...`, 'RidesService');
+
+    this.logger.debug(
+      `[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB...`,
+      'RidesService',
+    );
     const result = await this.ridesRepository.getFrequentClients(userId);
-    
-    // TTL: 1800 seconds = 30 minutes
+
     await this.cache.set(cacheKey, result, 1800);
     return result;
   }
@@ -240,22 +326,40 @@ export class RidesService {
   }
 
   async getStats(userId: string, query: GetStatsDto) {
-    // Only apply cache for fixed periods and no specific client filters
-    const isCacheable = query.period !== 'custom' && !query.clientId;
+    const isCacheable =
+      process.env.NODE_ENV === 'production' &&
+      query.period !== 'custom' &&
+      !query.clientId;
     const cacheKey = `stats:${userId}:${query.period}`;
 
     if (isCacheable) {
       const cached = await this.cache.get<any>(cacheKey);
       if (cached) {
-        this.logger.debug(`[RidesService] CACHE HIT: ${cacheKey}`, 'RidesService');
+        this.logger.debug(
+          `[RidesService] CACHE HIT: ${cacheKey}`,
+          'RidesService',
+        );
         return cached;
       }
-      this.logger.debug(`[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB e Mapeando...`, 'RidesService');
+
+      this.logger.debug(
+        `[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB e mapeando...`,
+        'RidesService',
+      );
     }
 
-    const { startDate, endDate } = getDatesFromPeriod(query.period, query.start, query.end);
-    const dbResult = await this.ridesRepository.getStats(userId, startDate, endDate, query.clientId);
-    
+    const { startDate, endDate } = getDatesFromPeriod(
+      query.period,
+      query.start,
+      query.end,
+    );
+    const dbResult = await this.ridesRepository.getStats(
+      userId,
+      startDate,
+      endDate,
+      query.clientId,
+    );
+
     const mappedResult = {
       count: dbResult.count,
       totalValue: dbResult.totalValue,
@@ -263,7 +367,6 @@ export class RidesService {
     };
 
     if (isCacheable) {
-      // TTL: 300 seconds = 5 minutes
       await this.cache.set(cacheKey, mappedResult, 300);
     }
 

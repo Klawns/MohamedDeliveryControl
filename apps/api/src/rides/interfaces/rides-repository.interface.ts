@@ -29,9 +29,20 @@ export interface IRidesRepository {
     limit?: number,
     cursor?: string,
     filters?: FindAllFilters,
-  ): Promise<{ rides: RideWithClient[]; total: number; nextCursor?: string; hasMore: boolean }>;
+  ): Promise<{
+    rides: RideWithClient[];
+    total: number;
+    nextCursor?: string;
+    hasMore: boolean;
+  }>;
 
-  create(data: CreateRideDto): Promise<Ride>;
+  create(data: CreateRideDto, executor?: unknown): Promise<Ride>;
+
+  findOne(
+    userId: string,
+    id: string,
+    executor?: unknown,
+  ): Promise<Ride | undefined>;
 
   updateStatus(
     userId: string,
@@ -39,25 +50,37 @@ export interface IRidesRepository {
     data: {
       status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
       paymentStatus?: 'PENDING' | 'PAID';
+      debtValue?: number;
     },
+    executor?: unknown,
   ): Promise<Ride>;
 
   getFrequentClients(
     userId: string,
   ): Promise<Array<{ id: string; name: string; isPinned: boolean }>>;
 
-  update(userId: string, id: string, data: UpdateRideDto): Promise<Ride>;
+  update(
+    userId: string,
+    id: string,
+    data: UpdateRideDto,
+    executor?: unknown,
+  ): Promise<Ride>;
 
   countAll(userId: string): Promise<number>;
 
-  delete(userId: string, id: string): Promise<Ride | undefined>;
+  delete(userId: string, id: string, executor?: unknown): Promise<Ride | undefined>;
 
   findByClient(
     userId: string,
     clientId: string,
     limit?: number,
     cursor?: string,
-  ): Promise<{ rides: Ride[]; total: number; nextCursor?: string; hasMore: boolean }>;
+  ): Promise<{
+    rides: Ride[];
+    total: number;
+    nextCursor?: string;
+    hasMore: boolean;
+  }>;
 
   getStats(
     userId: string,
@@ -66,8 +89,16 @@ export interface IRidesRepository {
     clientId?: string,
   ): Promise<{ count: number; totalValue: number; rides: RideWithClient[] }>;
 
-  getPendingDebtStats(clientId: string, userId: string): Promise<{ totalDebt: number; pendingRidesCount: number }>;
+  getPendingDebtStats(
+    clientId: string,
+    userId: string,
+    executor?: unknown,
+  ): Promise<{ totalDebt: number; pendingRidesCount: number }>;
 
-  markAllAsPaidForClient(clientId: string, userId: string): Promise<number>;
-  deleteAll(userId: string): Promise<void>;
+  markAllAsPaidForClient(
+    clientId: string,
+    userId: string,
+    executor?: unknown,
+  ): Promise<number>;
+  deleteAll(userId: string, executor?: unknown): Promise<void>;
 }

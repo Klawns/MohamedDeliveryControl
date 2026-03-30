@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, desc } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.provider';
 import type { DrizzleClient } from '../../database/database.provider';
 import {
@@ -23,26 +23,19 @@ export class DrizzleBalanceTransactionsRepository implements IBalanceTransaction
     return this.drizzle.schema;
   }
 
-  async create(data: CreateBalanceTransactionDto): Promise<BalanceTransaction> {
-    const results = await this.db
+  private getExecutor(executor?: any) {
+    return executor ?? this.db;
+  }
+
+  async create(
+    data: CreateBalanceTransactionDto,
+    executor?: any,
+  ): Promise<BalanceTransaction> {
+    const results = await this.getExecutor(executor)
       .insert(this.schema.balanceTransactions)
       .values(data as any)
       .returning();
 
     return results[0];
   }
-
-  async findByClient(clientId: string, userId: string): Promise<BalanceTransaction[]> {
-    return this.db
-      .select()
-      .from(this.schema.balanceTransactions)
-      .where(
-        and(
-          eq(this.schema.balanceTransactions.clientId, clientId),
-          eq(this.schema.balanceTransactions.userId, userId),
-        ),
-      )
-      .orderBy(desc(this.schema.balanceTransactions.createdAt));
-  }
 }
-

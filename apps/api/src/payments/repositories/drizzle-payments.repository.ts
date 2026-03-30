@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
@@ -33,7 +34,7 @@ export class DrizzlePaymentsRepository implements IPaymentsRepository {
     return plan;
   }
 
-  async getAllPlans(): Promise<PricingPlan[]> {
+  getAllPlans(): Promise<PricingPlan[]> {
     return this.db.select().from(this.schema.pricingPlans);
   }
 
@@ -53,4 +54,3 @@ export class DrizzlePaymentsRepository implements IPaymentsRepository {
     return updatedPlan;
   }
 }
-

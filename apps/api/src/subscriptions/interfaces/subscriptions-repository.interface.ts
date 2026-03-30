@@ -8,8 +8,6 @@ export const ISubscriptionsRepository = Symbol('ISubscriptionsRepository');
 
 export interface ISubscriptionsRepository {
   findByUserId(userId: string): Promise<Subscription | undefined>;
-  incrementRideCount(userId: string): Promise<Subscription[]>;
-  decrementRideCount(userId: string): Promise<Subscription[]>;
   updateOrCreate(
     userId: string,
     plan: 'starter' | 'premium' | 'lifetime',
@@ -18,5 +16,4 @@ export interface ISubscriptionsRepository {
     userId: string,
     plan: 'starter' | 'premium' | 'lifetime',
   ): Promise<Subscription[]>;
-  resetRideCount(userId: string): Promise<Subscription[]>;
 }

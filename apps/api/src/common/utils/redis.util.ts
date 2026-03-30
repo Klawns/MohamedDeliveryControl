@@ -3,36 +3,62 @@ import { Logger } from '@nestjs/common';
 
 const logger = new Logger('RedisUtil');
 
-export function getRedisConfig(config: ConfigService) {
-  // Tenta primeiro via ConfigService (Abstração padrão Nest)
-  let redisUrl =
-    config.get<string>('REDIS_URL') || config.get<string>('REDISURL');
-  let host = config.get<string>('REDISHOST');
-  let rawPort = config.get<string | number>('REDISPORT');
-  let password = config.get<string>('REDISPASSWORD');
-  let username = config.get<string>('REDISUSER');
+export interface RedisHostConfig {
+  host: string;
+  port: number;
+  password?: string;
+  username?: string;
+  tls?: Record<string, never>;
+}
 
-  // Redundância direta process.env (Útil se o ConfigService ainda não carregou arquivos ou em certas versões de container)
-  if (!redisUrl && !host) {
-    redisUrl = process.env.REDIS_URL || process.env.REDISURL;
-    host = process.env.REDISHOST;
-    rawPort = process.env.REDISPORT;
-    password = process.env.REDISPASSWORD;
-    username = process.env.REDISUSER;
+export type RedisConfig = string | RedisHostConfig;
 
-    if (redisUrl || host) {
-      logger.debug(
-        `[getRedisConfig] ⚡ Variáveis detectadas via process.env (Backup)`,
-      );
-    }
-  }
+export function hasRedisConfig(config: ConfigService): boolean {
+  return Boolean(
+    getEnvValue(config, 'REDIS_URL', 'REDISURL') ||
+    getEnvValue(config, 'REDIS_HOST', 'REDISHOST'),
+  );
+}
+
+function getEnvValue(
+  config: ConfigService,
+  primaryKey: string,
+  legacyKey?: string,
+): string | undefined {
+  return (
+    config.get<string>(primaryKey) ??
+    (legacyKey ? config.get<string>(legacyKey) : undefined) ??
+    process.env[primaryKey] ??
+    (legacyKey ? process.env[legacyKey] : undefined)
+  );
+}
+
+function getEnvPort(
+  config: ConfigService,
+  primaryKey: string,
+  legacyKey?: string,
+): string | number | undefined {
+  return (
+    config.get<string | number>(primaryKey) ??
+    (legacyKey ? config.get<string | number>(legacyKey) : undefined) ??
+    process.env[primaryKey] ??
+    (legacyKey ? process.env[legacyKey] : undefined)
+  );
+}
+
+export function getRedisConfig(config: ConfigService): RedisConfig {
+  const redisUrl = getEnvValue(config, 'REDIS_URL', 'REDISURL');
+  const host = getEnvValue(config, 'REDIS_HOST', 'REDISHOST');
+  const rawPort = getEnvPort(config, 'REDIS_PORT', 'REDISPORT');
+  const password = getEnvValue(config, 'REDIS_PASSWORD', 'REDISPASSWORD');
+  const username = getEnvValue(config, 'REDIS_USER', 'REDISUSER');
 
   logger.debug(
     `[getRedisConfig] Config: URL=${!!redisUrl}, HOST=${host}, PORT=${rawPort}, ENV=${process.env.NODE_ENV}`,
   );
 
   if (redisUrl) {
-    logger.log(`[getRedisConfig] ✅ Usando REDIS_URL.`);
+    logger.log('[getRedisConfig] Using REDIS_URL.');
     return redisUrl;
   }
 
@@ -41,28 +67,24 @@ export function getRedisConfig(config: ConfigService) {
       typeof rawPort === 'string'
         ? parseInt(rawPort, 10)
         : Number(rawPort) || 6379;
-    logger.log(`[getRedisConfig] ✅ Conectando em ${host}:${port}`);
+
+    logger.log(`[getRedisConfig] Connecting to ${host}:${port}`);
+
     return {
       host,
       port,
       password,
       username,
-      tls:
-        port === 6380 ||
-        (typeof redisUrl === 'string' && redisUrl.startsWith('rediss:'))
-          ? {}
-          : undefined,
+      tls: port === 6380 ? {} : undefined,
     };
   }
 
   logger.warn(
-    `[getRedisConfig] ⚠️ Nenhuma configuração encontrada. Usando localhost.`,
+    '[getRedisConfig] No Redis config found. Falling back to localhost.',
   );
+
   return {
     host: 'localhost',
     port: 6379,
-    password: undefined,
-    username: undefined,
-    tls: undefined,
   };
 }

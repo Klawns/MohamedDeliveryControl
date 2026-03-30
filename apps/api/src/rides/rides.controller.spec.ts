@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RidesController } from './rides.controller';
 import { RidesService } from './rides.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 describe('RidesController', () => {
   let controller: RidesController;
@@ -8,7 +9,17 @@ describe('RidesController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RidesController],
-      providers: [{ provide: RidesService, useValue: {} }],
+      providers: [
+        { provide: RidesService, useValue: {} },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getAccessSnapshot: jest
+              .fn()
+              .mockResolvedValue({ status: 'active' }),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<RidesController>(RidesController);

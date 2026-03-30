@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -26,7 +27,7 @@ export class DrizzleSettingsRepository implements ISettingsRepository {
     return this.drizzle.schema;
   }
 
-  async getRidePresets(userId: string): Promise<RidePreset[]> {
+  getRidePresets(userId: string): Promise<RidePreset[]> {
     return this.db
       .select()
       .from(this.schema.ridePresets)
@@ -39,7 +40,10 @@ export class DrizzleSettingsRepository implements ISettingsRepository {
     const results = await this.db
       .insert(this.schema.ridePresets)
       .values({
-        ...data,
+        userId: data.userId,
+        label: data.label,
+        value: data.value,
+        location: data.location,
         id: data.id || randomUUID(),
       } as any)
       .returning();
@@ -58,14 +62,30 @@ export class DrizzleSettingsRepository implements ISettingsRepository {
       );
   }
 
-  async updateRidePreset(
+  updateRidePreset(
     userId: string,
     id: string,
     data: UpdateRidePresetDto,
   ): Promise<RidePreset[]> {
+    const updatePayload: Partial<
+      Pick<RidePreset, 'label' | 'value' | 'location'>
+    > = {};
+
+    if (data.label !== undefined) {
+      updatePayload.label = data.label;
+    }
+
+    if (data.value !== undefined) {
+      updatePayload.value = data.value;
+    }
+
+    if (data.location !== undefined) {
+      updatePayload.location = data.location;
+    }
+
     return this.db
       .update(this.schema.ridePresets)
-      .set(data as any)
+      .set(updatePayload as any)
       .where(
         and(
           eq(this.schema.ridePresets.id, id),

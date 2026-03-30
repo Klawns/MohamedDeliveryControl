@@ -8,6 +8,7 @@ import { IClientPaymentsRepository } from './interfaces/client-payments-reposito
 import { DrizzleBalanceTransactionsRepository } from './repositories/drizzle-balance-transactions.repository';
 import { IBalanceTransactionsRepository } from './interfaces/balance-transactions-repository.interface';
 import { RidesModule } from '../rides/rides.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   providers: [
@@ -25,8 +26,13 @@ import { RidesModule } from '../rides/rides.module';
       useClass: DrizzleBalanceTransactionsRepository,
     },
   ],
-  imports: [forwardRef(() => RidesModule)],
+  imports: [forwardRef(() => RidesModule), SubscriptionsModule],
   controllers: [ClientsController],
-  exports: [ClientsService, IClientsRepository, IClientPaymentsRepository, IBalanceTransactionsRepository],
+  exports: [
+    ClientsService,
+    IClientsRepository,
+    IClientPaymentsRepository,
+    IBalanceTransactionsRepository,
+  ],
 })
 export class ClientsModule {}

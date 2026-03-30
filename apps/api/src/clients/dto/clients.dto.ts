@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const createClientSchema = z.object({
-  name: z.string().trim().min(1, { message: 'O nome do cliente é obrigatório' }),
+  name: z
+    .string()
+    .trim()
+    .min(1, { message: 'O nome do cliente é obrigatório' }),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
 });
@@ -24,3 +27,16 @@ export const findAllClientsSchema = z.object({
 });
 
 export type FindAllClientsDto = z.infer<typeof findAllClientsSchema>;
+
+export const addPartialPaymentSchema = z.object({
+  amount: z.coerce.number().positive(),
+  notes: z.string().optional(),
+});
+
+export type AddPartialPaymentDto = z.infer<typeof addPartialPaymentSchema>;
+
+export const getClientPaymentsSchema = z.object({
+  status: z.enum(['UNUSED', 'USED']).optional(),
+});
+
+export type GetClientPaymentsDto = z.infer<typeof getClientPaymentsSchema>;

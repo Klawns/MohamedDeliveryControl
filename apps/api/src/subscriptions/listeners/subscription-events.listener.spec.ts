@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Jest event-emitter mocks are intentionally partial. */
 import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionEventsListener } from './subscription-events.listener';
 import { getQueueToken } from '@nestjs/bullmq';
-import { PaymentEvents } from '../../payments/events/payment.events';
 
 describe('SubscriptionEventsListener', () => {
   let listener: SubscriptionEventsListener;
@@ -22,7 +22,9 @@ describe('SubscriptionEventsListener', () => {
       ],
     }).compile();
 
-    listener = module.get<SubscriptionEventsListener>(SubscriptionEventsListener);
+    listener = module.get<SubscriptionEventsListener>(
+      SubscriptionEventsListener,
+    );
   });
 
   it('should be defined', () => {

@@ -7,6 +7,7 @@ import { DrizzleSubscriptionsRepository } from './repositories/drizzle-subscript
 import { ISubscriptionsRepository } from './interfaces/subscriptions-repository.interface';
 import { SubscriptionWebhookWorker } from './queue/subscription-webhook.worker';
 import { SubscriptionEventsListener } from './listeners/subscription-events.listener';
+import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guard';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SubscriptionEventsListener } from './listeners/subscription-events.list
   ],
   providers: [
     SubscriptionsService,
+    ActiveSubscriptionGuard,
     {
       provide: ISubscriptionsRepository,
       useClass: DrizzleSubscriptionsRepository,
@@ -25,6 +27,10 @@ import { SubscriptionEventsListener } from './listeners/subscription-events.list
     SubscriptionEventsListener,
   ],
   controllers: [SubscriptionsController],
-  exports: [SubscriptionsService, ISubscriptionsRepository],
+  exports: [
+    SubscriptionsService,
+    ISubscriptionsRepository,
+    ActiveSubscriptionGuard,
+  ],
 })
 export class SubscriptionsModule {}

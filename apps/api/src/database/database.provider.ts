@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- The database provider keeps a dialect-agnostic Drizzle boundary for SQLite/Postgres. */
 import { FactoryProvider, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SqliteStrategy } from './strategies/sqlite-strategy';
@@ -7,7 +8,6 @@ import { postgresSchema, sqliteSchema } from '@mdc/database';
 
 export const DRIZZLE = 'DRIZZLE';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface DrizzleClient {
   db: any;
   schema: any;
@@ -20,7 +20,9 @@ export const databaseProvider: FactoryProvider = {
   provide: DRIZZLE,
   inject: [ConfigService],
   useFactory: async (configService: ConfigService): Promise<DrizzleClient> => {
-    const provider = configService.get<string>('DB_PROVIDER', 'sqlite').toLowerCase() as 'postgres' | 'sqlite';
+    const provider = configService
+      .get<string>('DB_PROVIDER', 'sqlite')
+      .toLowerCase() as 'postgres' | 'sqlite';
     let strategy: DatabaseStrategy;
 
     logger.log(`Using Database Provider: ${provider.toUpperCase()}`);
@@ -35,14 +37,21 @@ export const databaseProvider: FactoryProvider = {
       const db = await strategy.connect();
       return {
         db,
-        schema: (provider === 'postgres' ? postgresSchema : sqliteSchema) as any,
+        schema: (provider === 'postgres'
+          ? postgresSchema
+          : sqliteSchema) as any,
         dialect: provider,
       };
     } catch (error) {
-      logger.error(`Failed to connect to ${provider} database: ${error.message}`);
-      
+      logger.error(
+        `Failed to connect to ${provider} database: ${error.message}`,
+      );
+
       // Fallback logic if Postgres fails and SQLite is configured as backup
-      if (provider === 'postgres' && configService.get<boolean>('DB_FALLBACK_TO_SQLITE', false)) {
+      if (
+        provider === 'postgres' &&
+        configService.get<boolean>('DB_FALLBACK_TO_SQLITE', false)
+      ) {
         logger.warn('Attempting fallback to SQLite...');
         strategy = new SqliteStrategy(configService);
         const db = await strategy.connect();
@@ -52,7 +61,7 @@ export const databaseProvider: FactoryProvider = {
           dialect: 'sqlite',
         };
       }
-      
+
       throw error;
     }
   },

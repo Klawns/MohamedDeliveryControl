@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq, and, or, like, sql, desc, lt, gt, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -27,12 +28,21 @@ export class DrizzleClientsRepository implements IClientsRepository {
     return this.drizzle.schema;
   }
 
+  private getExecutor(executor?: any) {
+    return executor ?? this.db;
+  }
+
   async findAll(
     userId: string,
     limit: number = 20,
     cursor?: string,
     search?: string,
-  ): Promise<{ clients: Client[]; total: number; nextCursor?: string; hasMore: boolean }> {
+  ): Promise<{
+    clients: Client[];
+    total: number;
+    nextCursor?: string;
+    hasMore: boolean;
+  }> {
     const conditions = [eq(this.schema.clients.userId, userId)];
 
     if (search) {
@@ -44,7 +54,11 @@ export class DrizzleClientsRepository implements IClientsRepository {
         const decodedString = Buffer.from(cursor, 'base64').toString('utf-8');
         const parsedCursor = JSON.parse(decodedString);
 
-        if (parsedCursor.name === undefined || parsedCursor.isPinned === undefined || !parsedCursor.id) {
+        if (
+          parsedCursor.name === undefined ||
+          parsedCursor.isPinned === undefined ||
+          !parsedCursor.id
+        ) {
           throw new Error('Invalid cursor payload structure');
         }
 
@@ -53,9 +67,15 @@ export class DrizzleClientsRepository implements IClientsRepository {
           and(
             eq(this.schema.clients.isPinned, parsedCursor.isPinned),
             or(
-              gt(sql`lower(${this.schema.clients.name})`, sql`lower(${parsedCursor.name})`),
+              gt(
+                sql`lower(${this.schema.clients.name})`,
+                sql`lower(${parsedCursor.name})`,
+              ),
               and(
-                eq(sql`lower(${this.schema.clients.name})`, sql`lower(${parsedCursor.name})`),
+                eq(
+                  sql`lower(${this.schema.clients.name})`,
+                  sql`lower(${parsedCursor.name})`,
+                ),
                 gt(this.schema.clients.id, parsedCursor.id),
               ),
             ),
@@ -65,7 +85,7 @@ export class DrizzleClientsRepository implements IClientsRepository {
         if (cursorCondition) {
           conditions.push(cursorCondition);
         }
-      } catch (err) {
+      } catch {
         // Fallback or ignore invalid cursor
       }
     }
@@ -74,7 +94,11 @@ export class DrizzleClientsRepository implements IClientsRepository {
       .select()
       .from(this.schema.clients)
       .where(and(...conditions))
-      .orderBy(desc(this.schema.clients.isPinned), sql`lower(${this.schema.clients.name}) asc`, this.schema.clients.id)
+      .orderBy(
+        desc(this.schema.clients.isPinned),
+        sql`lower(${this.schema.clients.name}) asc`,
+        this.schema.clients.id,
+      )
       .limit(limit + 1);
 
     const countQuery = this.db
@@ -86,7 +110,7 @@ export class DrizzleClientsRepository implements IClientsRepository {
 
     const hasMore = results.length > limit;
     const items = hasMore ? results.slice(0, limit) : results;
-    
+
     let nextCursorHash: string | undefined;
     if (hasMore) {
       const lastItem = items[items.length - 1];
@@ -95,7 +119,9 @@ export class DrizzleClientsRepository implements IClientsRepository {
         name: lastItem.name,
         id: lastItem.id,
       };
-      nextCursorHash = Buffer.from(JSON.stringify(nextCursorData)).toString('base64');
+      nextCursorHash = Buffer.from(JSON.stringify(nextCursorData)).toString(
+        'base64',
+      );
     }
 
     return {
@@ -106,8 +132,8 @@ export class DrizzleClientsRepository implements IClientsRepository {
     };
   }
 
-  async create(data: CreateClientDto): Promise<Client> {
-    const results = await this.db
+  async create(data: CreateClientDto, executor?: any): Promise<Client> {
+    const results = await this.getExecutor(executor)
       .insert(this.schema.clients)
       .values({
         ...data,
@@ -118,11 +144,20 @@ export class DrizzleClientsRepository implements IClientsRepository {
     return results[0];
   }
 
-  async findOne(userId: string, id: string): Promise<Client | undefined> {
-    const results = await this.db
+  async findOne(
+    userId: string,
+    id: string,
+    executor?: any,
+  ): Promise<Client | undefined> {
+    const results = await this.getExecutor(executor)
       .select()
       .from(this.schema.clients)
-      .where(and(eq(this.schema.clients.id, id), eq(this.schema.clients.userId, userId)))
+      .where(
+        and(
+          eq(this.schema.clients.id, id),
+          eq(this.schema.clients.userId, userId),
+        ),
+      )
       .limit(1);
 
     return results[0];
@@ -132,20 +167,31 @@ export class DrizzleClientsRepository implements IClientsRepository {
     userId: string,
     id: string,
     data: Partial<CreateClientDto>,
+    executor?: any,
   ): Promise<Client> {
-    const results = await this.db
+    const results = await this.getExecutor(executor)
       .update(this.schema.clients)
       .set(data)
-      .where(and(eq(this.schema.clients.id, id), eq(this.schema.clients.userId, userId)))
+      .where(
+        and(
+          eq(this.schema.clients.id, id),
+          eq(this.schema.clients.userId, userId),
+        ),
+      )
       .returning();
 
     return results[0];
   }
 
-  async delete(userId: string, id: string): Promise<void> {
-    await this.db
+  async delete(userId: string, id: string, executor?: any): Promise<void> {
+    await this.getExecutor(executor)
       .delete(this.schema.clients)
-      .where(and(eq(this.schema.clients.id, id), eq(this.schema.clients.userId, userId)));
+      .where(
+        and(
+          eq(this.schema.clients.id, id),
+          eq(this.schema.clients.userId, userId),
+        ),
+      );
   }
 
   async deleteAll(userId: string): Promise<void> {
@@ -154,4 +200,3 @@ export class DrizzleClientsRepository implements IClientsRepository {
       .where(eq(this.schema.clients.userId, userId));
   }
 }
-

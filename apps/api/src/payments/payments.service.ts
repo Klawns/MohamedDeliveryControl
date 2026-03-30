@@ -1,7 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Payment provider responses and cached payloads are runtime-shaped integration boundaries. */
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Audit } from '../common/decorators/audit.decorator';
-import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 
 import { UsersService } from '../users/users.service';
@@ -21,6 +20,8 @@ import {
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     @Inject(PAYMENT_PROVIDER)
     private provider: IPaymentProvider,
@@ -33,7 +34,6 @@ export class PaymentsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  @Audit()
   async createCheckoutSession(
     userId: string,
     plan: PaymentPlan,
@@ -42,9 +42,7 @@ export class PaymentsService {
     const user = await this.usersService.findById(userId);
     const dbPlan = await this.paymentsRepository.getPlanById(plan);
 
-    console.log(
-      `[PaymentsService] Iniciando checkout. ID: ${userId}, Nome DB: ${user?.name}, Email DB: ${user?.email}, Plano: ${plan}`,
-    );
+    this.logger.log(`Iniciando checkout. ID: ${userId}, Plano: ${plan}`);
 
     if (!dbPlan) {
       throw new Error('Plano não encontrado');
@@ -74,9 +72,7 @@ export class PaymentsService {
       // 1. Tenta buscar do Cache Rápido (Redis)
       const cachedPlans = await this.cache.get<any[]>(cacheKey);
       if (cachedPlans) {
-        console.log(
-          '[PaymentsService] Retornando planos do Cache (Redis). Velocidade Máxima!',
-        );
+        this.logger.log('Retornando planos do Cache (Redis)');
         return cachedPlans;
       }
 
@@ -90,9 +86,8 @@ export class PaymentsService {
               ? JSON.parse(plan.features)
               : plan.features || [];
         } catch (e) {
-          console.error(
-            `[PaymentsService] Erro ao parsear features do plano ${plan.id}:`,
-            e.message,
+          this.logger.error(
+            `Erro ao parsear features do plano ${plan.id}: ${e.message}`,
           );
         }
         return {
@@ -106,70 +101,82 @@ export class PaymentsService {
 
       return parsedPlans;
     } catch (error) {
-      console.error('[PaymentsService] ERROR DETAILED:', error);
-      throw new Error(`Falha ao carregar planos de pagamento: ${error.message}`);
+      this.logger.error(
+        `Falha ao carregar planos: ${error.message}`,
+        error.stack,
+      );
+      throw new Error(
+        `Falha ao carregar planos de pagamento: ${error.message}`,
+      );
     }
   }
 
-  @Audit()
-  async handleWebhook(signature: string, payload: Buffer, query?: any) {
-    // 1. Evita processamento duplo do MESMO webhook (Retentativas de rede)
-    // Geramos um hash único do corpo da requisição para identificar se é o MESMO aviso
-    const payloadHash = crypto
-      .createHash('sha256')
-      .update(payload)
-      .digest('hex');
-    const idempotencyKey = `webhook:processed:${payloadHash}`;
+  async handleWebhook(
+    signature: string,
+    payload: Buffer,
+    query?: any,
+    timestamp?: string,
+  ) {
+    // 1. Valida a assinatura e extrai o eventId (O provider agora retorna eventId obrigatório)
+    const result = await this.provider.handleWebhook(signature, payload, query);
+    const eventId = result.eventId;
 
+    // 2. Validação de Timestamp (Replay Attack)
+    if (timestamp) {
+      const webhookTime = parseInt(timestamp, 10);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const tolerance = parseInt(
+        this.configService.get('WEBHOOK_WINDOW_SECONDS', '300'),
+        10,
+      );
+
+      if (Math.abs(currentTime - webhookTime) > tolerance) {
+        this.logger.error(
+          `Webhook ignorado: fora da janela de expiração. Event: ${eventId}`,
+        );
+        throw new Error('Webhook expired');
+      }
+    }
+
+    // 3. Evita processamento duplo baseado no eventId do provider
+    const idempotencyKey = `webhook:processed:${eventId}`;
     const alreadyProcessed = await this.cache.get(idempotencyKey);
-    if (alreadyProcessed) {
-      console.log(
-        `[Webhook] 🛡️ Webhook já em processamento ou finalizado. Ignorando duplicata.`,
+
+    if (alreadyProcessed === 'completed' || alreadyProcessed === 'processing') {
+      this.logger.warn(
+        `Webhook ${eventId} já processado ou em processamento. Ignorando duplicata.`,
       );
       return { received: true };
     }
 
-    // Marca como processando por 60 segundos (Tempo seguro para evitar race condition de rede)
-    await this.cache.set(idempotencyKey, 'processing', 60);
+    // Marca como processando por 72 horas (259.200 segundos)
+    const TTL_72H = 259200;
+    await this.cache.set(idempotencyKey, 'processing', TTL_72H);
 
-    const result = await this.provider.handleWebhook(signature, payload, query);
+    try {
+      if (result.userId && result.plan) {
+        const userId = result.userId;
+        const plan = result.plan.toLowerCase() as
+          | 'starter'
+          | 'premium'
+          | 'lifetime';
 
-    if (result.userId && result.plan) {
-      let userId = result.userId;
-
-      // Se o identificador for um e-mail (fallback do provider), resolve para o ID do usuário
-      if (userId.includes('@')) {
-        const user = await this.usersService.findByEmail(userId);
-        if (user) {
-          console.log(
-            `[Webhook] Resolvendo e-mail ${userId} para o ID ${user.id}`,
-          );
-          userId = user.id;
-        } else {
-          console.error(
-            `[Webhook ERROR] Pagamento recebido, mas NENHUM usuário encontrado com o e-mail: ${userId}.`,
-          );
-          return { received: true };
-        }
+        this.eventEmitter.emit(
+          PaymentEvents.WEBHOOK_RECEIVED,
+          new PaymentWebhookReceivedEvent(userId, plan, eventId),
+        );
       }
 
-      const plan = result.plan.toLowerCase() as
-        | 'starter'
-        | 'premium'
-        | 'lifetime';
-      console.log(
-        `[Webhook] Emitindo evento de pagamento. Usuário: ${userId}, Novo Plano: ${plan}`,
+      // Marca como finalizado com sucesso
+      await this.cache.set(idempotencyKey, 'completed', TTL_72H);
+    } catch (error) {
+      // Em caso de erro, removemos a trava para permitir retentativa do provider
+      // ou marcamos como falha dependendo da estratégia. Aqui removemos para retry.
+      await this.cache.set(idempotencyKey, 'failed', 3600); // 1h de block para erro crítico
+      this.logger.error(
+        `Erro ao processar webhook ${eventId}: ${error.message}`,
       );
-
-      // Emite o evento (Observer Pattern)
-      this.eventEmitter.emit(
-        PaymentEvents.WEBHOOK_RECEIVED,
-        new PaymentWebhookReceivedEvent(
-          userId,
-          plan,
-          result.eventId || crypto.randomUUID(),
-        ),
-      );
+      throw error;
     }
 
     return { received: true };

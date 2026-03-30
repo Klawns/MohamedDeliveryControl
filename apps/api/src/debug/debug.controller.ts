@@ -1,55 +1,52 @@
-import { Controller, Get, Param, Logger } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { z } from 'zod';
 import { UsersService } from '../users/users.service';
-import * as fs from 'fs';
+import { IpAllowlistGuard } from '../common/guards/ip-allowlist.guard';
+import { InternalApiKeyGuard } from '../common/guards/internal-api-key.guard';
+import { ZodParam } from '../common/decorators/zod.decorator';
+import type { User } from '../users/interfaces/users-repository.interface';
+
+const debugEmailParamSchema = z.string().email('E-mail invalido');
+const debugUserIdParamSchema = z.string().uuid('ID invalido');
 
 @Controller('debug')
+@UseGuards(IpAllowlistGuard, InternalApiKeyGuard)
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 export class DebugController {
-  constructor(private usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) {}
+
+  private sanitizeUser(user: User | undefined) {
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+  }
 
   @Get('user/:email')
-  async findUser(@Param('email') email: string) {
+  async findUser(@ZodParam('email', debugEmailParamSchema) email: string) {
     const user = await this.usersService.findByEmail(email);
-    return user || { message: 'Usuário não encontrado via e-mail' };
+    if (!user) {
+      return { message: 'Usuario nao encontrado via e-mail' };
+    }
+
+    return this.sanitizeUser(user);
   }
 
   @Get('id/:id')
-  async findUserById(@Param('id') id: string) {
+  async findUserById(@ZodParam('id', debugUserIdParamSchema) id: string) {
     const user = await this.usersService.findById(id);
-    return user || { message: 'Usuário não encontrado via ID' };
-  }
-
-  @Get('all')
-  async listAll() {
-    return this.usersService.findAll();
-  }
-
-  @Get('search/:term')
-  async searchUser(@Param('term') term: string) {
-    // Usamos este endpoint para procurar Flaviana ou qualquer outro termo
-    const allUsers = await this.usersService.findAll(); // Precisamos verificar se existe findAll
-    return allUsers.filter(
-      (u) =>
-        u.name.toLowerCase().includes(term.toLowerCase()) ||
-        u.email.toLowerCase().includes(term.toLowerCase()),
-    );
-  }
-
-  @Get('webhook-logs')
-  getLogs() {
-    const logPath = '/tmp/abacatepay-webhook.log';
-    if (fs.existsSync(logPath)) {
-      return fs.readFileSync(logPath, 'utf8');
+    if (!user) {
+      return { message: 'Usuario nao encontrado via ID' };
     }
-    return 'Nenhum log encontrado em ' + logPath;
-  }
 
-  @Get('test-log')
-  testLog() {
-    const logPath = '/tmp/abacatepay-webhook.log';
-    fs.appendFileSync(
-      logPath,
-      `[TEST] ${new Date().toISOString()} - Endpoint de teste acessado\n`,
-    );
-    return 'Log de teste gravado';
+    return this.sanitizeUser(user);
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.provider';
@@ -5,6 +6,8 @@ import type { DrizzleClient } from '../../database/database.provider';
 import {
   IAdminSettingsRepository,
   PricingPlan,
+  PricingPlanUpdate,
+  SystemConfig,
 } from '../interfaces/admin-settings-repository.interface';
 
 @Injectable()
@@ -22,14 +25,11 @@ export class DrizzleAdminSettingsRepository implements IAdminSettingsRepository 
     return this.drizzle.schema;
   }
 
-  async getPlans(): Promise<PricingPlan[]> {
+  getPlans(): Promise<PricingPlan[]> {
     return this.db.select().from(this.schema.pricingPlans);
   }
 
-  async updatePlan(id: string, data: any): Promise<void> {
-    if (data.features && Array.isArray(data.features)) {
-      data.features = JSON.stringify(data.features);
-    }
+  async updatePlan(id: string, data: PricingPlanUpdate): Promise<void> {
     await this.db
       .update(this.schema.pricingPlans)
       .set({
@@ -41,13 +41,10 @@ export class DrizzleAdminSettingsRepository implements IAdminSettingsRepository 
 
   async getConfigs(): Promise<Record<string, string>> {
     const configs = await this.db.select().from(this.schema.systemConfigs);
-    return configs.reduce(
-      (acc: Record<string, string>, curr: any) => {
-        acc[curr.key] = curr.value;
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
+    return configs.reduce((acc: Record<string, string>, curr: SystemConfig) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {});
   }
 
   async updateConfig(

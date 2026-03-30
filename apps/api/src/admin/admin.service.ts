@@ -6,9 +6,12 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
 import { IPaymentsRepository } from '../payments/interfaces/payments-repository.interface';
+import type { PricingPlanUpdate } from './interfaces/admin-settings-repository.interface';
+import type { RecentAdminUser } from './interfaces/admin-repository.interface';
 
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
+import type { CreateUserDto } from '../users/interfaces/users-repository.interface';
 
 @Injectable()
 export class AdminService {
@@ -64,10 +67,10 @@ export class AdminService {
 
     const now = new Date();
 
-    const mappedData = usersData.data.map((user) => {
+    const mappedData = usersData.data.map((user: RecentAdminUser) => {
       let daysLeft = null;
-      if (user.plan === 'premium' && (user as any).validUntil) {
-        const validUntilDate = new Date((user as any).validUntil);
+      if (user.plan === 'premium' && user.validUntil) {
+        const validUntilDate = new Date(user.validUntil);
         const diffTime = validUntilDate.getTime() - now.getTime();
         daysLeft =
           diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
@@ -103,7 +106,7 @@ export class AdminService {
     return this.paymentsRepository.getAllPlans();
   }
 
-  async updatePlan(planId: string, data: any) {
+  async updatePlan(planId: string, data: PricingPlanUpdate) {
     const updatedPlan = await this.paymentsRepository.updatePlan(planId, data);
 
     // Invalidate the cache used by PaymentsService
@@ -112,7 +115,7 @@ export class AdminService {
     return updatedPlan;
   }
 
-  async createUser(data: any) {
+  async createUser(data: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const user = await this.usersService.create({
       ...data,

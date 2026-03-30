@@ -2,13 +2,11 @@ import {
   Controller,
   Get,
   Post,
-  Body,
   UseGuards,
   Request,
   Delete,
   Param,
   Patch,
-  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
@@ -16,40 +14,47 @@ import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guar
 import { ZodBody, ZodQuery } from '../common/decorators/zod.decorator';
 import * as Dtos from './dto/clients.dto';
 import { ClientMapper } from './mappers/client.mapper';
+import type { RequestWithUser } from '../auth/auth.types';
 
 @Controller('clients')
 @UseGuards(AuthGuard('jwt'), ActiveSubscriptionGuard)
 export class ClientsController {
-  constructor(private clientsService: ClientsService) {}
+  constructor(private readonly clientsService: ClientsService) {}
 
   @Get()
-  async findAll(@Request() req: any, @ZodQuery(Dtos.findAllClientsSchema) query: Dtos.FindAllClientsDto) {
+  async findAll(
+    @Request() req: RequestWithUser,
+    @ZodQuery(Dtos.findAllClientsSchema) query: Dtos.FindAllClientsDto,
+  ) {
     const { clients, ...meta } = await this.clientsService.findAll(
       req.user.id,
       query.limit,
       query.cursor,
       query.search,
     );
-    
-    return { 
-      data: ClientMapper.toHttpList(clients), 
-      meta 
+
+    return {
+      data: ClientMapper.toHttpList(clients),
+      meta,
     };
   }
 
   @Post()
-  async create(@Request() req: any, @ZodBody(Dtos.createClientSchema) body: Dtos.CreateClientBodyDto) {
+  create(
+    @Request() req: RequestWithUser,
+    @ZodBody(Dtos.createClientSchema) body: Dtos.CreateClientBodyDto,
+  ) {
     return this.clientsService.create(req.user.id, body);
   }
 
   @Get(':id')
-  async findOne(@Request() req: any, @Param('id') id: string) {
+  findOne(@Request() req: RequestWithUser, @Param('id') id: string) {
     return this.clientsService.findOne(req.user.id, id);
   }
 
   @Patch(':id')
-  async update(
-    @Request() req: any,
+  update(
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
     @ZodBody(Dtos.updateClientSchema) body: Dtos.UpdateClientBodyDto,
   ) {
@@ -57,23 +62,24 @@ export class ClientsController {
   }
 
   @Delete(':id')
-  async delete(@Request() req: any, @Param('id') id: string) {
+  delete(@Request() req: RequestWithUser, @Param('id') id: string) {
     if (id === 'all') {
       return this.clientsService.deleteAll(req.user.id);
     }
+
     return this.clientsService.delete(req.user.id, id);
   }
 
   @Get(':id/balance')
-  async getBalance(@Request() req: any, @Param('id') id: string) {
+  getBalance(@Request() req: RequestWithUser, @Param('id') id: string) {
     return this.clientsService.getClientBalance(req.user.id, id);
   }
 
   @Post(':id/payments')
-  async addPartialPayment(
-    @Request() req: any,
+  addPartialPayment(
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
-    @Body() body: { amount: number; notes?: string },
+    @ZodBody(Dtos.addPartialPaymentSchema) body: Dtos.AddPartialPaymentDto,
   ) {
     return this.clientsService.addPartialPayment(
       req.user.id,
@@ -84,16 +90,16 @@ export class ClientsController {
   }
 
   @Get(':id/payments')
-  async getPayments(
-    @Request() req: any,
+  getPayments(
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
-    @Query('status') status?: 'UNUSED' | 'USED',
+    @ZodQuery(Dtos.getClientPaymentsSchema) query: Dtos.GetClientPaymentsDto,
   ) {
-    return this.clientsService.getClientPayments(req.user.id, id, status);
+    return this.clientsService.getClientPayments(req.user.id, id, query.status);
   }
 
   @Post(':id/close-debt')
-  async closeDebt(@Request() req: any, @Param('id') id: string) {
+  closeDebt(@Request() req: RequestWithUser, @Param('id') id: string) {
     return this.clientsService.closeDebt(req.user.id, id);
   }
 }

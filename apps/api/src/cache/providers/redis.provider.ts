@@ -7,24 +7,39 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 import { ICacheProvider } from '../interfaces/cache-provider.interface';
-import { getRedisConfig } from '../../common/utils/redis.util';
+import { getRedisConfig, hasRedisConfig } from '../../common/utils/redis.util';
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'erro desconhecido';
+}
+
+interface MemoryCacheEntry {
+  value: string;
+  expiresAt?: number;
+}
 
 @Injectable()
 export class RedisCacheProvider
   implements ICacheProvider, OnModuleInit, OnModuleDestroy
 {
-  private redisClient: Redis;
+  private redisClient!: Redis;
   private readonly logger = new Logger(RedisCacheProvider.name);
+  private readonly memoryStore = new Map<string, MemoryCacheEntry>();
+  private useMemoryFallback = false;
 
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
+    if (!hasRedisConfig(this.configService)) {
+      this.enableMemoryFallback(
+        'Nenhuma configuracao Redis encontrada. Usando cache em memoria neste processo.',
+      );
+      return;
+    }
+
     const redisConfig = getRedisConfig(this.configService);
 
     if (typeof redisConfig === 'string') {
-      this.logger.debug(
-        `[RedisCacheProvider] 🔍 Usando URL p/ conexão Redis...`,
-      );
       try {
         const url = new URL(redisConfig);
         this.redisClient = new Redis(redisConfig, {
@@ -34,42 +49,41 @@ export class RedisCacheProvider
           },
         });
         this.logger.debug(
-          `[RedisCacheProvider] 🔄 Tentando conectar via URL: ${url.hostname}:${url.port}`,
+          `[RedisCacheProvider] Conectando via URL: ${url.hostname}:${url.port}`,
         );
-      } catch (e) {
-        this.logger.error(
-          `[RedisCacheProvider] ❌ Falha ao parsear REDIS_URL: ${e.message}`,
+      } catch (error: unknown) {
+        this.enableMemoryFallback(
+          'REDIS_URL invalida. Usando cache em memoria.',
+          error,
         );
-        // Fallback para localhost em caso de URL inválida
-        this.redisClient = new Redis('redis://localhost:6379');
+        return;
       }
     } else {
-      this.logger.debug(
-        `[RedisCacheProvider] 🔍 Usando Host/Porta p/ conexão Redis (${redisConfig.host}:${redisConfig.port})...`,
-      );
       this.redisClient = new Redis({
         host: redisConfig.host,
         port: redisConfig.port,
-        username: redisConfig.username || undefined,
-        password: redisConfig.password || undefined,
+        username: redisConfig.username,
+        password: redisConfig.password,
         tls: redisConfig.tls,
         maxRetriesPerRequest: 3,
         retryStrategy(times) {
           return Math.min(times * 100, 3000);
         },
       });
+      this.logger.debug(
+        `[RedisCacheProvider] Conectando via host/porta: ${redisConfig.host}:${redisConfig.port}`,
+      );
     }
 
-    this.redisClient.on('error', (err) => {
-      this.logger.error(
-        `[RedisCacheProvider] 🔌 Erro na conexão Redis: ${err.message}`,
+    this.redisClient.on('error', (error: Error) => {
+      this.enableMemoryFallback(
+        'Falha na conexao Redis. Alternando para cache em memoria.',
+        error,
       );
     });
 
     this.redisClient.on('ready', () => {
-      this.logger.log(
-        '[RedisCacheProvider] ✅ Conectado com SUCESSO ao servidor Redis!',
-      );
+      this.logger.log('[RedisCacheProvider] Conectado com sucesso ao Redis.');
     });
   }
 
@@ -79,41 +93,160 @@ export class RedisCacheProvider
     }
   }
 
-  async get<T>(key: string): Promise<T | null> {
-    try {
-      const data = await this.redisClient.get(key);
-      if (!data) return null;
-      return JSON.parse(data) as T;
-    } catch (error) {
-      this.logger.error(`Erro ao buscar cache [${key}]: ${error.message}`);
-      return null; // Fallback silencioso (Circuit Breaker)
+  private enableMemoryFallback(message: string, error?: unknown) {
+    if (this.useMemoryFallback) {
+      return;
+    }
+
+    this.useMemoryFallback = true;
+
+    if (error) {
+      this.logger.error(`${message} ${getErrorMessage(error)}`);
+    } else {
+      this.logger.warn(message);
+    }
+
+    if (this.redisClient) {
+      this.redisClient.disconnect();
     }
   }
 
-  async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
+  private pruneExpiredMemoryEntry(key: string) {
+    const entry = this.memoryStore.get(key);
+    if (!entry) {
+      return;
+    }
+
+    if (entry.expiresAt && entry.expiresAt <= Date.now()) {
+      this.memoryStore.delete(key);
+    }
+  }
+
+  private getMemoryValue<T>(key: string): T | null {
+    this.pruneExpiredMemoryEntry(key);
+    const entry = this.memoryStore.get(key);
+
+    if (!entry) {
+      return null;
+    }
+
+    return JSON.parse(entry.value) as T;
+  }
+
+  private setMemoryValue(
+    key: string,
+    value: unknown,
+    ttlSeconds?: number,
+  ): void {
+    this.memoryStore.set(key, {
+      value: JSON.stringify(value),
+      expiresAt: ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined,
+    });
+  }
+
+  private delMemoryValue(key: string): void {
+    this.memoryStore.delete(key);
+  }
+
+  private getDelMemoryValue<T>(key: string): T | null {
+    const value = this.getMemoryValue<T>(key);
+    this.memoryStore.delete(key);
+    return value;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    if (this.useMemoryFallback) {
+      return this.getMemoryValue<T>(key);
+    }
+
+    try {
+      const data = await this.redisClient.get(key);
+      if (!data) {
+        return null;
+      }
+
+      return JSON.parse(data) as T;
+    } catch (error: unknown) {
+      this.enableMemoryFallback(
+        `Erro ao buscar cache [${key}]. Alternando para memoria.`,
+        error,
+      );
+      return this.getMemoryValue<T>(key);
+    }
+  }
+
+  async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
+    if (this.useMemoryFallback) {
+      this.setMemoryValue(key, value, ttlSeconds);
+      return;
+    }
+
     try {
       const data = JSON.stringify(value);
       if (ttlSeconds) {
         await this.redisClient.set(key, data, 'EX', ttlSeconds);
-      } else {
-        await this.redisClient.set(key, data);
+        return;
       }
-    } catch (error) {
-      this.logger.error(`Erro ao salvar cache [${key}]: ${error.message}`);
+
+      await this.redisClient.set(key, data);
+    } catch (error: unknown) {
+      this.enableMemoryFallback(
+        `Erro ao salvar cache [${key}]. Alternando para memoria.`,
+        error,
+      );
+      this.setMemoryValue(key, value, ttlSeconds);
     }
   }
 
   async del(key: string): Promise<void> {
+    if (this.useMemoryFallback) {
+      this.delMemoryValue(key);
+      return;
+    }
+
     try {
       await this.redisClient.del(key);
-    } catch (error) {
-      this.logger.error(`Erro ao deletar cache [${key}]: ${error.message}`);
+    } catch (error: unknown) {
+      this.enableMemoryFallback(
+        `Erro ao deletar cache [${key}]. Alternando para memoria.`,
+        error,
+      );
+      this.delMemoryValue(key);
+    }
+  }
+
+  async getDel<T>(key: string): Promise<T | null> {
+    if (this.useMemoryFallback) {
+      return this.getDelMemoryValue<T>(key);
+    }
+
+    try {
+      const data = await this.redisClient.call('getdel', key);
+      if (!data) {
+        return null;
+      }
+
+      return JSON.parse(data as string) as T;
+    } catch (error: unknown) {
+      this.enableMemoryFallback(
+        `Erro ao buscar e deletar cache [${key}]. Alternando para memoria.`,
+        error,
+      );
+      return this.getDelMemoryValue<T>(key);
     }
   }
 
   async invalidatePrefix(prefix: string): Promise<void> {
+    if (this.useMemoryFallback) {
+      for (const key of Array.from(this.memoryStore.keys())) {
+        if (key.startsWith(prefix)) {
+          this.memoryStore.delete(key);
+        }
+      }
+      return;
+    }
+
     try {
-      // Usa 'scan' para evitar travar a thread única do Redis com comandos KEYS *
       let cursor = '0';
       const keysToDelete: string[] = [];
 
@@ -132,10 +265,17 @@ export class RedisCacheProvider
       if (keysToDelete.length > 0) {
         await this.redisClient.del(...keysToDelete);
       }
-    } catch (error) {
-      this.logger.error(
-        `Erro ao invalidar prefixo [${prefix}]: ${error.message}`,
+    } catch (error: unknown) {
+      this.enableMemoryFallback(
+        `Erro ao invalidar prefixo [${prefix}]. Alternando para memoria.`,
+        error,
       );
+
+      for (const key of Array.from(this.memoryStore.keys())) {
+        if (key.startsWith(prefix)) {
+          this.memoryStore.delete(key);
+        }
+      }
     }
   }
 }

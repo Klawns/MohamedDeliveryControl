@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Jest jobs and service mocks are intentionally partial. */
 import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionWebhookWorker } from './subscription-webhook.worker';
 import { SubscriptionsService } from '../subscriptions.service';
@@ -44,7 +45,10 @@ describe('SubscriptionWebhookWorker', () => {
 
     await worker.process(jobMock);
 
-    expect(subscriptionsServiceMock.updateOrCreate).toHaveBeenCalledWith('user-123', 'premium');
+    expect(subscriptionsServiceMock.updateOrCreate).toHaveBeenCalledWith(
+      'user-123',
+      'premium',
+    );
     expect(cacheProviderMock.del).toHaveBeenCalledWith('profile:user-123');
   });
 

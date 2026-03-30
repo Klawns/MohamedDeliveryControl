@@ -12,10 +12,12 @@ export const rideResponseSchema = z.object({
   createdAt: z.date(),
   paidWithBalance: z.number(),
   debtValue: z.number(),
-  client: z.object({
-    id: z.string(),
-    name: z.string(),
-  }).nullable(),
+  client: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+    })
+    .nullable(),
 });
 
 export type RideResponseDto = z.infer<typeof rideResponseSchema>;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq, and, sql, desc, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -27,7 +28,11 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
     return this.drizzle.schema;
   }
 
-  async findByClient(
+  private getExecutor(executor?: any) {
+    return executor ?? this.db;
+  }
+
+  findByClient(
     clientId: string,
     userId: string,
     status?: 'UNUSED' | 'USED',
@@ -48,8 +53,11 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
       .orderBy(desc(this.schema.clientPayments.createdAt));
   }
 
-  async create(data: CreateClientPaymentDto): Promise<ClientPayment> {
-    const results = await this.db
+  async create(
+    data: CreateClientPaymentDto,
+    executor?: any,
+  ): Promise<ClientPayment> {
+    const results = await this.getExecutor(executor)
       .insert(this.schema.clientPayments)
       .values({
         ...data,
@@ -60,8 +68,8 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
     return results[0];
   }
 
-  async markAsUsed(clientId: string, userId: string): Promise<void> {
-    await this.db
+  async markAsUsed(clientId: string, userId: string, executor?: any): Promise<void> {
+    await this.getExecutor(executor)
       .update(this.schema.clientPayments)
       .set({ status: 'USED' })
       .where(
@@ -73,19 +81,23 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
       );
   }
 
-  async getUnusedPaymentsStats(clientId: string, userId: string): Promise<{ totalPaid: number; unusedPaymentsCount: number }> {
-    const result = await this.db
+  async getUnusedPaymentsStats(
+    clientId: string,
+    userId: string,
+    executor?: any,
+  ): Promise<{ totalPaid: number; unusedPaymentsCount: number }> {
+    const result = await this.getExecutor(executor)
       .select({
         total: sql<number>`SUM(${this.schema.clientPayments.amount})`,
-        count: count()
+        count: count(),
       })
       .from(this.schema.clientPayments)
       .where(
         and(
           eq(this.schema.clientPayments.clientId, clientId),
           eq(this.schema.clientPayments.userId, userId),
-          eq(this.schema.clientPayments.status, 'UNUSED')
-        )
+          eq(this.schema.clientPayments.status, 'UNUSED'),
+        ),
       );
 
     return {
@@ -94,4 +106,3 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
     };
   }
 }
-

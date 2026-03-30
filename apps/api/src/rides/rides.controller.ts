@@ -1,15 +1,13 @@
 import {
   Controller,
   Get,
+  Header,
   Post,
   Patch,
-  Body,
   UseGuards,
   Request,
   Delete,
   Param,
-  Query,
-  UsePipes,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RidesService } from './rides.service';
@@ -30,17 +28,26 @@ import type {
   FindAllRidesDto,
   GetStatsDto,
 } from './dto/rides.dto';
+import type { RequestWithUser } from '../auth/auth.types';
 
 @Controller('rides')
 @UseGuards(AuthGuard('jwt'), ActiveSubscriptionGuard)
 export class RidesController {
-  constructor(private ridesService: RidesService) {}
+  constructor(private readonly ridesService: RidesService) {}
 
   @Get()
-  async findAll(@Request() req: any, @ZodQuery(findAllRidesSchema) query: FindAllRidesDto) {
+  async findAll(
+    @Request() req: RequestWithUser,
+    @ZodQuery(findAllRidesSchema) query: FindAllRidesDto,
+  ) {
     const { limit, cursor, ...filters } = query;
-    const { rides, ...meta } = await this.ridesService.findAll(req.user.id, limit, cursor, filters);
-    
+    const { rides, ...meta } = await this.ridesService.findAll(
+      req.user.id,
+      limit,
+      cursor,
+      filters,
+    );
+
     return {
       data: RideMapper.toHttpList(rides),
       meta,
@@ -48,19 +55,22 @@ export class RidesController {
   }
 
   @Get('frequent-clients')
-  async getFrequentClients(@Request() req: any) {
+  getFrequentClients(@Request() req: RequestWithUser) {
     return this.ridesService.getFrequentClients(req.user.id);
   }
 
   @Post()
-  async create(@Request() req: any, @ZodBody(createRideSchema) body: CreateRideDto) {
+  async create(
+    @Request() req: RequestWithUser,
+    @ZodBody(createRideSchema) body: CreateRideDto,
+  ) {
     const result = await this.ridesService.create(req.user.id, body);
     return RideMapper.toHttp(result);
   }
 
   @Patch(':id/status')
   async updateStatus(
-    @Request() req: any,
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
     @ZodBody(updateRideStatusSchema) body: UpdateRideStatusDto,
   ) {
@@ -69,30 +79,34 @@ export class RidesController {
   }
 
   @Get('stats')
-  async getStats(@Request() req: any, @ZodQuery(getStatsSchema) query: GetStatsDto) {
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('Pragma', 'no-cache')
+  getStats(
+    @Request() req: RequestWithUser,
+    @ZodQuery(getStatsSchema) query: GetStatsDto,
+  ) {
     return this.ridesService.getStats(req.user.id, query);
   }
 
   @Get('count')
-  async getCount(@Request() req: any) {
+  async getCount(@Request() req: RequestWithUser) {
     const count = await this.ridesService.countAll(req.user.id);
     return { count };
   }
 
   @Get('client/:clientId')
   async findByClient(
-    @Request() req: any,
+    @Request() req: RequestWithUser,
     @Param('clientId') clientId: string,
-    @Query('limit') limit?: number,
-    @Query('cursor') cursor?: string,
+    @ZodQuery(findAllRidesSchema) query: FindAllRidesDto,
   ) {
     const { rides, ...meta } = await this.ridesService.findByClient(
       req.user.id,
       clientId,
-      limit ? Number(limit) : undefined,
-      cursor,
+      query.limit,
+      query.cursor,
     );
-    
+
     return {
       data: RideMapper.toHttpList(rides),
       meta,
@@ -101,7 +115,7 @@ export class RidesController {
 
   @Patch(':id')
   async update(
-    @Request() req: any,
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
     @ZodBody(updateRideSchema) body: UpdateRideDto,
   ) {
@@ -110,10 +124,11 @@ export class RidesController {
   }
 
   @Delete(':id')
-  async delete(@Request() req: any, @Param('id') id: string) {
+  async delete(@Request() req: RequestWithUser, @Param('id') id: string) {
     if (id === 'all') {
       return this.ridesService.deleteAll(req.user.id);
     }
+
     const result = await this.ridesService.delete(req.user.id, id);
     return result ? RideMapper.toHttp(result) : null;
   }

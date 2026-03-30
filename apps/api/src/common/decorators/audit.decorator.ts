@@ -1,46 +1,25 @@
-import { AppLogger } from '../utils/logger.singleton';
+import { SetMetadata } from '@nestjs/common';
+
+export const AUDIT_KEY = 'audit_metadata';
+
+export interface AuditOptions {
+  /**
+   * Nome da ação para o log de auditoria.
+   * Se não for fornecido, o nome do método será usado.
+   */
+  action?: string;
+
+  /**
+   * Índices dos argumentos que são seguros para logar.
+   * Se não for fornecido, nenhum argumento será logado por segurança.
+   * @deprecated Use o interceptor global para logs mais seguros.
+   */
+  sanitizedFields?: number[];
+}
 
 /**
- * Decorator para auditar chamadas de métodos.
- * Registra quem chamou, quando e com quais parâmetros.
+ * Decorator para marcar métodos que devem ser auditados.
+ * A lógica de auditoria real é processada pelo AuditInterceptor.
  */
-export function Audit() {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor,
-  ) {
-    const originalMethod = descriptor.value;
-    const logger = AppLogger.getInstance();
-
-    descriptor.value = function (...args: any[]) {
-      const className = target.constructor.name;
-      logger.log(
-        `[AUDIT] Chamando ${className}.${propertyKey} com argumentos: ${JSON.stringify(args)}`,
-      );
-
-      const result = originalMethod.apply(this, args);
-
-      if (result instanceof Promise) {
-        return result
-          .then((res) => {
-            logger.log(
-              `[AUDIT] ${className}.${propertyKey} finalizado com sucesso.`,
-            );
-            return res;
-          })
-          .catch((err) => {
-            logger.error(
-              `[AUDIT] ${className}.${propertyKey} falhou com erro: ${err.message}`,
-            );
-            throw err;
-          });
-      }
-
-      logger.log(`[AUDIT] ${className}.${propertyKey} finalizado.`);
-      return result;
-    };
-
-    return descriptor;
-  };
-}
+export const Audit = (options: AuditOptions = {}) =>
+  SetMetadata(AUDIT_KEY, options);

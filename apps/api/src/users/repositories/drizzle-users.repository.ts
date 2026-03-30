@@ -1,4 +1,5 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+import { Injectable, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { DRIZZLE } from '../../database/database.provider';
@@ -12,8 +13,6 @@ import {
 
 @Injectable()
 export class DrizzleUsersRepository implements IUsersRepository {
-  private readonly logger = new Logger(DrizzleUsersRepository.name);
-
   constructor(
     @Inject(DRIZZLE)
     private readonly drizzle: DrizzleClient,
@@ -55,19 +54,22 @@ export class DrizzleUsersRepository implements IUsersRepository {
       .values({
         ...data,
         id: data.id || randomUUID(),
-        role: role,
-      } as any)
+        role,
+      })
       .returning();
 
     return results[0];
   }
 
-  async findAll(): Promise<User[]> {
+  findAll(): Promise<User[]> {
     return this.db.select().from(this.schema.users);
   }
 
   async update(id: string, data: UpdateUserDto): Promise<void> {
-    await this.db.update(this.schema.users).set(data).where(eq(this.schema.users.id, id));
+    await this.db
+      .update(this.schema.users)
+      .set(data)
+      .where(eq(this.schema.users.id, id));
   }
 
   async remove(id: string): Promise<void> {

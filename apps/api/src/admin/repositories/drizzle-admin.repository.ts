@@ -1,14 +1,16 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+import { Injectable, Inject } from '@nestjs/common';
 import { count, eq, desc, ne } from 'drizzle-orm';
 
 import { DRIZZLE } from '../../database/database.provider';
 import type { DrizzleClient } from '../../database/database.provider';
-import { IAdminRepository } from '../interfaces/admin-repository.interface';
+import {
+  IAdminRepository,
+  type RecentAdminUser,
+} from '../interfaces/admin-repository.interface';
 
 @Injectable()
 export class DrizzleAdminRepository implements IAdminRepository {
-  private readonly logger = new Logger(DrizzleAdminRepository.name);
-
   constructor(
     @Inject(DRIZZLE)
     private readonly drizzle: DrizzleClient,
@@ -42,7 +44,11 @@ export class DrizzleAdminRepository implements IAdminRepository {
     return activeSubscriptions.value;
   }
 
-  async getRecentUsers(adminEmail: string, limit: number, offset: number) {
+  async getRecentUsers(
+    adminEmail: string,
+    limit: number,
+    offset: number,
+  ): Promise<{ data: RecentAdminUser[]; total: number }> {
     const [totalCount] = await this.db
       .select({ value: count() })
       .from(this.schema.users)
@@ -78,4 +84,3 @@ export class DrizzleAdminRepository implements IAdminRepository {
     await this.db.delete(this.schema.users).where(eq(this.schema.users.id, id));
   }
 }
-

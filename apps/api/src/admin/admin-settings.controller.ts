@@ -1,16 +1,21 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Body,
-  UseGuards,
-  Param,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminSettingsService } from './admin-settings.service';
+import { ZodBody, ZodParam } from '../common/decorators/zod.decorator';
+import {
+  adminEntityIdParamSchema,
+  updatePricingPlanSchema,
+  updateConfigSchema,
+  createCouponSchema,
+} from './dto/admin.dto';
+import type {
+  AdminEntityIdParamDto,
+  UpdatePricingPlanDto,
+  UpdateConfigDto,
+  CreateCouponDto,
+} from './dto/admin.dto';
 
 @Controller('admin/settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,7 +29,10 @@ export class AdminSettingsController {
   }
 
   @Patch('plans/:id')
-  async updatePlan(@Param('id') id: string, @Body() data: any) {
+  async updatePlan(
+    @ZodParam('id', adminEntityIdParamSchema) id: AdminEntityIdParamDto,
+    @ZodBody(updatePricingPlanSchema) data: UpdatePricingPlanDto,
+  ) {
     return this.settingsService.updatePlan(id, data);
   }
 
@@ -34,9 +42,7 @@ export class AdminSettingsController {
   }
 
   @Post('configs')
-  async updateConfig(
-    @Body() body: { key: string; value: string; description?: string },
-  ) {
+  async updateConfig(@ZodBody(updateConfigSchema) body: UpdateConfigDto) {
     return this.settingsService.updateConfig(
       body.key,
       body.value,
@@ -50,7 +56,7 @@ export class AdminSettingsController {
   }
 
   @Post('promo-codes')
-  async createCoupon(@Body() data: any) {
+  async createCoupon(@ZodBody(createCouponSchema) data: CreateCouponDto) {
     return this.settingsService.createCoupon(data);
   }
 

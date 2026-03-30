@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 import { DRIZZLE } from '../../database/database.provider';
@@ -35,33 +36,6 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
     return results[0];
   }
 
-  async incrementRideCount(userId: string): Promise<Subscription[]> {
-    return this.db
-      .update(this.schema.subscriptions)
-      .set({
-        rideCount: sql`${this.schema.subscriptions.rideCount} + 1`,
-        createdAt: new Date(),
-      } as any)
-      .where(eq(this.schema.subscriptions.userId, userId))
-      .returning();
-  }
-
-  async decrementRideCount(userId: string): Promise<Subscription[]> {
-    return this.db
-      .update(this.schema.subscriptions)
-      .set({
-        rideCount: sql`${this.schema.subscriptions.rideCount} - 1`,
-        createdAt: new Date(),
-      } as any)
-      .where(
-        and(
-          eq(this.schema.subscriptions.userId, userId),
-          sql`${this.schema.subscriptions.rideCount} > 0`,
-        ),
-      )
-      .returning();
-  }
-
   async updateOrCreate(
     userId: string,
     plan: 'starter' | 'premium' | 'lifetime',
@@ -76,6 +50,8 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
       .limit(1);
 
     let validUntil: Date | null = null;
+    const trialStartedAt =
+      plan === 'starter' ? existing[0]?.trialStartedAt ?? new Date() : null;
 
     if (plan === 'premium') {
       const now = new Date();
@@ -98,8 +74,9 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
           .set({
             plan,
             status: 'active',
+            trialStartedAt,
             validUntil,
-          } as any)
+          })
           .where(eq(this.schema.subscriptions.userId, userId))
           .returning();
         this.logger.debug(
@@ -126,8 +103,9 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
           userId,
           plan,
           status: 'active',
+          trialStartedAt,
           validUntil,
-        } as any)
+        })
         .returning();
       this.logger.debug(
         `[Subscription] Novo plano criado com sucesso: ${JSON.stringify(inserted[0])}`,
@@ -152,6 +130,7 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
 
     let validUntil: Date | null = null;
     let rideCount = undefined;
+    let trialStartedAt: Date | null | undefined = undefined;
 
     if (plan === 'premium') {
       const now = new Date();
@@ -161,6 +140,7 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
     } else if (plan === 'starter') {
       validUntil = null;
       rideCount = 0;
+      trialStartedAt = new Date();
     }
 
     const existing = await this.db
@@ -176,8 +156,9 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
           plan,
           status: 'active',
           validUntil,
+          ...(trialStartedAt !== undefined && { trialStartedAt }),
           ...(rideCount !== undefined && { rideCount }),
-        } as any)
+        })
         .where(eq(this.schema.subscriptions.userId, userId))
         .returning();
     } else {
@@ -189,20 +170,10 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
           plan,
           status: 'active',
           validUntil,
+          ...(trialStartedAt !== undefined && { trialStartedAt }),
           ...(rideCount !== undefined && { rideCount }),
-        } as any)
+        })
         .returning();
     }
-  }
-
-  async resetRideCount(userId: string): Promise<Subscription[]> {
-    return this.db
-      .update(this.schema.subscriptions)
-      .set({
-        rideCount: 0,
-        createdAt: new Date(),
-      } as any)
-      .where(eq(this.schema.subscriptions.userId, userId))
-      .returning();
   }
 }

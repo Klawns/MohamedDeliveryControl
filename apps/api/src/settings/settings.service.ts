@@ -1,5 +1,9 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ISettingsRepository } from './interfaces/settings-repository.interface';
+import type {
+  CreateRidePresetDto,
+  UpdateRidePresetDto,
+} from './dto/settings.dto';
 
 @Injectable()
 export class SettingsService {
@@ -13,13 +17,15 @@ export class SettingsService {
 
     // Cleanup de presets antigos/padrões se existirem (Bairro B, Shopping, etc)
     const defaultLocations = ['Centro', 'Bairro A', 'Bairro B', 'Shopping'];
-    const legacyPresets = presets.filter(p => defaultLocations.includes(p.location));
-    
+    const legacyPresets = presets.filter((p) =>
+      defaultLocations.includes(p.location),
+    );
+
     if (legacyPresets.length > 0) {
       for (const p of legacyPresets) {
         await this.settingsRepository.deleteRidePreset(userId, p.id);
       }
-      return presets.filter(p => !defaultLocations.includes(p.location));
+      return presets.filter((p) => !defaultLocations.includes(p.location));
     }
 
     return presets;
@@ -45,10 +51,7 @@ export class SettingsService {
     return created;
   }
 
-  async createRidePreset(
-    userId: string,
-    data: { label: string; value: number; location: string },
-  ) {
+  async createRidePreset(userId: string, data: CreateRidePresetDto) {
     return this.settingsRepository.createRidePreset({
       ...data,
       userId,
@@ -62,7 +65,7 @@ export class SettingsService {
   async updateRidePreset(
     userId: string,
     id: string,
-    data: Partial<{ label: string; value: number; location: string }>,
+    data: UpdateRidePresetDto,
   ) {
     return this.settingsRepository.updateRidePreset(userId, id, data);
   }
