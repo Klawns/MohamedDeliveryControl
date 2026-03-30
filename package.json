@@ -5,6 +5,12 @@
         "node": ">=20"
     },
     "packageManager": "pnpm@10.30.3",
+    "pnpm": {
+        "overrides": {
+            "fast-xml-parser": "5.5.7",
+            "file-type": "21.3.2"
+        }
+    },
     "scripts": {
         "build": "turbo build",
         "dev": "turbo dev",
