@@ -98,7 +98,7 @@ export function Sidebar({ isOpen, setIsOpen, user, menuItems, logout }: SidebarP
 
             <aside
                 className={cn(
-                    "hidden fixed inset-y-0 left-0 z-50 bg-sidebar-background backdrop-blur-xl border-r border-sidebar-border overflow-hidden lg:flex lg:flex-col transition-all duration-500 ease-in-out",
+                    "hidden fixed inset-y-0 left-0 z-[70] bg-sidebar-background backdrop-blur-xl border-r border-sidebar-border overflow-hidden lg:flex lg:flex-col transition-all duration-500 ease-in-out",
                     isOpen ? "lg:w-72" : "lg:w-24"
                 )}
             >

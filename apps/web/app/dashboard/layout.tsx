@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLayoutAuth } from "./_hooks/use-layout-auth";
 import { useLayoutSubscription } from "./_hooks/use-layout-subscription";
 import { useSidebarState } from "./_hooks/use-sidebar-state";
+import { cn } from "@/lib/utils";
 
 import { Sidebar } from "./_components/layout/sidebar";
 import { MobileHeader } from "./_components/layout/mobile-header";
@@ -55,7 +56,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     logout={logout}
                 />
 
-                <main className="flex-1 relative overflow-y-auto flex flex-col min-w-0 scrollbar-hide">
+                <main
+                    className={cn(
+                        "flex-1 relative overflow-y-auto flex flex-col min-w-0 scrollbar-hide",
+                        sidebar.isSidebarOpen ? "lg:ml-72" : "lg:ml-24"
+                    )}
+                >
                     {/* 4. Banners de Status de Assinatura */}
                     <StatusBanners 
                         isExpired={sub.isExpired}
