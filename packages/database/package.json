@@ -10,6 +10,7 @@
         "db:push": "drizzle-kit push",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
+        "db:migrate:postgres": "node ./scripts/run-drizzle.cjs migrate postgres",
         "db:generate:postgres": "node ./scripts/run-drizzle.cjs generate postgres",
         "db:studio": "drizzle-kit studio"
     },
