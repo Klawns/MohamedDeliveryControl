@@ -22,6 +22,7 @@ import {
   adminEntityIdParamSchema,
   createUserSchema,
   adminUpdateUserPlanSchema,
+  pricingPlanIdParamSchema,
   recentUsersQuerySchema,
   updatePricingPlanSchema,
 } from './dto/admin.dto';
@@ -29,6 +30,7 @@ import type {
   AdminEntityIdParamDto,
   CreateUserDto,
   AdminUpdateUserPlanDto,
+  PricingPlanIdParamDto,
   RecentUsersQueryDto,
   UpdatePricingPlanDto,
 } from './dto/admin.dto';
@@ -83,7 +85,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @Put('settings/plans/:id')
   async updatePlanPut(
-    @ZodParam('id', adminEntityIdParamSchema) id: AdminEntityIdParamDto,
+    @ZodParam('id', pricingPlanIdParamSchema) id: PricingPlanIdParamDto,
     @ZodBody(updatePricingPlanSchema) body: UpdatePricingPlanDto,
   ) {
     return this.adminService.updatePlan(id, body);
@@ -92,7 +94,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @Patch('settings/plans/:id')
   async updatePlanPatch(
-    @ZodParam('id', adminEntityIdParamSchema) id: AdminEntityIdParamDto,
+    @ZodParam('id', pricingPlanIdParamSchema) id: PricingPlanIdParamDto,
     @ZodBody(updatePricingPlanSchema) body: UpdatePricingPlanDto,
   ) {
     return this.adminService.updatePlan(id, body);

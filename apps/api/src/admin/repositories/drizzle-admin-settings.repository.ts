@@ -9,6 +9,13 @@ import {
   PricingPlanUpdate,
   SystemConfig,
 } from '../interfaces/admin-settings-repository.interface';
+import type { PaymentPlanId } from '../../payments/pricing-plan-catalog';
+import {
+  getMissingDefaultPlans,
+  getStoredPlanByPublicId,
+  listPublicPricingPlans,
+  type StoredPricingPlan,
+} from '../../payments/pricing-plan-catalog';
 
 @Injectable()
 export class DrizzleAdminSettingsRepository implements IAdminSettingsRepository {
@@ -26,17 +33,27 @@ export class DrizzleAdminSettingsRepository implements IAdminSettingsRepository 
   }
 
   getPlans(): Promise<PricingPlan[]> {
-    return this.db.select().from(this.schema.pricingPlans);
+    return this.db
+      .select()
+      .from(this.schema.pricingPlans)
+      .then((plans: StoredPricingPlan[]) => listPublicPricingPlans(plans));
   }
 
-  async updatePlan(id: string, data: PricingPlanUpdate): Promise<void> {
+  async updatePlan(id: PaymentPlanId, data: PricingPlanUpdate): Promise<void> {
+    const plans = await this.db.select().from(this.schema.pricingPlans);
+    const storedPlan = getStoredPlanByPublicId(plans, id);
+
+    if (!storedPlan) {
+      throw new Error('Plano nao encontrado');
+    }
+
     await this.db
       .update(this.schema.pricingPlans)
       .set({
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(this.schema.pricingPlans.id, id));
+      .where(eq(this.schema.pricingPlans.id, storedPlan.id));
   }
 
   async getConfigs(): Promise<Record<string, string>> {
@@ -75,58 +92,8 @@ export class DrizzleAdminSettingsRepository implements IAdminSettingsRepository 
   }
 
   async seedInitialData(): Promise<void> {
-    const defaultPlans = [
-      {
-        id: 'starter',
-        name: 'Starter',
-        price: 0,
-        description: 'Ideal para comecar e testar a plataforma.',
-        features: JSON.stringify([
-          'Ate 50 corridas incluidas',
-          'Controle de clientes basico',
-          'Relatorios mensais',
-          'Suporte via comunidade',
-        ]),
-        cta: 'Comecar Gratis',
-        highlight: false,
-      },
-      {
-        id: 'premium',
-        name: 'Premium',
-        price: 4990,
-        interval: '/mes',
-        description: '30 dias de acesso total com renovacao via Pix.',
-        features: JSON.stringify([
-          'Corridas ilimitadas',
-          'Dashboard advanced',
-          'Relatorios PDF customizados',
-          'Suporte prioritario',
-          'Integracao com pagamentos',
-        ]),
-        cta: 'Assinar Premium',
-        highlight: true,
-      },
-      {
-        id: 'lifetime',
-        name: 'Lifetime',
-        price: 49700,
-        description: 'Acesso vitalicio para quem nao quer mensalidade.',
-        features: JSON.stringify([
-          'Tudo do Premium',
-          'Novas atualizacoes para sempre',
-          'Acesso antecipado a recursos',
-          'Badges exclusivos',
-        ]),
-        cta: 'Comprar Vitalicio',
-        highlight: false,
-      },
-    ] as const;
-
     const plans = await this.db.select().from(this.schema.pricingPlans);
-    const existingPlanIds = new Set(plans.map((plan: PricingPlan) => plan.id));
-    const missingPlans = defaultPlans.filter(
-      (plan) => !existingPlanIds.has(plan.id),
-    );
+    const missingPlans = getMissingDefaultPlans(plans);
 
     if (missingPlans.length > 0) {
       await this.db.insert(this.schema.pricingPlans).values(missingPlans);

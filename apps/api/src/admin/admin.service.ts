@@ -9,6 +9,7 @@ import type { ICacheProvider } from '../cache/interfaces/cache-provider.interfac
 import { IPaymentsRepository } from '../payments/interfaces/payments-repository.interface';
 import type { PricingPlanUpdate } from './interfaces/admin-settings-repository.interface';
 import type { RecentAdminUser } from './interfaces/admin-repository.interface';
+import type { PaymentPlanId } from '../payments/pricing-plan-catalog';
 
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -113,7 +114,7 @@ export class AdminService {
     return this.paymentsRepository.getAllPlans();
   }
 
-  async updatePlan(planId: string, data: PricingPlanUpdate) {
+  async updatePlan(planId: PaymentPlanId, data: PricingPlanUpdate) {
     const updatedPlan = await this.paymentsRepository.updatePlan(planId, data);
 
     // Invalidate the cache used by PaymentsService

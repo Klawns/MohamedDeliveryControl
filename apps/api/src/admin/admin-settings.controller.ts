@@ -5,13 +5,13 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminSettingsService } from './admin-settings.service';
 import { ZodBody, ZodParam } from '../common/decorators/zod.decorator';
 import {
-  adminEntityIdParamSchema,
+  pricingPlanIdParamSchema,
   updatePricingPlanSchema,
   updateConfigSchema,
   createCouponSchema,
 } from './dto/admin.dto';
 import type {
-  AdminEntityIdParamDto,
+  PricingPlanIdParamDto,
   UpdatePricingPlanDto,
   UpdateConfigDto,
   CreateCouponDto,
@@ -30,7 +30,7 @@ export class AdminSettingsController {
 
   @Patch('plans/:id')
   async updatePlan(
-    @ZodParam('id', adminEntityIdParamSchema) id: AdminEntityIdParamDto,
+    @ZodParam('id', pricingPlanIdParamSchema) id: PricingPlanIdParamDto,
     @ZodBody(updatePricingPlanSchema) data: UpdatePricingPlanDto,
   ) {
     return this.settingsService.updatePlan(id, data);

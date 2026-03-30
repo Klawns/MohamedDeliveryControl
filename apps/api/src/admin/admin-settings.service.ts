@@ -9,6 +9,7 @@ import {
   IAdminSettingsRepository,
   type PricingPlanUpdate,
 } from './interfaces/admin-settings-repository.interface';
+import type { PaymentPlanId } from '../payments/pricing-plan-catalog';
 import type { CreateCouponDto } from './dto/admin.dto';
 import { CACHE_PROVIDER } from '../cache/interfaces/cache-provider.interface';
 import type { ICacheProvider } from '../cache/interfaces/cache-provider.interface';
@@ -46,7 +47,7 @@ export class AdminSettingsService {
     return this.adminSettingsRepository.getPlans();
   }
 
-  async updatePlan(id: string, data: PricingPlanUpdate): Promise<void> {
+  async updatePlan(id: PaymentPlanId, data: PricingPlanUpdate): Promise<void> {
     return this.adminSettingsRepository.updatePlan(id, data);
   }
 
