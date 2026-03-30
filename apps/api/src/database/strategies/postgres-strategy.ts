@@ -28,13 +28,35 @@ function decodeMultilineValue(
   return Buffer.from(base64Value, 'base64').toString('utf8');
 }
 
+function resolvePostgresHost(configService: ConfigService): string | undefined {
+  const explicitHost = configService.get<string>('PGHOST');
+
+  if (explicitHost) {
+    return explicitHost;
+  }
+
+  const connectionString = configService.get<string>('DATABASE_URL');
+
+  if (!connectionString) {
+    return undefined;
+  }
+
+  try {
+    return new URL(connectionString).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildPostgresSslConfig(
   configService: ConfigService,
 ): ConnectionOptions | false {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
+  const host = resolvePostgresHost(configService);
+  const shouldDefaultToSsl = isProduction && !host?.endsWith('.railway.internal');
   const sslEnabled = parseBooleanFlag(
     configService.get<string>('POSTGRES_SSL_ENABLED'),
-    isProduction,
+    shouldDefaultToSsl,
   );
 
   if (!sslEnabled) {

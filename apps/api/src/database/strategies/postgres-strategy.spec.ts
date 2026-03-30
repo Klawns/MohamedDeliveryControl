@@ -17,6 +17,18 @@ describe('buildPostgresSslConfig', () => {
     expect(ssl).toEqual({ rejectUnauthorized: true });
   });
 
+  it('disables TLS by default for Railway private networking', () => {
+    const ssl = buildPostgresSslConfig(
+      createConfigService({
+        NODE_ENV: 'production',
+        DATABASE_URL:
+          'postgresql://postgres:secret@postgres.railway.internal:5432/railway',
+      }),
+    );
+
+    expect(ssl).toBe(false);
+  });
+
   it('supports CA provided inline', () => {
     const ssl = buildPostgresSslConfig(
       createConfigService({
