@@ -21,7 +21,7 @@ describe('buildPostgresSslConfig', () => {
     const ssl = buildPostgresSslConfig(
       createConfigService({
         NODE_ENV: 'production',
-        DATABASE_URL:
+        POSTGRES_DATABASE_URL:
           'postgresql://postgres:secret@postgres.railway.internal:5432/railway',
       }),
     );

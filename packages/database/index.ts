@@ -1,3 +1,3 @@
 export * from './schema';
-export { postgresSchema, sqliteSchema } from './schema';
+export { postgresSchema } from './schema';
 export * from 'drizzle-orm';

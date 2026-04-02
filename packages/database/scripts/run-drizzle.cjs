@@ -7,7 +7,7 @@ const appEnvPath = path.resolve(packageRoot, '../../apps/api/.env');
 
 dotenv.config({ path: appEnvPath, quiet: true });
 
-const [command, profile, ...restArgs] = process.argv.slice(2);
+const [command, maybeLegacyProfile, ...restArgs] = process.argv.slice(2);
 const supportedCommands = new Set(['generate', 'migrate', 'push', 'studio']);
 
 if (!supportedCommands.has(command)) {
@@ -16,28 +16,29 @@ if (!supportedCommands.has(command)) {
 }
 
 const env = { ...process.env };
+const passthroughArgs =
+  maybeLegacyProfile === 'postgres'
+    ? restArgs
+    : maybeLegacyProfile
+      ? [maybeLegacyProfile, ...restArgs]
+      : restArgs;
+const postgresUrl =
+  process.env.POSTGRES_DATABASE_URL ?? process.env.DATABASE_URL;
 
-if (profile === 'postgres') {
-  const postgresUrl =
-    process.env.POSTGRES_DATABASE_URL ||
-    (process.env.DB_PROVIDER === 'postgres' ? process.env.DATABASE_URL : undefined);
-
-  if (!postgresUrl) {
-    console.error(
-      'POSTGRES_DATABASE_URL is required to run Drizzle commands for Postgres without changing apps/api/.env.',
-    );
-    process.exit(1);
-  }
-
-  env.DRIZZLE_DB_PROVIDER = 'postgres';
-  env.DRIZZLE_DATABASE_URL = postgresUrl;
-  delete env.DRIZZLE_DATABASE_AUTH_TOKEN;
+if (!postgresUrl) {
+  console.error(
+    'POSTGRES_DATABASE_URL or DATABASE_URL is required to run Drizzle commands.',
+  );
+  process.exit(1);
 }
+
+env.DRIZZLE_DB_PROVIDER = 'postgres';
+env.DRIZZLE_DATABASE_URL = postgresUrl;
 
 const drizzleBin = path.join(path.dirname(require.resolve('drizzle-kit')), 'bin.cjs');
 const result = spawnSync(
   process.execPath,
-  [drizzleBin, command, '--config', 'drizzle.config.ts', ...restArgs],
+  [drizzleBin, command, '--config', 'drizzle.config.ts', ...passthroughArgs],
   {
     cwd: packageRoot,
     env,

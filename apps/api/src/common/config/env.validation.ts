@@ -45,11 +45,10 @@ const envSchema = z
     DB_PROVIDER: z.preprocess(
       (value) =>
         typeof value === 'string' ? value.trim().toLowerCase() : value,
-      z.enum(['postgres', 'sqlite']).default('sqlite'),
+      z.literal('postgres').default('postgres'),
     ),
-    DB_FALLBACK_TO_SQLITE: z.enum(['true', 'false']).default('false'),
     DATABASE_URL: optionalString,
-    DATABASE_AUTH_TOKEN: optionalString,
+    POSTGRES_DATABASE_URL: optionalString,
     POSTGRES_USER: optionalString,
     POSTGRES_PASSWORD: optionalString,
     POSTGRES_DB: optionalString,
@@ -102,8 +101,17 @@ const envSchema = z
     R2_SECRET_ACCESS_KEY: optionalString,
     R2_BUCKET: optionalString,
     R2_PUBLIC_URL: optionalString,
+    R2_PRIVATE_BUCKET: optionalString,
 
     WEBHOOK_WINDOW_SECONDS: optionalInt,
+    BACKUP_RETENTION_COUNT: optionalInt,
+    TECHNICAL_BACKUP_RETENTION_COUNT: optionalInt,
+    BACKUP_SIGNED_URL_TTL_SECONDS: optionalInt,
+    BACKUP_STORAGE_PREFIX: optionalString,
+    BACKUP_AUTOMATION_ENABLED: optionalBoolString,
+    FUNCTIONAL_BACKUP_CRON: optionalString,
+    TECHNICAL_BACKUP_CRON: optionalString,
+    PG_DUMP_BINARY: optionalString,
   })
   .passthrough()
   .superRefine((env, ctx) => {
@@ -229,85 +237,78 @@ const envSchema = z
       );
     }
 
-    if (env.DB_PROVIDER === 'sqlite' && !env.DATABASE_URL) {
+    const hasDetailedConfig = Boolean(
+      env.PGHOST &&
+      env.PGPORT &&
+      (env.POSTGRES_DB || env.PGDATABASE) &&
+      (env.POSTGRES_USER || env.PGUSER) &&
+      (env.POSTGRES_PASSWORD || env.PGPASSWORD),
+    );
+
+    const postgresUrl = env.POSTGRES_DATABASE_URL ?? env.DATABASE_URL;
+
+    if (!postgresUrl && !hasDetailedConfig) {
       requireField(
-        'DATABASE_URL',
-        'DATABASE_URL e obrigatorio quando DB_PROVIDER=sqlite.',
+        'POSTGRES_DATABASE_URL',
+        'Configure POSTGRES_DATABASE_URL ou DATABASE_URL, ou informe PGHOST, PGPORT, POSTGRES_DB/PGDATABASE, POSTGRES_USER/PGUSER e POSTGRES_PASSWORD/PGPASSWORD.',
       );
     }
 
-    if (env.DB_PROVIDER === 'postgres') {
-      const hasDetailedConfig = Boolean(
-        env.PGHOST &&
-        env.PGPORT &&
-        (env.POSTGRES_DB || env.PGDATABASE) &&
-        (env.POSTGRES_USER || env.PGUSER) &&
-        (env.POSTGRES_PASSWORD || env.PGPASSWORD),
+    const sslEnabled =
+      env.POSTGRES_SSL_ENABLED === undefined
+        ? env.NODE_ENV === 'production'
+        : env.POSTGRES_SSL_ENABLED === 'true';
+    const rejectUnauthorized =
+      env.POSTGRES_SSL_REJECT_UNAUTHORIZED === undefined
+        ? true
+        : env.POSTGRES_SSL_REJECT_UNAUTHORIZED === 'true';
+
+    if (env.NODE_ENV === 'production' && sslEnabled && !rejectUnauthorized) {
+      requireField(
+        'POSTGRES_SSL_REJECT_UNAUTHORIZED',
+        'POSTGRES_SSL_REJECT_UNAUTHORIZED=false nao e permitido em producao.',
       );
+    }
 
-      if (!env.DATABASE_URL && !hasDetailedConfig) {
-        requireField(
-          'DATABASE_URL',
-          'Configure DATABASE_URL ou informe PGHOST, PGPORT, POSTGRES_DB/PGDATABASE, POSTGRES_USER/PGUSER e POSTGRES_PASSWORD/PGPASSWORD.',
-        );
-      }
+    if (env.POSTGRES_SSL_CA && env.POSTGRES_SSL_CA_BASE64) {
+      requireField(
+        'POSTGRES_SSL_CA_BASE64',
+        'Use POSTGRES_SSL_CA ou POSTGRES_SSL_CA_BASE64, nao ambos.',
+      );
+    }
 
-      const sslEnabled =
-        env.POSTGRES_SSL_ENABLED === undefined
-          ? env.NODE_ENV === 'production'
-          : env.POSTGRES_SSL_ENABLED === 'true';
-      const rejectUnauthorized =
-        env.POSTGRES_SSL_REJECT_UNAUTHORIZED === undefined
-          ? true
-          : env.POSTGRES_SSL_REJECT_UNAUTHORIZED === 'true';
+    if (env.POSTGRES_SSL_CERT && env.POSTGRES_SSL_CERT_BASE64) {
+      requireField(
+        'POSTGRES_SSL_CERT_BASE64',
+        'Use POSTGRES_SSL_CERT ou POSTGRES_SSL_CERT_BASE64, nao ambos.',
+      );
+    }
 
-      if (env.NODE_ENV === 'production' && sslEnabled && !rejectUnauthorized) {
-        requireField(
-          'POSTGRES_SSL_REJECT_UNAUTHORIZED',
-          'POSTGRES_SSL_REJECT_UNAUTHORIZED=false nao e permitido em producao.',
-        );
-      }
+    if (env.POSTGRES_SSL_KEY && env.POSTGRES_SSL_KEY_BASE64) {
+      requireField(
+        'POSTGRES_SSL_KEY_BASE64',
+        'Use POSTGRES_SSL_KEY ou POSTGRES_SSL_KEY_BASE64, nao ambos.',
+      );
+    }
 
-      if (env.POSTGRES_SSL_CA && env.POSTGRES_SSL_CA_BASE64) {
-        requireField(
-          'POSTGRES_SSL_CA_BASE64',
-          'Use POSTGRES_SSL_CA ou POSTGRES_SSL_CA_BASE64, nao ambos.',
-        );
-      }
+    if (
+      (env.POSTGRES_SSL_CERT || env.POSTGRES_SSL_CERT_BASE64) &&
+      !(env.POSTGRES_SSL_KEY || env.POSTGRES_SSL_KEY_BASE64)
+    ) {
+      requireField(
+        'POSTGRES_SSL_KEY',
+        'POSTGRES_SSL_KEY e obrigatorio quando um certificado cliente for informado.',
+      );
+    }
 
-      if (env.POSTGRES_SSL_CERT && env.POSTGRES_SSL_CERT_BASE64) {
-        requireField(
-          'POSTGRES_SSL_CERT_BASE64',
-          'Use POSTGRES_SSL_CERT ou POSTGRES_SSL_CERT_BASE64, nao ambos.',
-        );
-      }
-
-      if (env.POSTGRES_SSL_KEY && env.POSTGRES_SSL_KEY_BASE64) {
-        requireField(
-          'POSTGRES_SSL_KEY_BASE64',
-          'Use POSTGRES_SSL_KEY ou POSTGRES_SSL_KEY_BASE64, nao ambos.',
-        );
-      }
-
-      if (
-        (env.POSTGRES_SSL_CERT || env.POSTGRES_SSL_CERT_BASE64) &&
-        !(env.POSTGRES_SSL_KEY || env.POSTGRES_SSL_KEY_BASE64)
-      ) {
-        requireField(
-          'POSTGRES_SSL_KEY',
-          'POSTGRES_SSL_KEY e obrigatorio quando um certificado cliente for informado.',
-        );
-      }
-
-      if (
-        (env.POSTGRES_SSL_KEY || env.POSTGRES_SSL_KEY_BASE64) &&
-        !(env.POSTGRES_SSL_CERT || env.POSTGRES_SSL_CERT_BASE64)
-      ) {
-        requireField(
-          'POSTGRES_SSL_CERT',
-          'POSTGRES_SSL_CERT e obrigatorio quando uma chave cliente for informada.',
-        );
-      }
+    if (
+      (env.POSTGRES_SSL_KEY || env.POSTGRES_SSL_KEY_BASE64) &&
+      !(env.POSTGRES_SSL_CERT || env.POSTGRES_SSL_CERT_BASE64)
+    ) {
+      requireField(
+        'POSTGRES_SSL_CERT',
+        'POSTGRES_SSL_CERT e obrigatorio quando uma chave cliente for informada.',
+      );
     }
 
     if (env.STORAGE_TYPE === 'R2') {

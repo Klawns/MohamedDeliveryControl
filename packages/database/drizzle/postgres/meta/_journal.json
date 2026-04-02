@@ -22,6 +22,27 @@
       "when": 1774786222545,
       "tag": "0002_early_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774915200000,
+      "tag": "0003_handy_backup_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774922400000,
+      "tag": "0004_cloudy_backup_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775054139952,
+      "tag": "0005_misty_reavers",
+      "breakpoints": true
     }
   ]
 }

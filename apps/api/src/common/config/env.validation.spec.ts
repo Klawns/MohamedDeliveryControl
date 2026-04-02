@@ -4,8 +4,8 @@ const createValidEnv = (overrides: Record<string, unknown> = {}) => ({
   NODE_ENV: 'development',
   PORT: '3000',
   FRONTEND_URL: 'http://localhost:3000',
-  DB_PROVIDER: 'sqlite',
-  DATABASE_URL: 'file:local.db',
+  DB_PROVIDER: 'postgres',
+  POSTGRES_DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/rotta',
   JWT_SECRET: 'super-secret-token',
   STORAGE_TYPE: 'R2',
   R2_ACCOUNT_ID: 'account-id',
@@ -17,11 +17,21 @@ const createValidEnv = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('validateEnv', () => {
-  it('accepts a valid sqlite configuration', () => {
+  it('accepts a valid postgres configuration', () => {
     const env = validateEnv(createValidEnv());
 
-    expect(env.DB_PROVIDER).toBe('sqlite');
+    expect(env.DB_PROVIDER).toBe('postgres');
     expect(env.PORT).toBe(3000);
+  });
+
+  it('rejects non-postgres providers', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          DB_PROVIDER: 'sqlite',
+        }),
+      ),
+    ).toThrow('Invalid environment configuration');
   });
 
   it('rejects production without frontend url', () => {
@@ -40,8 +50,7 @@ describe('validateEnv', () => {
       validateEnv(
         createValidEnv({
           NODE_ENV: 'production',
-          DB_PROVIDER: 'postgres',
-          DATABASE_URL: 'postgresql://user:pass@db.example.com:5432/app',
+          POSTGRES_DATABASE_URL: 'postgresql://user:pass@db.example.com:5432/app',
           POSTGRES_SSL_REJECT_UNAUTHORIZED: 'false',
         }),
       ),

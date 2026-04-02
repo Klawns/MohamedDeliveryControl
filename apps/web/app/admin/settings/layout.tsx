@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCard, Ticket, Globe, Settings, Building2, Shield } from "lucide-react";
+import {
+    Building2,
+    CreditCard,
+    DatabaseBackup,
+    Globe,
+    Settings,
+    Shield,
+    Ticket,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sidebarNavItems = [
@@ -11,7 +19,7 @@ const sidebarNavItems = [
         icon: Building2,
         items: [
             {
-                title: "Planos de Preços",
+                title: "Planos de Precos",
                 href: "/admin/settings/finance/plans",
                 icon: CreditCard,
             },
@@ -27,19 +35,23 @@ const sidebarNavItems = [
         icon: Settings,
         items: [
             {
-                title: "Configurações Globais",
+                title: "Configuracoes Globais",
                 href: "/admin/settings/system/global",
                 icon: Globe,
             },
             {
-                title: "Segurança de Conta",
+                title: "Seguranca de Conta",
                 href: "/admin/settings/system/security",
                 icon: Shield,
+            },
+            {
+                title: "Backups",
+                href: "/admin/settings/system/backups",
+                icon: DatabaseBackup,
             }
         ]
     }
 ];
-
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -72,10 +84,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                                                 {isActive && (
                                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full" />
                                                 )}
-                                                <item.icon size={16} className={cn(
-                                                    "transition-colors",
-                                                    isActive ? "text-blue-500" : "text-slate-500 group-hover:text-slate-300"
-                                                )} />
+                                                <item.icon
+                                                    size={16}
+                                                    className={cn(
+                                                        "transition-colors",
+                                                        isActive ? "text-blue-500" : "text-slate-500 group-hover:text-slate-300"
+                                                    )}
+                                                />
                                                 {item.title}
                                             </Link>
                                         );

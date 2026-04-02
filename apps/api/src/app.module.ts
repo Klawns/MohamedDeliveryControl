@@ -26,6 +26,7 @@ import { getRedisConfig } from './common/utils/redis.util';
 import { UploadModule } from './upload/upload.module';
 import { FinanceModule } from './finance/finance.module';
 import { DebugModule } from './debug/debug.module';
+import { BackupsModule } from './backups/backups.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { validateEnv } from './common/config/env.validation';
 import type { RedisHostConfig } from './common/utils/redis.util';
@@ -176,6 +177,7 @@ function shouldSkipSensitiveThrottle(context: ExecutionContext) {
     SettingsModule,
     UploadModule,
     FinanceModule,
+    BackupsModule,
     ...(process.env.ENABLE_DEBUG_ENDPOINTS === 'true' &&
     (process.env.INTERNAL_DEBUG_KEY?.length ?? 0) >= 16
       ? [DebugModule]

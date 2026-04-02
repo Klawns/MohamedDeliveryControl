@@ -35,7 +35,9 @@ function resolvePostgresHost(configService: ConfigService): string | undefined {
     return explicitHost;
   }
 
-  const connectionString = configService.get<string>('DATABASE_URL');
+  const connectionString =
+    configService.get<string>('POSTGRES_DATABASE_URL') ??
+    configService.get<string>('DATABASE_URL');
 
   if (!connectionString) {
     return undefined;
@@ -102,7 +104,9 @@ export class PostgresStrategy implements DatabaseStrategy {
   constructor(private readonly configService: ConfigService) {}
 
   connect(): Promise<any> {
-    const connectionString = this.configService.get<string>('DATABASE_URL');
+    const connectionString =
+      this.configService.get<string>('POSTGRES_DATABASE_URL') ??
+      this.configService.get<string>('DATABASE_URL');
 
     // Alternatively, use detailed vars if URL is not provided
     const user =
