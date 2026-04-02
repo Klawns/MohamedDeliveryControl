@@ -15,16 +15,20 @@ import { useFreeTrial } from "@/hooks/use-free-trial";
 export interface DashboardDesktopStats {
     period: Period;
     setPeriod: (period: Period) => void;
-    count: number;
-    totalValue: number;
-    monthRides: Ride[];
-    isLoading: boolean;
+    count?: number;
+    totalValue?: number;
+    monthRides?: Ride[];
+    isPending: boolean;
+    isError: boolean;
+    error: unknown | null;
+    refetch: () => Promise<unknown>;
 }
 
 export interface DashboardMobileStats {
     period: Period;
-    count: number;
-    totalValue: number;
+    count?: number;
+    totalValue?: number;
+    isPending: boolean;
 }
 
 export interface DashboardRideActions {
@@ -40,7 +44,7 @@ export function useDashboard() {
     usePaymentToast();
 
     const { isMobile } = useDashboardUI();
-    const { period, setPeriod, stats, monthRides, isLoading } =
+    const { period, setPeriod, stats, monthRides, isPending, isError, error, fetchStats } =
         useDashboardStats(user);
     const refreshDashboard = useCallback(async () => {
         await queryClient.refetchQueries({
@@ -60,15 +64,19 @@ export function useDashboard() {
         desktopStats: {
             period,
             setPeriod,
-            count: stats.count,
-            totalValue: stats.totalValue,
+            count: stats?.count,
+            totalValue: stats?.totalValue,
             monthRides,
-            isLoading,
+            isPending,
+            isError,
+            error,
+            refetch: fetchStats,
         } satisfies DashboardDesktopStats,
         mobileStats: {
             period,
-            count: stats.count,
-            totalValue: stats.totalValue,
+            count: stats?.count,
+            totalValue: stats?.totalValue,
+            isPending,
         } satisfies DashboardMobileStats,
         rideActions: {
             editRide: rides.handleEditRide,

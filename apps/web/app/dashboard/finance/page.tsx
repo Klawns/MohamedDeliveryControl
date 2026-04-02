@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { QueryErrorState } from '@/components/query-error-state';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useRidePaymentStatus } from '@/hooks/use-ride-payment-status';
@@ -21,8 +22,11 @@ export default function FinancePage() {
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   const {
     data,
-    isLoading,
+    isPending,
+    isError,
+    error,
     isFetching,
+    refetch,
     filters,
     setFilters,
     clients,
@@ -31,16 +35,31 @@ export default function FinancePage() {
     isClientView,
     selectedClientName,
   } = useFinanceDashboard();
+  const financeData = data ?? null;
   const { isExportingPdf, handleExportPDF } = useExportPdf({
     dashboardParams,
-    expectedRideCount: data?.summary?.count || 0,
-    isFinanceDataPending: isLoading || isFetching,
+    expectedRideCount: financeData?.summary?.count || 0,
+    isFinanceDataPending: isPending || isFetching,
     userName: user?.name || 'Motorista',
   });
   const { exportToCSV } = useExportFinance();
 
-  if (isLoading && !data) {
+  if (isPending && !financeData) {
     return <FinanceSkeleton />;
+  }
+
+  if (isError && error && !financeData) {
+    return (
+      <QueryErrorState
+        error={error}
+        title="Nao foi possivel carregar o painel financeiro"
+        description="A consulta do financeiro falhou. Nenhum resumo foi substituido por valores zerados."
+        onRetry={() => {
+          void refetch();
+        }}
+        fullHeight
+      />
+    );
   }
 
   return (
@@ -50,6 +69,17 @@ export default function FinancePage() {
         data-scroll-lock-root="true"
       >
         <div className="space-y-6 pb-24">
+          {isError && error ? (
+            <QueryErrorState
+              error={error}
+              title="Falha ao atualizar o financeiro"
+              description="Os dados em cache foram mantidos, mas a ultima atualizacao da API falhou."
+              onRetry={() => {
+                void refetch();
+              }}
+            />
+          ) : null}
+
           <header className="flex flex-col gap-5">
             <FinanceHeader
               title="Financeiro"
@@ -75,27 +105,27 @@ export default function FinancePage() {
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)] xl:items-start">
             <FinanceHero
-              summary={data?.summary || null}
-              byStatus={data?.byStatus || []}
-              isLoading={isLoading}
+              summary={financeData?.summary || null}
+              byStatus={financeData?.byStatus || []}
+              isLoading={isPending}
               currentPeriod={currentPeriod}
               selectedClientName={selectedClientName}
             />
 
             <FinanceActionBar
               currentPeriod={currentPeriod}
-              isLoading={isLoading}
+              isLoading={isPending}
               isFetching={isFetching}
               isExportingPdf={isExportingPdf}
-              hasData={Boolean(data?.summary?.count)}
+              hasData={Boolean(financeData?.summary?.count)}
               onExport={handleExportPDF}
               onExportCSV={() =>
-                data &&
+                financeData &&
                 exportToCSV(
-                  data.summary,
-                  data.recentRides,
+                  financeData.summary,
+                  financeData.recentRides,
                   filters.period,
-                  data.byStatus,
+                  financeData.byStatus,
                 )
               }
             />
@@ -132,8 +162,8 @@ export default function FinancePage() {
 
           {showAdvancedDetails ? (
             <FinanceAdvancedDetails
-              data={data}
-              isLoading={isLoading}
+              data={financeData}
+              isLoading={isPending}
               isClientView={isClientView}
               selectedClientName={selectedClientName}
               currentPeriod={currentPeriod}

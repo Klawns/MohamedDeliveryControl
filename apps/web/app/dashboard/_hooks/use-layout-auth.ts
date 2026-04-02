@@ -9,18 +9,20 @@ interface UseLayoutAuthProps {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
+    isAuthError: boolean;
 }
 
 export function useLayoutAuth({
     user,
     isLoading,
     isAuthenticated,
+    isAuthError,
 }: UseLayoutAuthProps) {
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
-        if (isLoading) {
+        if (isLoading || isAuthError) {
             return;
         }
 
@@ -33,5 +35,5 @@ export function useLayoutAuth({
         if (redirectTo && redirectTo !== pathname) {
             router.replace(redirectTo);
         }
-    }, [isAuthenticated, isLoading, pathname, router, user]);
+    }, [isAuthenticated, isAuthError, isLoading, pathname, router, user]);
 }

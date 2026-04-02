@@ -1,6 +1,7 @@
 "use client";
 
 import { QueryErrorBoundary } from "@/components/query-error-boundary";
+import { QueryErrorState } from "@/components/query-error-state";
 import { DashboardDesktopView } from "./_components/desktop-view";
 import { DashboardMobileView } from "./_components/mobile-view";
 import { DashboardModals } from "./_components/dashboard-modals";
@@ -8,6 +9,9 @@ import { useDashboard } from "./_hooks/use-dashboard";
 
 export default function DashboardPage() {
     const dashboard = useDashboard();
+    const statsError = dashboard.desktopStats.isError
+        ? dashboard.desktopStats.error
+        : null;
 
     return (
         <QueryErrorBoundary message="Nao foi possivel carregar seu dashboard. Por favor, tente novamente.">
@@ -17,6 +21,18 @@ export default function DashboardPage() {
                     data-scroll-lock-root="true"
                 >
                     <div className="pb-8">
+                        {statsError ? (
+                            <QueryErrorState
+                                error={statsError}
+                                title="Nao foi possivel atualizar os indicadores do dashboard"
+                                description="As metricas nao foram carregadas. Os demais dados da tela continuam disponiveis."
+                                onRetry={() => {
+                                    void dashboard.desktopStats.refetch();
+                                }}
+                                className="pb-6"
+                            />
+                        ) : null}
+
                         {dashboard.isMobile ? (
                             <DashboardMobileView
                                 user={dashboard.user}

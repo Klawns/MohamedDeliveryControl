@@ -44,19 +44,15 @@ export function useAdminDashboard(currentPage: number, enabled: boolean) {
   });
 
   return {
-    stats: statsQuery.data ?? {
-      totalUsers: 0,
-      activeSubscriptions: 0,
-      revenue30d: 0,
-    },
-    users: usersQuery.data?.data ?? [],
-    pagination: usersQuery.data?.meta ?? {
-      total: 0,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-    },
-    isLoadingUsers: usersQuery.isLoading,
+    stats: statsQuery.data,
+    statsError: statsQuery.error ?? null,
+    isStatsPending: statsQuery.isPending,
+    refetchStats: statsQuery.refetch,
+    users: usersQuery.data?.data,
+    pagination: usersQuery.data?.meta,
+    usersError: usersQuery.error ?? null,
+    isUsersPending: usersQuery.isPending,
+    refetchUsers: usersQuery.refetch,
     isUpdatingUserPlan: updatePlanMutation.isPending,
     handleDeleteUser: (userId: string) =>
       deleteUserMutation.mutateAsync(userId),

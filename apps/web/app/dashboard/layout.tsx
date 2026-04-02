@@ -5,6 +5,7 @@ import { useLayoutAuth } from "./_hooks/use-layout-auth";
 import { useLayoutSubscription } from "./_hooks/use-layout-subscription";
 import { useSidebarState } from "./_hooks/use-sidebar-state";
 import { cn } from "@/lib/utils";
+import { QueryErrorState } from "@/components/query-error-state";
 
 import { Sidebar } from "./_components/layout/sidebar";
 import { MobileHeader } from "./_components/layout/mobile-header";
@@ -21,14 +22,30 @@ import { PopupsManager } from "./_components/layout/popups-manager";
  * - UI Components -> Sidebar, MobileHeader, StatusBanners, PopupsManager
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, logout, isLoading, isAuthenticated } = useAuth();
+    const { user, logout, isLoading, isAuthenticated, isAuthError, authError, verify } = useAuth();
     
     // 1. Hooks de Lógica Especializada
-    useLayoutAuth({ user, isLoading, isAuthenticated });
+    useLayoutAuth({ user, isLoading, isAuthenticated, isAuthError });
     const sub = useLayoutSubscription(user);
     const sidebar = useSidebarState(user);
 
     // Renderização de Loading Inicial
+    if (isAuthError && authError) {
+        return (
+            <div className="min-h-dvh bg-background p-6">
+                <QueryErrorState
+                    error={authError}
+                    title="Nao foi possivel validar sua sessao"
+                    description="A autenticacao falhou por uma indisponibilidade operacional. Tente novamente."
+                    onRetry={() => {
+                        void verify();
+                    }}
+                    fullHeight
+                />
+            </div>
+        );
+    }
+
     if (isLoading || !isAuthenticated) {
         return (
             <div className="min-h-dvh bg-background flex items-center justify-center">

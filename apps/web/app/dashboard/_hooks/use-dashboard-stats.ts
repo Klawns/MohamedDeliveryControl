@@ -2,32 +2,27 @@
 
 import { useState } from "react";
 import type { User } from "@/hooks/use-auth";
-import type { DashboardStatsSummary, Period } from "./dashboard-stats.types";
+import type { Period } from "./dashboard-stats.types";
 import {
     useDashboardMonthStatsQuery,
     useDashboardStatsQuery,
 } from "./use-dashboard-stats-query";
 
-const EMPTY_DASHBOARD_STATS = {
-    count: 0,
-    totalValue: 0,
-    rides: [],
-} satisfies DashboardStatsSummary;
-
 export function useDashboardStats(user: User | null) {
     const [period, setPeriod] = useState<Period>("today");
 
-    const { data: statsData, isLoading: isStatsLoading, refetch: fetchStats } =
-        useDashboardStatsQuery(user, period);
-    const { data: monthData, isLoading: isMonthLoading } =
-        useDashboardMonthStatsQuery(user);
+    const statsQuery = useDashboardStatsQuery(user, period);
+    const monthStatsQuery = useDashboardMonthStatsQuery(user);
 
     return {
         period,
         setPeriod,
-        stats: statsData?.data || EMPTY_DASHBOARD_STATS,
-        monthRides: monthData?.data?.rides || [],
-        isLoading: isStatsLoading || isMonthLoading,
-        fetchStats,
+        stats: statsQuery.data?.data,
+        monthRides: monthStatsQuery.data?.data?.rides,
+        isPending: statsQuery.isPending || monthStatsQuery.isPending,
+        isError: statsQuery.isError || monthStatsQuery.isError,
+        error: statsQuery.error ?? monthStatsQuery.error ?? null,
+        fetchStats: () =>
+            Promise.all([statsQuery.refetch(), monthStatsQuery.refetch()]),
     };
 }

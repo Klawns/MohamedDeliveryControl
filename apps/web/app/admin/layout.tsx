@@ -4,14 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Settings, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QueryErrorState } from "@/components/query-error-state";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useAdminAccess } from "./_hooks/use-admin-access";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { logout } = useAuth();
-    const { isAdmin, isLoading } = useAdminAccess();
+    const { logout, verify } = useAuth();
+    const { isAdmin, isLoading, isAuthError, authError } = useAdminAccess();
     const pathname = usePathname();
+
+    if (isAuthError && authError) {
+        return (
+            <div className="min-h-screen bg-slate-950 p-6">
+                <QueryErrorState
+                    error={authError}
+                    title="Nao foi possivel validar o acesso administrativo"
+                    description="A sessao nao foi confirmada por uma falha operacional. Tente novamente."
+                    onRetry={() => {
+                        void verify();
+                    }}
+                    fullHeight
+                />
+            </div>
+        );
+    }
 
     if (isLoading || !isAdmin) {
         return (

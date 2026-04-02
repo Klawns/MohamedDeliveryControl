@@ -27,17 +27,25 @@ export function useMobileDashboardStats(enabled: boolean) {
 
   const stats = useMemo(
     () => ({
-      today: todayStats.data?.data?.totalValue || 0,
-      week: weekStats.data?.data?.totalValue || 0,
-      month: monthStats.data?.data?.totalValue || 0,
-      monthRides: monthStats.data?.data?.rides || [],
+      today: todayStats.data?.data?.totalValue,
+      week: weekStats.data?.data?.totalValue,
+      month: monthStats.data?.data?.totalValue,
+      monthRides: monthStats.data?.data?.rides,
     }),
     [todayStats.data, weekStats.data, monthStats.data],
   );
 
   return {
     stats,
-    isLoading:
-      todayStats.isLoading || weekStats.isLoading || monthStats.isLoading,
+    isPending:
+      todayStats.isPending || weekStats.isPending || monthStats.isPending,
+    isError: todayStats.isError || weekStats.isError || monthStats.isError,
+    error: todayStats.error ?? weekStats.error ?? monthStats.error ?? null,
+    refetch: () =>
+      Promise.all([
+        todayStats.refetch(),
+        weekStats.refetch(),
+        monthStats.refetch(),
+      ]),
   };
 }

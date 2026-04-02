@@ -3,9 +3,9 @@
 import { useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteRidePresetMutation } from "@/hooks/mutations/use-delete-ride-preset-mutation";
 import { useRidePaymentStatus } from "@/hooks/use-ride-payment-status";
 import { parseApiError } from "@/lib/api-error";
-import { settingsService } from "@/services/settings-service";
 import type { MobileDashboardProps } from "../types";
 import { useClientSelection } from "./use-client-selection";
 import { useMobileDashboardData } from "./use-mobile-dashboard-data";
@@ -16,6 +16,17 @@ export function useMobileDashboardController({ onRideCreated }: MobileDashboardP
     const { user } = useAuth();
     const { toast } = useToast();
     const paymentStatus = useRidePaymentStatus();
+    const deletePresetMutation = useDeleteRidePresetMutation({
+        onSuccess: async () => {
+            toast({ title: "Preset removido" });
+        },
+        onError: async (error) => {
+            toast({
+                title: parseApiError(error, "Erro ao remover preset"),
+                variant: "destructive",
+            });
+        },
+    });
 
     const data = useMobileDashboardData(user);
     const selectedClientState = useSelectedClient();
@@ -33,18 +44,9 @@ export function useMobileDashboardController({ onRideCreated }: MobileDashboardP
 
     const handleDeletePreset = useCallback(
         async (presetId: string) => {
-            try {
-                await settingsService.deleteRidePreset(presetId);
-                data.refreshData();
-                toast({ title: "Preset removido" });
-            } catch (error) {
-                toast({
-                    title: parseApiError(error, "Erro ao remover preset"),
-                    variant: "destructive",
-                });
-            }
+            await deletePresetMutation.mutateAsync(presetId);
         },
-        [data, toast],
+        [deletePresetMutation],
     );
 
     return {
@@ -53,7 +55,10 @@ export function useMobileDashboardController({ onRideCreated }: MobileDashboardP
             today: data.stats.today,
             week: data.stats.week,
             month: data.stats.month,
-            isLoading: data.isLoadingStats,
+            isPending: data.isStatsPending,
+            isError: data.isStatsError,
+            error: data.statsError,
+            refetch: data.refetchStats,
         },
         clients: {
             directory: clientSelection.directory,

@@ -101,9 +101,11 @@ export function useFinanceDashboard() {
   return {
     user,
     clients,
-    data: query.data || null,
+    data: query.data,
     dashboardParams,
-    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isError: query.isError,
+    error: query.error ?? null,
     isFetching: query.isFetching,
     refetch: query.refetch,
     currentPeriod,

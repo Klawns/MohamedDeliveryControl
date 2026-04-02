@@ -5,8 +5,8 @@ import { Bike, Wallet } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 
 interface DashboardStatsGridProps {
-    count: number;
-    totalValue: number;
+    count?: number;
+    totalValue?: number;
     period: 'today' | 'week';
     isLoading: boolean;
 }
@@ -15,14 +15,14 @@ export function DashboardStatsGrid({ count, totalValue, period, isLoading }: Das
     const stats = [
         {
             label: `Corridas ${period === 'today' ? 'Hoje' : 'na Semana'}`,
-            value: String(count),
+            value: typeof count === "number" ? String(count) : "--",
             icon: Bike,
             bg: period === 'today' ? "bg-icon-info/10" : "bg-icon-warning/10",
             text: period === 'today' ? "text-icon-info" : "text-icon-warning"
         },
         {
             label: "Faturamento",
-            value: formatCurrency(totalValue),
+            value: typeof totalValue === "number" ? formatCurrency(totalValue) : "--",
             icon: Wallet,
             bg: "bg-icon-brand/10",
             text: "text-icon-brand"

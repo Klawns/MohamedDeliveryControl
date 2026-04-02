@@ -44,12 +44,14 @@ export function DashboardMobileView({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-card-background border border-border-subtle p-4 rounded-2xl shadow-sm">
                         <p className="text-muted-foreground text-[10px] font-bold uppercase">Corridas {stats.period === 'today' ? 'Hoje' : 'na Semana'}</p>
-                        <h3 className="text-lg font-bold text-text-primary mt-1">{stats.count}</h3>
+                        <h3 className="text-lg font-bold text-text-primary mt-1">{stats.isPending ? '--' : (stats.count ?? '--')}</h3>
                     </div>
                     <div className="bg-card-background border border-border-subtle p-4 rounded-2xl shadow-sm">
                         <p className="text-muted-foreground text-[10px] font-bold uppercase">Faturamento</p>
                         <h3 className="text-lg font-bold text-text-primary mt-1">
-                            {formatCurrency(stats.totalValue)}
+                            {stats.isPending || typeof stats.totalValue !== 'number'
+                                ? '--'
+                                : formatCurrency(stats.totalValue)}
                         </h3>
                     </div>
                 </div>

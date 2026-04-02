@@ -51,6 +51,27 @@ function extractResponseData(error: unknown): ApiErrorResponse | null {
   return isRecord(data) ? (data as ApiErrorResponse) : null;
 }
 
+export function getApiErrorStatus(error: unknown): number | null {
+  if (!isRecord(error) || !isRecord(error.response)) {
+    return null;
+  }
+
+  const status = error.response.status;
+
+  if (typeof status === 'number') {
+    return status;
+  }
+
+  const responseData = extractResponseData(error);
+  return typeof responseData?.statusCode === 'number'
+    ? responseData.statusCode
+    : null;
+}
+
+export function isApiErrorStatus(error: unknown, status: number) {
+  return getApiErrorStatus(error) === status;
+}
+
 export function parseApiError(
   error: unknown,
   fallback = 'Ocorreu um erro inesperado. Tente novamente.',

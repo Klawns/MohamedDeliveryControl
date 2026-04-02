@@ -50,7 +50,7 @@ export function DashboardDesktopView({
                     count={stats.count}
                     totalValue={stats.totalValue}
                     period={stats.period}
-                    isLoading={stats.isLoading}
+                    isLoading={stats.isPending}
                 />
             </FeatureLockShell>
 
@@ -79,7 +79,7 @@ export function DashboardDesktopView({
                 >
                     <RidesChart
                         key={`chart-${stats.period}`}
-                        rides={stats.monthRides}
+                        rides={stats.monthRides || []}
                         className="h-full"
                     />
                 </FeatureLockShell>

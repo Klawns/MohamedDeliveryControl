@@ -69,7 +69,10 @@ export function useMobileDashboardData(user: User | null) {
         isHistoryError,
         historyError,
         refetchHistory,
-        isLoadingStats: stats.isLoading,
+        isStatsPending: stats.isPending,
+        isStatsError: stats.isError,
+        statsError: stats.error,
+        refetchStats: stats.refetch,
         stats: stats.stats,
         refreshData,
     };

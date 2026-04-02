@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmModal } from "@/components/confirm-modal";
+import { QueryErrorState } from "@/components/query-error-state";
 import { RideModal } from "@/components/ride-modal";
 import { ClientGrid } from "./components/client-grid";
 import { FinanceSummary } from "./components/finance-summary";
@@ -25,11 +26,23 @@ export default function MobileDashboard(props: MobileDashboardProps) {
                     ctaHref={trial.ctaHref}
                     ctaLabel={trial.ctaLabel}
                 >
+                    {dashboard.stats.isError ? (
+                        <QueryErrorState
+                            error={dashboard.stats.error}
+                            title="Nao foi possivel carregar o resumo financeiro"
+                            description="As metricas com falha aparecem como indisponiveis, sem zerar silenciosamente os valores."
+                            onRetry={() => {
+                                void dashboard.stats.refetch();
+                            }}
+                            className="pb-4"
+                        />
+                    ) : null}
+
                     <FinanceSummary
                         today={dashboard.stats.today}
                         week={dashboard.stats.week}
                         month={dashboard.stats.month}
-                        isLoading={dashboard.stats.isLoading}
+                        isPending={dashboard.stats.isPending}
                     />
                 </FeatureLockShell>
 

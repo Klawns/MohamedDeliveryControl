@@ -15,8 +15,8 @@ import { authService } from "@/services/auth-service";
 import { apiClient } from "@/services/api";
 import { useCurrentUserQuery } from "@/hooks/auth/use-current-user-query";
 import { resetAuthQueryCache } from "@/hooks/auth/reset-auth-query-cache";
-import { useSessionResumeRevalidation } from "@/hooks/auth/use-session-resume-revalidation";
 import { useUnauthorizedRedirect } from "@/hooks/auth/use-unauthorized-redirect";
+import { isApiErrorStatus } from "@/lib/api-error";
 
 export interface User {
   id: string;
@@ -41,6 +41,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isAuthError: boolean;
+  authError: unknown | null;
   login: (user: User, redirectTo?: string) => void;
   updateUser: (user: User) => void;
   logout: () => void;
@@ -59,10 +61,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/area-restrita';
-  const { data: user = null, isLoading: isUserLoading, refetch } =
-    useCurrentUserQuery({ enabled: !isPublicAuthRoute });
+  const currentUserQuery = useCurrentUserQuery({
+    enabled: !isPublicAuthRoute,
+  });
+  const isUnauthorized = isApiErrorStatus(currentUserQuery.error, 401);
+  const user = isUnauthorized ? null : currentUserQuery.data ?? null;
+  const authError =
+    currentUserQuery.isError && !isUnauthorized
+      ? currentUserQuery.error
+      : null;
+  const isAuthError = authError !== null;
 
-  const isLoading = isUserLoading;
+  const isLoading = currentUserQuery.isLoading;
 
   const logoutMutation = useMutation({
     mutationFn: () => apiClient.post("/auth/logout"),
@@ -107,26 +117,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logoutMutation]);
 
   const verify = useCallback(async () => {
-    const { data } = await refetch();
-    return data ?? null;
-  }, [refetch]);
+    const result = await currentUserQuery.refetch();
 
-  useSessionResumeRevalidation({
-    pathname,
-    revalidate: verify,
-  });
+    if (result.error) {
+      if (isApiErrorStatus(result.error, 401)) {
+        return null;
+      }
+
+      throw result.error;
+    }
+
+    return result.data ?? null;
+  }, [currentUserQuery]);
 
   const value = useMemo(
     () => ({
       user,
       isAuthenticated: !!user,
+      isAuthError,
+      authError,
       login,
       updateUser,
       logout,
       verify,
       isLoading,
     }),
-    [user, login, updateUser, logout, verify, isLoading],
+    [user, isAuthError, authError, login, updateUser, logout, verify, isLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

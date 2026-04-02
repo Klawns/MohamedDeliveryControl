@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 
 export function useAdminAccess() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, isAuthError, authError } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || isAuthError) {
       return;
     }
 
@@ -21,11 +21,13 @@ export function useAdminAccess() {
     if (user?.role !== 'admin') {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, isLoading, router, user]);
+  }, [isAuthenticated, isAuthError, isLoading, router, user]);
 
   return {
     user,
     isLoading,
     isAdmin: user?.role === 'admin',
+    isAuthError,
+    authError,
   };
 }
