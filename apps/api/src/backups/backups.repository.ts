@@ -1,5 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Inject, Injectable } from '@nestjs/common';
+import {
+  backupImportJobs,
+  backupJobs,
+  type InferSelectModel,
+} from '@mdc/database';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE } from '../database/database.provider';
@@ -31,6 +36,9 @@ type BackupImportPhase =
   | 'completed'
   | 'failed';
 
+export type BackupJobRecord = InferSelectModel<typeof backupJobs>;
+export type BackupImportJobRecord = InferSelectModel<typeof backupImportJobs>;
+
 @Injectable()
 export class BackupsRepository {
   constructor(
@@ -51,8 +59,8 @@ export class BackupsRepository {
     trigger: BackupTrigger;
     scopeUserId?: string | null;
     actorUserId?: string | null;
-  }) {
-    const [job] = await this.db
+  }): Promise<BackupJobRecord> {
+    const [job] = (await this.db
       .insert(this.schema.backupJobs)
       .values({
         id: randomUUID(),
@@ -63,12 +71,12 @@ export class BackupsRepository {
         status: 'pending',
         manifestVersion: BACKUP_MANIFEST_VERSION,
       })
-      .returning();
+      .returning()) as BackupJobRecord[];
 
     return job;
   }
 
-  createManualFunctionalJob(userId: string) {
+  createManualFunctionalJob(userId: string): Promise<BackupJobRecord> {
     return this.createBackupJob({
       kind: FUNCTIONAL_BACKUP_KIND,
       trigger: MANUAL_BACKUP_TRIGGER,
@@ -77,7 +85,7 @@ export class BackupsRepository {
     });
   }
 
-  createScheduledFunctionalJob(userId: string) {
+  createScheduledFunctionalJob(userId: string): Promise<BackupJobRecord> {
     return this.createBackupJob({
       kind: FUNCTIONAL_BACKUP_KIND,
       trigger: SCHEDULED_BACKUP_TRIGGER,
@@ -86,7 +94,10 @@ export class BackupsRepository {
     });
   }
 
-  createPreImportJob(userId: string, actorUserId: string) {
+  createPreImportJob(
+    userId: string,
+    actorUserId: string,
+  ): Promise<BackupJobRecord> {
     return this.createBackupJob({
       kind: PRE_IMPORT_BACKUP_KIND,
       trigger: PRE_IMPORT_BACKUP_TRIGGER,
@@ -95,7 +106,10 @@ export class BackupsRepository {
     });
   }
 
-  createTechnicalJob(trigger: BackupTrigger, actorUserId?: string | null) {
+  createTechnicalJob(
+    trigger: BackupTrigger,
+    actorUserId?: string | null,
+  ): Promise<BackupJobRecord> {
     return this.createBackupJob({
       kind: TECHNICAL_BACKUP_KIND,
       trigger,
@@ -113,8 +127,8 @@ export class BackupsRepository {
     sizeBytes: number;
     manifestVersion: number;
     previewJson: string;
-  }) {
-    const [job] = await this.db
+  }): Promise<BackupImportJobRecord> {
+    const [job] = (await this.db
       .insert(this.schema.backupImportJobs)
       .values({
         id: input.id ?? randomUUID(),
@@ -128,23 +142,26 @@ export class BackupsRepository {
         manifestVersion: input.manifestVersion,
         previewJson: input.previewJson,
       })
-      .returning();
+      .returning()) as BackupImportJobRecord[];
 
     return job;
   }
 
-  async findById(id: string) {
-    const [job] = await this.db
+  async findById(id: string): Promise<BackupJobRecord | undefined> {
+    const [job] = (await this.db
       .select()
       .from(this.schema.backupJobs)
       .where(eq(this.schema.backupJobs.id, id))
-      .limit(1);
+      .limit(1)) as BackupJobRecord[];
 
     return job;
   }
 
-  async findUserJob(userId: string, id: string) {
-    const [job] = await this.db
+  async findUserJob(
+    userId: string,
+    id: string,
+  ): Promise<BackupJobRecord | undefined> {
+    const [job] = (await this.db
       .select()
       .from(this.schema.backupJobs)
       .where(
@@ -157,13 +174,13 @@ export class BackupsRepository {
           ]),
         ),
       )
-      .limit(1);
+      .limit(1)) as BackupJobRecord[];
 
     return job;
   }
 
-  async findTechnicalJob(id: string) {
-    const [job] = await this.db
+  async findTechnicalJob(id: string): Promise<BackupJobRecord | undefined> {
+    const [job] = (await this.db
       .select()
       .from(this.schema.backupJobs)
       .where(
@@ -172,12 +189,15 @@ export class BackupsRepository {
           eq(this.schema.backupJobs.kind, TECHNICAL_BACKUP_KIND),
         ),
       )
-      .limit(1);
+      .limit(1)) as BackupJobRecord[];
 
     return job;
   }
 
-  async listUserJobs(userId: string, maxResults?: number) {
+  listUserJobs(
+    userId: string,
+    maxResults?: number,
+  ): Promise<BackupJobRecord[]> {
     const query = this.db
       .select()
       .from(this.schema.backupJobs)
@@ -193,13 +213,13 @@ export class BackupsRepository {
       .orderBy(desc(this.schema.backupJobs.createdAt));
 
     if (typeof maxResults === 'number' && maxResults > 0) {
-      return query.limit(maxResults);
+      return query.limit(maxResults) as Promise<BackupJobRecord[]>;
     }
 
-    return query;
+    return query as Promise<BackupJobRecord[]>;
   }
 
-  async listTechnicalJobs(maxResults?: number) {
+  listTechnicalJobs(maxResults?: number): Promise<BackupJobRecord[]> {
     const query = this.db
       .select()
       .from(this.schema.backupJobs)
@@ -207,13 +227,13 @@ export class BackupsRepository {
       .orderBy(desc(this.schema.backupJobs.createdAt));
 
     if (typeof maxResults === 'number' && maxResults > 0) {
-      return query.limit(maxResults);
+      return query.limit(maxResults) as Promise<BackupJobRecord[]>;
     }
 
-    return query;
+    return query as Promise<BackupJobRecord[]>;
   }
 
-  async listSuccessfulFunctionalJobs(userId: string) {
+  listSuccessfulFunctionalJobs(userId: string): Promise<BackupJobRecord[]> {
     return this.db
       .select()
       .from(this.schema.backupJobs)
@@ -224,10 +244,12 @@ export class BackupsRepository {
           eq(this.schema.backupJobs.status, 'success'),
         ),
       )
-      .orderBy(desc(this.schema.backupJobs.createdAt));
+      .orderBy(desc(this.schema.backupJobs.createdAt)) as Promise<
+      BackupJobRecord[]
+    >;
   }
 
-  async listSuccessfulTechnicalJobs() {
+  listSuccessfulTechnicalJobs(): Promise<BackupJobRecord[]> {
     return this.db
       .select()
       .from(this.schema.backupJobs)
@@ -237,11 +259,16 @@ export class BackupsRepository {
           eq(this.schema.backupJobs.status, 'success'),
         ),
       )
-      .orderBy(desc(this.schema.backupJobs.createdAt));
+      .orderBy(desc(this.schema.backupJobs.createdAt)) as Promise<
+      BackupJobRecord[]
+    >;
   }
 
-  async findImportJob(userId: string, id: string) {
-    const [job] = await this.db
+  async findImportJob(
+    userId: string,
+    id: string,
+  ): Promise<BackupImportJobRecord | undefined> {
+    const [job] = (await this.db
       .select()
       .from(this.schema.backupImportJobs)
       .where(
@@ -250,13 +277,13 @@ export class BackupsRepository {
           eq(this.schema.backupImportJobs.scopeUserId, userId),
         ),
       )
-      .limit(1);
+      .limit(1)) as BackupImportJobRecord[];
 
     return job;
   }
 
-  async markRunning(id: string) {
-    const [job] = await this.db
+  async markRunning(id: string): Promise<BackupJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupJobs)
       .set({
         status: 'running',
@@ -265,7 +292,7 @@ export class BackupsRepository {
         errorMessage: null,
       })
       .where(eq(this.schema.backupJobs.id, id))
-      .returning();
+      .returning()) as BackupJobRecord[];
 
     return job;
   }
@@ -278,8 +305,8 @@ export class BackupsRepository {
       sizeBytes: number;
       metadataJson: string;
     },
-  ) {
-    const [job] = await this.db
+  ): Promise<BackupJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupJobs)
       .set({
         status: 'success',
@@ -291,13 +318,13 @@ export class BackupsRepository {
         errorMessage: null,
       })
       .where(eq(this.schema.backupJobs.id, id))
-      .returning();
+      .returning()) as BackupJobRecord[];
 
     return job;
   }
 
-  async markFailed(id: string, errorMessage: string) {
-    const [job] = await this.db
+  async markFailed(id: string, errorMessage: string): Promise<BackupJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupJobs)
       .set({
         status: 'failed',
@@ -305,13 +332,16 @@ export class BackupsRepository {
         finishedAt: new Date(),
       })
       .where(eq(this.schema.backupJobs.id, id))
-      .returning();
+      .returning()) as BackupJobRecord[];
 
     return job;
   }
 
-  async markImportRunning(id: string, phase: BackupImportPhase = 'backing_up') {
-    const [job] = await this.db
+  async markImportRunning(
+    id: string,
+    phase: BackupImportPhase = 'backing_up',
+  ): Promise<BackupImportJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupImportJobs)
       .set({
         status: 'running',
@@ -321,26 +351,32 @@ export class BackupsRepository {
         errorMessage: null,
       })
       .where(eq(this.schema.backupImportJobs.id, id))
-      .returning();
+      .returning()) as BackupImportJobRecord[];
 
     return job;
   }
 
-  async updateImportPhase(id: string, phase: BackupImportPhase) {
-    const [job] = await this.db
+  async updateImportPhase(
+    id: string,
+    phase: BackupImportPhase,
+  ): Promise<BackupImportJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupImportJobs)
       .set({
         phase,
         errorMessage: null,
       })
       .where(eq(this.schema.backupImportJobs.id, id))
-      .returning();
+      .returning()) as BackupImportJobRecord[];
 
     return job;
   }
 
-  async markImportSuccess(id: string, previewJson: string) {
-    const [job] = await this.db
+  async markImportSuccess(
+    id: string,
+    previewJson: string,
+  ): Promise<BackupImportJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupImportJobs)
       .set({
         status: 'success',
@@ -350,13 +386,16 @@ export class BackupsRepository {
         errorMessage: null,
       })
       .where(eq(this.schema.backupImportJobs.id, id))
-      .returning();
+      .returning()) as BackupImportJobRecord[];
 
     return job;
   }
 
-  async markImportFailed(id: string, errorMessage: string) {
-    const [job] = await this.db
+  async markImportFailed(
+    id: string,
+    errorMessage: string,
+  ): Promise<BackupImportJobRecord> {
+    const [job] = (await this.db
       .update(this.schema.backupImportJobs)
       .set({
         status: 'failed',
@@ -365,7 +404,7 @@ export class BackupsRepository {
         finishedAt: new Date(),
       })
       .where(eq(this.schema.backupImportJobs.id, id))
-      .returning();
+      .returning()) as BackupImportJobRecord[];
 
     return job;
   }

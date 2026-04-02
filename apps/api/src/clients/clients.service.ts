@@ -16,6 +16,10 @@ import { DRIZZLE } from '../database/database.provider';
 import type { DrizzleClient } from '../database/database.provider';
 import { UserDashboardCacheService } from '../cache/user-dashboard-cache.service';
 
+type TransactionRunner = {
+  transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T>;
+};
+
 @Injectable()
 export class ClientsService {
   constructor(
@@ -36,7 +40,11 @@ export class ClientsService {
     clientId: string,
     executor?: unknown,
   ) {
-    const client = await this.clientsRepository.findOne(userId, clientId, executor);
+    const client = await this.clientsRepository.findOne(
+      userId,
+      clientId,
+      executor,
+    );
 
     if (!client) {
       throw new NotFoundException('Cliente não encontrado.');
@@ -160,66 +168,68 @@ export class ClientsService {
   }
 
   async closeDebt(userId: string, clientId: string) {
-    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
-      const client = await this.getClientOrThrow(userId, clientId, tx);
-      const { totalDebt } = await this.ridesRepository.getPendingDebtStats(
-        clientId,
-        userId,
-        tx,
-      );
-      const { totalPaid } =
-        await this.clientPaymentsRepository.getUnusedPaymentsStats(
+    const result = await (this.drizzle.db as TransactionRunner).transaction(
+      async (tx) => {
+        const client = await this.getClientOrThrow(userId, clientId, tx);
+        const { totalDebt } = await this.ridesRepository.getPendingDebtStats(
           clientId,
           userId,
           tx,
         );
-
-      if (Number(totalPaid) < Number(totalDebt)) {
-        throw new BadRequestException(
-          'Pagamento insuficiente para quitar a dívida.',
-        );
-      }
-
-      const settledCount = await this.ridesRepository.markAllAsPaidForClient(
-        clientId,
-        userId,
-        tx,
-      );
-
-      await this.clientPaymentsRepository.markAsUsed(clientId, userId, tx);
-
-      const overflow = Number(totalPaid) - Number(totalDebt);
-      if (overflow > 0) {
-        await this.clientsRepository.update(
-          userId,
-          clientId,
-          {
-            balance: Number(client.balance || 0) + overflow,
-          },
-          tx,
-        );
-
-        await this.balanceTransactionsRepository.create(
-          {
-            id: randomUUID(),
+        const { totalPaid } =
+          await this.clientPaymentsRepository.getUnusedPaymentsStats(
             clientId,
             userId,
-            amount: overflow,
-            type: 'CREDIT',
-            origin: 'PAYMENT_OVERFLOW',
-            description:
-              'Crédito gerado por pagamento excedente ao quitar dívida.',
-          },
+            tx,
+          );
+
+        if (Number(totalPaid) < Number(totalDebt)) {
+          throw new BadRequestException(
+            'Pagamento insuficiente para quitar a dívida.',
+          );
+        }
+
+        const settledCount = await this.ridesRepository.markAllAsPaidForClient(
+          clientId,
+          userId,
           tx,
         );
-      }
 
-      return {
-        success: true,
-        settledRides: settledCount,
-        generatedBalance: overflow > 0 ? overflow : 0,
-      };
-    });
+        await this.clientPaymentsRepository.markAsUsed(clientId, userId, tx);
+
+        const overflow = Number(totalPaid) - Number(totalDebt);
+        if (overflow > 0) {
+          await this.clientsRepository.update(
+            userId,
+            clientId,
+            {
+              balance: Number(client.balance || 0) + overflow,
+            },
+            tx,
+          );
+
+          await this.balanceTransactionsRepository.create(
+            {
+              id: randomUUID(),
+              clientId,
+              userId,
+              amount: overflow,
+              type: 'CREDIT',
+              origin: 'PAYMENT_OVERFLOW',
+              description:
+                'Crédito gerado por pagamento excedente ao quitar dívida.',
+            },
+            tx,
+          );
+        }
+
+        return {
+          success: true,
+          settledRides: settledCount,
+          generatedBalance: overflow > 0 ? overflow : 0,
+        };
+      },
+    );
 
     await this.userDashboardCacheService.invalidate(userId);
     return result;

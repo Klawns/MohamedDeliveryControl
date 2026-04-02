@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Test doubles intentionally use broad typing. */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/require-await -- This spec uses lightweight Drizzle stubs to validate archive assembly. */
 import { FunctionalBackupArchiveService } from './functional-backup-archive.service';
 import { readZipArchive } from '../utils/zip-reader.util';
 
@@ -60,10 +60,16 @@ describe('FunctionalBackupArchiveService', () => {
                 orderBy: async () => {
                   switch (table) {
                     case schema.clients:
-                      return [{ id: 'client-1', userId: 'user-1', name: 'Alice' }];
+                      return [
+                        { id: 'client-1', userId: 'user-1', name: 'Alice' },
+                      ];
                     case schema.rides:
                       return [
-                        { id: 'ride-1', userId: 'user-1', clientId: 'client-1' },
+                        {
+                          id: 'ride-1',
+                          userId: 'user-1',
+                          clientId: 'client-1',
+                        },
                       ];
                     case schema.clientPayments:
                       return [
@@ -208,14 +214,14 @@ describe('FunctionalBackupArchiveService', () => {
     const result = await service.buildArchive('user-1');
     const entries = readZipArchive(result.archiveBuffer);
     const clients = JSON.parse(
-      entries.find((entry) => entry.name === 'clients.json')!.content.toString(
-        'utf8',
-      ),
+      entries
+        .find((entry) => entry.name === 'clients.json')!
+        .content.toString('utf8'),
     ) as Array<Record<string, unknown>>;
     const rides = JSON.parse(
-      entries.find((entry) => entry.name === 'rides.json')!.content.toString(
-        'utf8',
-      ),
+      entries
+        .find((entry) => entry.name === 'rides.json')!
+        .content.toString('utf8'),
     ) as Array<Record<string, unknown>>;
 
     expect(clients[0]).toEqual({

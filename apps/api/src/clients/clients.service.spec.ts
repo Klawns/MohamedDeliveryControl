@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Jest mocks in this spec intentionally use partial runtime stubs. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await -- Jest mocks in this spec intentionally use partial runtime stubs. */
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClientsService } from './clients.service';
@@ -133,9 +133,9 @@ describe('ClientsService', () => {
   });
 
   it('should reject debt closing when partial payments do not cover the debt', async () => {
-    await expect(service.closeDebt('user-1', 'uuid-123')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.closeDebt('user-1', 'uuid-123'),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(ridesRepoMock.markAllAsPaidForClient).not.toHaveBeenCalled();
     expect(paymentsRepoMock.markAsUsed).not.toHaveBeenCalled();

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Jest jobs are intentionally partial. */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- Jest jobs are intentionally partial. */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BackupJobsWorker } from './backup-jobs.worker';
 import { BackupsService } from '../backups.service';

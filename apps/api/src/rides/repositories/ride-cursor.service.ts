@@ -13,12 +13,22 @@ interface CursorItem {
   createdAt: Date | null;
 }
 
+type ComparableColumn = Parameters<typeof eq>[0];
+
+interface RideCursorSchema {
+  rideDate: ComparableColumn;
+  createdAt: ComparableColumn;
+  id: ComparableColumn;
+}
+
 @Injectable()
 export class RideCursorService {
   decode(cursor: string): RideCursorPayload {
     try {
       const decodedString = Buffer.from(cursor, 'base64').toString('utf-8');
-      const parsedCursor = JSON.parse(decodedString) as Partial<RideCursorPayload>;
+      const parsedCursor = JSON.parse(
+        decodedString,
+      ) as Partial<RideCursorPayload>;
 
       if (
         !parsedCursor.rideDate ||
@@ -31,7 +41,10 @@ export class RideCursorService {
       const rideDate = new Date(parsedCursor.rideDate);
       const createdAt = new Date(parsedCursor.createdAt);
 
-      if (Number.isNaN(rideDate.getTime()) || Number.isNaN(createdAt.getTime())) {
+      if (
+        Number.isNaN(rideDate.getTime()) ||
+        Number.isNaN(createdAt.getTime())
+      ) {
         throw new Error('Invalid cursor dates');
       }
 
@@ -55,7 +68,7 @@ export class RideCursorService {
     return Buffer.from(JSON.stringify(payload)).toString('base64');
   }
 
-  buildCondition(ridesSchema: any, payload: RideCursorPayload) {
+  buildCondition(ridesSchema: RideCursorSchema, payload: RideCursorPayload) {
     const cursorRideDate = new Date(payload.rideDate);
     const cursorCreatedAt = new Date(payload.createdAt);
 

@@ -2,7 +2,10 @@
 import { GoogleAuthGuard } from './google-auth.guard';
 import { GoogleOAuthStateService } from '../google-oauth-state.service';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 describe('GoogleAuthGuard', () => {
   let guard: GoogleAuthGuard;
@@ -71,12 +74,10 @@ describe('GoogleAuthGuard', () => {
 
     const options = await guard.getAuthenticateOptions(context);
 
-    expect(googleOAuthStateServiceMock.createFlow).toHaveBeenCalledWith(
-      {
-        plan: 'premium',
-        cellphone: '11999999999',
-      },
-    );
+    expect(googleOAuthStateServiceMock.createFlow).toHaveBeenCalledWith({
+      plan: 'premium',
+      cellphone: '11999999999',
+    });
     expect(response.cookie).toHaveBeenCalledWith(
       'google_oauth_flow',
       'flow-id',

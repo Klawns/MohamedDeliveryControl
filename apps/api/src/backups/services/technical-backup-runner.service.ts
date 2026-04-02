@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
@@ -26,7 +23,8 @@ export class TechnicalBackupRunnerService {
       );
     }
 
-    const binary = this.configService.get<string>('PG_DUMP_BINARY') ?? 'pg_dump';
+    const binary =
+      this.configService.get<string>('PG_DUMP_BINARY') ?? 'pg_dump';
 
     const dumpBuffer = await new Promise<Buffer>((resolve, reject) => {
       const stdoutChunks: Buffer[] = [];
@@ -46,15 +44,11 @@ export class TechnicalBackupRunnerService {
       );
 
       child.stdout.on('data', (chunk: Buffer | Uint8Array) => {
-        stdoutChunks.push(
-          Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk),
-        );
+        stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       });
 
       child.stderr.on('data', (chunk: Buffer | Uint8Array) => {
-        stderrChunks.push(
-          Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk),
-        );
+        stderrChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       });
 
       child.on('error', (error) => {

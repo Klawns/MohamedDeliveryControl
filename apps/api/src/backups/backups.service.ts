@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { STORAGE_PROVIDER } from '../storage/interfaces/storage-provider.interface';
 import type { IStorageProvider } from '../storage/interfaces/storage-provider.interface';
 import { BackupsRepository } from './backups.repository';
+import type { BackupJobRecord } from './backups.repository';
 import { BackupsAutomationService } from './backups-automation.service';
 import { FunctionalBackupArchiveService } from './services/functional-backup-archive.service';
 import { FunctionalBackupImportService } from './services/functional-backup-import.service';
@@ -26,7 +27,6 @@ import {
   DEFAULT_BACKUP_SIGNED_URL_TTL_SECONDS,
   DEFAULT_BACKUP_STORAGE_PREFIX,
   DEFAULT_TECHNICAL_BACKUP_RETENTION_COUNT,
-  FUNCTIONAL_BACKUP_KIND,
   GENERATE_FUNCTIONAL_BACKUP_JOB,
   GENERATE_TECHNICAL_BACKUP_JOB,
   MANUAL_BACKUP_TRIGGER,
@@ -85,7 +85,9 @@ export class BackupsService {
     );
   }
 
-  private safeParseMetadata(metadataJson?: string | null) {
+  private safeParseMetadata(
+    metadataJson?: string | null,
+  ): Record<string, unknown> | null {
     if (!metadataJson) {
       return null;
     }
@@ -97,7 +99,7 @@ export class BackupsService {
     }
   }
 
-  private toResponse(job: any) {
+  private toResponse(job: BackupJobRecord) {
     const publicErrorMessage =
       job.status === 'failed'
         ? job.kind === TECHNICAL_BACKUP_KIND
@@ -175,7 +177,9 @@ export class BackupsService {
 
     const enqueuePromise = this.backupsQueue.add(name, payload, {
       jobId:
-        typeof payload.backupJobId === 'string' ? payload.backupJobId : undefined,
+        typeof payload.backupJobId === 'string'
+          ? payload.backupJobId
+          : undefined,
       attempts: 1,
       removeOnComplete: true,
     });
@@ -189,9 +193,11 @@ export class BackupsService {
         );
       }, this.queueEnqueueTimeoutMs);
 
-      enqueuePromise.finally(() => clearTimeout(timer)).catch(() => {
-        clearTimeout(timer);
-      });
+      enqueuePromise
+        .finally(() => clearTimeout(timer))
+        .catch(() => {
+          clearTimeout(timer);
+        });
     });
 
     await Promise.race([enqueuePromise, timeoutPromise]);
@@ -219,9 +225,9 @@ export class BackupsService {
   }
 
   private buildDownloadFileName(job: {
-    kind?: string;
+    kind?: BackupJobRecord['kind'];
     createdAt: Date | string;
-    trigger?: string;
+    trigger?: BackupJobRecord['trigger'];
   }) {
     const createdAt =
       job.createdAt instanceof Date
@@ -261,7 +267,7 @@ export class BackupsService {
   }
 
   async createManualTechnicalBackup(actorUserId: string) {
-    let job;
+    let job: BackupJobRecord | undefined;
 
     try {
       job = await this.backupsRepository.createTechnicalJob(
@@ -300,7 +306,7 @@ export class BackupsService {
       userId,
       this.historyLimit,
     );
-    return jobs.map((job: any) => this.toResponse(job));
+    return jobs.map((job) => this.toResponse(job));
   }
 
   async listTechnicalBackups() {
@@ -308,7 +314,7 @@ export class BackupsService {
       const jobs = await this.backupsRepository.listTechnicalJobs(
         this.historyLimit,
       );
-      return jobs.map((job: any) => this.toResponse(job));
+      return jobs.map((job) => this.toResponse(job));
     } catch (error) {
       if (this.isTechnicalBackupSchemaError(error)) {
         throw this.getTechnicalBackupUnavailableException();
@@ -358,7 +364,7 @@ export class BackupsService {
     return this.buildSignedDownloadResponse(job);
   }
 
-  private async buildSignedDownloadResponse(job: any) {
+  private async buildSignedDownloadResponse(job: BackupJobRecord) {
     if (job.status !== 'success' || !job.storageKey) {
       throw new BadRequestException(
         'O backup ainda nao esta disponivel para download.',
@@ -383,11 +389,17 @@ export class BackupsService {
   }
 
   getFunctionalImportStatus(userId: string, importJobId: string) {
-    return this.functionalBackupImportService.getImportStatus(userId, importJobId);
+    return this.functionalBackupImportService.getImportStatus(
+      userId,
+      importJobId,
+    );
   }
 
   executeFunctionalImport(userId: string, importJobId: string) {
-    return this.functionalBackupImportService.executeImport(userId, importJobId);
+    return this.functionalBackupImportService.executeImport(
+      userId,
+      importJobId,
+    );
   }
 
   async processQueueJob(name: string, data: Record<string, unknown>) {
@@ -433,6 +445,12 @@ export class BackupsService {
     if (existingJob.status === 'success') {
       this.logger.warn(`Job ${backupJobId} ja foi processado com sucesso.`);
       return;
+    }
+
+    if (!existingJob.scopeUserId) {
+      throw new BadRequestException(
+        `Backup funcional ${backupJobId} sem scopeUserId.`,
+      );
     }
 
     await this.backupsRepository.markRunning(backupJobId);
@@ -591,7 +609,7 @@ export class BackupsService {
     }
   }
 
-  private async deleteBackupObject(job: any) {
+  private async deleteBackupObject(job: BackupJobRecord) {
     if (!job.storageKey) {
       await this.backupsRepository.delete(job.id);
       return;

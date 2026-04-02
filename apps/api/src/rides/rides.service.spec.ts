@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Jest mocks in this spec intentionally use partial runtime stubs. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await -- Jest mocks in this spec intentionally use partial runtime stubs. */
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RidesService } from './rides.service';
@@ -26,10 +26,14 @@ describe('RidesService', () => {
       create: jest.fn().mockResolvedValue({ id: 'ride-123', value: 25.5 }),
       findOne: jest.fn().mockResolvedValue(null),
       update: jest.fn().mockResolvedValue({ id: 'ride-123', value: 25.5 }),
-      updateStatus: jest.fn().mockResolvedValue({ id: 'ride-123', value: 25.5 }),
+      updateStatus: jest
+        .fn()
+        .mockResolvedValue({ id: 'ride-123', value: 25.5 }),
       delete: jest.fn().mockResolvedValue({ id: 'ride-123' }),
       deleteAll: jest.fn().mockResolvedValue(undefined),
-      getStats: jest.fn().mockResolvedValue({ count: 0, totalValue: 0, rides: [] }),
+      getStats: jest
+        .fn()
+        .mockResolvedValue({ count: 0, totalValue: 0, rides: [] }),
       countAll: jest.fn().mockResolvedValue(0),
       findByClient: jest.fn().mockResolvedValue({ rides: [], total: 0 }),
       getFrequentClients: jest.fn().mockResolvedValue([]),
@@ -54,7 +58,9 @@ describe('RidesService', () => {
     };
 
     rideAccountingMock = {
-      getClientOrThrow: jest.fn().mockResolvedValue({ id: 'client-1', balance: 0 }),
+      getClientOrThrow: jest
+        .fn()
+        .mockResolvedValue({ id: 'client-1', balance: 0 }),
       consumeClientBalance: jest.fn().mockResolvedValue(0),
       refundClientBalance: jest.fn().mockResolvedValue(undefined),
       resolvePaymentSnapshot: jest.fn(
@@ -312,7 +318,10 @@ describe('RidesService', () => {
       'bulk-delete',
       expect.anything(),
     );
-    expect(repoMock.deleteAll).toHaveBeenCalledWith('user-1', expect.anything());
+    expect(repoMock.deleteAll).toHaveBeenCalledWith(
+      'user-1',
+      expect.anything(),
+    );
     expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(cacheMock.del).toHaveBeenCalledWith('profile:user-1');
     expect(result).toEqual({ success: true });

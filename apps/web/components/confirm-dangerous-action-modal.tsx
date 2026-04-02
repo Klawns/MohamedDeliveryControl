@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface ConfirmDangerousActionModalProps {
   isOpen: boolean;
@@ -39,59 +39,68 @@ export function ConfirmDangerousActionModal({
   isLoading = false,
 }: ConfirmDangerousActionModalProps) {
   const [inputValue, setInputValue] = useState("");
-  const isMatch = inputValue.trim().toUpperCase() === requiredText.toUpperCase();
+  const dialogKey = `${requiredText}-${isOpen ? "open" : "closed"}`;
+  const isMatch =
+    inputValue.trim().toUpperCase() === requiredText.toUpperCase();
 
-  // Reset input when modal opens/closes
-  useEffect(() => {
-    if (!isOpen) {
-      setInputValue("");
-    }
-  }, [isOpen]);
+  const handleConfirm = (event: React.MouseEvent) => {
+    event.preventDefault();
 
-  const handleConfirm = (e: React.MouseEvent) => {
-    e.preventDefault();
     if (isMatch && !isLoading) {
       onConfirm();
     }
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="bg-modal-background border border-destructive/20 rounded-[2.5rem] p-10 shadow-2xl backdrop-blur-md max-w-lg">
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
+      <AlertDialogContent
+        key={dialogKey}
+        className="max-w-lg rounded-[2.5rem] border border-destructive/20 bg-modal-background p-10 shadow-2xl backdrop-blur-md"
+      >
         <AlertDialogHeader className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-inner">
-               <AlertTriangle size={24} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive shadow-inner">
+              <AlertTriangle size={24} />
             </div>
-            <AlertDialogTitle className="text-3xl font-black text-text-primary tracking-tight leading-tight">
+            <AlertDialogTitle className="text-3xl font-black leading-tight tracking-tight text-text-primary">
               {title}
             </AlertDialogTitle>
           </div>
-          
-          <AlertDialogDescription className="text-text-secondary text-base font-medium opacity-90 leading-relaxed">
+
+          <AlertDialogDescription className="text-base font-medium leading-relaxed text-text-secondary opacity-90">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="mt-8 space-y-4">
-          <p className="text-xs font-black uppercase tracking-widest text-destructive/80 mb-2">
-            Digite <span className="underline decoration-2 underline-offset-4 decoration-destructive">"{requiredText}"</span> para confirmar a operação:
+          <p className="mb-2 text-xs font-black uppercase tracking-widest text-destructive/80">
+            Digite{" "}
+            <span className="underline decoration-2 underline-offset-4 decoration-destructive">
+              &quot;{requiredText}&quot;
+            </span>{" "}
+            para confirmar a operacao:
           </p>
           <Input
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(event) => setInputValue(event.target.value)}
             placeholder={requiredText}
             autoFocus
-            className="h-14 rounded-2xl border-2 border-border-subtle bg-background/40 px-6 font-display font-black text-lg tracking-wider focus:border-destructive/40 focus:ring-destructive/20 transition-all placeholder:opacity-30"
+            className="h-14 rounded-2xl border-2 border-border-subtle bg-background/40 px-6 font-display text-lg font-black tracking-wider transition-all placeholder:opacity-30 focus:border-destructive/40 focus:ring-destructive/20"
             disabled={isLoading}
           />
         </div>
 
-        <AlertDialogFooter className="mt-10 flex flex-col sm:flex-row gap-4">
-          <AlertDialogCancel 
+        <AlertDialogFooter className="mt-10 flex flex-col gap-4 sm:flex-row">
+          <AlertDialogCancel
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 rounded-2xl border border-border-subtle bg-secondary/10 text-text-primary hover:bg-secondary/20 h-14 font-display font-black uppercase tracking-widest text-[11px] transition-all active:scale-95 shadow-sm"
+            className="h-14 flex-1 rounded-2xl border border-border-subtle bg-secondary/10 font-display text-[11px] font-black uppercase tracking-widest text-text-primary shadow-sm transition-all hover:bg-secondary/20 active:scale-95"
           >
             {cancelText}
           </AlertDialogCancel>
@@ -99,10 +108,10 @@ export function ConfirmDangerousActionModal({
             onClick={handleConfirm}
             disabled={!isMatch || isLoading}
             className={cn(
-              "flex-[1.5] rounded-2xl h-14 font-display font-black uppercase tracking-widest text-[11px] transition-all active:scale-95 shadow-lg relative overflow-hidden",
-              isMatch 
-                ? "bg-destructive text-white hover:bg-destructive/90 shadow-destructive/20" 
-                : "bg-muted text-muted-foreground cursor-not-allowed opacity-50 shadow-none border border-border-subtle"
+              "relative h-14 flex-[1.5] overflow-hidden rounded-2xl font-display text-[11px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95",
+              isMatch
+                ? "bg-destructive text-white shadow-destructive/20 hover:bg-destructive/90"
+                : "cursor-not-allowed border border-border-subtle bg-muted text-muted-foreground opacity-50 shadow-none",
             )}
           >
             {isLoading ? (

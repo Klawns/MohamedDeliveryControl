@@ -66,7 +66,10 @@ describe('GoogleOAuthStateService', () => {
       plan: 'premium',
     });
 
-    const result = await service.consumeFlow('flow-id', 'flow-id.expected-state');
+    const result = await service.consumeFlow(
+      'flow-id',
+      'flow-id.expected-state',
+    );
 
     expect(result).toEqual({
       flowId: 'flow-id',

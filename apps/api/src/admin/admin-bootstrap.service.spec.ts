@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method -- This spec intentionally uses partial mocks and inspects jest mock calls directly. */
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 

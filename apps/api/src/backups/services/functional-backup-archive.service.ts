@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Inject, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { asc, eq } from 'drizzle-orm';
@@ -125,49 +125,49 @@ export class FunctionalBackupArchiveService {
       rawBalanceTransactions,
       rawRidePresets,
     ] = await Promise.all([
-        this.db
-          .select()
-          .from(this.schema.clients)
-          .where(eq(this.schema.clients.userId, userId))
-          .orderBy(
-            asc(this.schema.clients.createdAt),
-            asc(this.schema.clients.id),
-          ),
-        this.db
-          .select()
-          .from(this.schema.rides)
-          .where(eq(this.schema.rides.userId, userId))
-          .orderBy(
-            asc(this.schema.rides.rideDate),
-            asc(this.schema.rides.createdAt),
-            asc(this.schema.rides.id),
-          ),
-        this.db
-          .select()
-          .from(this.schema.clientPayments)
-          .where(eq(this.schema.clientPayments.userId, userId))
-          .orderBy(
-            asc(this.schema.clientPayments.paymentDate),
-            asc(this.schema.clientPayments.createdAt),
-            asc(this.schema.clientPayments.id),
-          ),
-        this.db
-          .select()
-          .from(this.schema.balanceTransactions)
-          .where(eq(this.schema.balanceTransactions.userId, userId))
-          .orderBy(
-            asc(this.schema.balanceTransactions.createdAt),
-            asc(this.schema.balanceTransactions.id),
-          ),
-        this.db
-          .select()
-          .from(this.schema.ridePresets)
-          .where(eq(this.schema.ridePresets.userId, userId))
-          .orderBy(
-            asc(this.schema.ridePresets.createdAt),
-            asc(this.schema.ridePresets.id),
-          ),
-      ]);
+      this.db
+        .select()
+        .from(this.schema.clients)
+        .where(eq(this.schema.clients.userId, userId))
+        .orderBy(
+          asc(this.schema.clients.createdAt),
+          asc(this.schema.clients.id),
+        ),
+      this.db
+        .select()
+        .from(this.schema.rides)
+        .where(eq(this.schema.rides.userId, userId))
+        .orderBy(
+          asc(this.schema.rides.rideDate),
+          asc(this.schema.rides.createdAt),
+          asc(this.schema.rides.id),
+        ),
+      this.db
+        .select()
+        .from(this.schema.clientPayments)
+        .where(eq(this.schema.clientPayments.userId, userId))
+        .orderBy(
+          asc(this.schema.clientPayments.paymentDate),
+          asc(this.schema.clientPayments.createdAt),
+          asc(this.schema.clientPayments.id),
+        ),
+      this.db
+        .select()
+        .from(this.schema.balanceTransactions)
+        .where(eq(this.schema.balanceTransactions.userId, userId))
+        .orderBy(
+          asc(this.schema.balanceTransactions.createdAt),
+          asc(this.schema.balanceTransactions.id),
+        ),
+      this.db
+        .select()
+        .from(this.schema.ridePresets)
+        .where(eq(this.schema.ridePresets.userId, userId))
+        .orderBy(
+          asc(this.schema.ridePresets.createdAt),
+          asc(this.schema.ridePresets.id),
+        ),
+    ]);
 
     const clients: ExportedClientRecord[] = rawClients.map((client: any) => ({
       id: client.id,

@@ -83,7 +83,9 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
     }
 
     if (Object.keys(updates).length === 0) {
-      this.logger.log(`[${source}] Bootstrap admin already present for ${email}.`);
+      this.logger.log(
+        `[${source}] Bootstrap admin already present for ${email}.`,
+      );
       return;
     }
 

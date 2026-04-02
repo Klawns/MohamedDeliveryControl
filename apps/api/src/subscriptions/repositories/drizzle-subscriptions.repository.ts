@@ -51,7 +51,7 @@ export class DrizzleSubscriptionsRepository implements ISubscriptionsRepository 
 
     let validUntil: Date | null = null;
     const trialStartedAt =
-      plan === 'starter' ? existing[0]?.trialStartedAt ?? new Date() : null;
+      plan === 'starter' ? (existing[0]?.trialStartedAt ?? new Date()) : null;
 
     if (plan === 'premium') {
       const now = new Date();

@@ -13,9 +13,7 @@ function toDosTimeParts(date: Date) {
     (date.getUTCMinutes() << 5) |
     (date.getUTCHours() << 11);
   const dosDate =
-    date.getUTCDate() |
-    ((date.getUTCMonth() + 1) << 5) |
-    ((year - 1980) << 9);
+    date.getUTCDate() | ((date.getUTCMonth() + 1) << 5) | ((year - 1980) << 9);
 
   return { dosTime, dosDate };
 }

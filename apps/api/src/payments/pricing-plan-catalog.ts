@@ -1,8 +1,4 @@
-export const PAYMENT_PLAN_IDS = [
-  'starter',
-  'premium',
-  'lifetime',
-] as const;
+export const PAYMENT_PLAN_IDS = ['starter', 'premium', 'lifetime'] as const;
 
 export type PaymentPlanId = (typeof PAYMENT_PLAN_IDS)[number];
 
@@ -22,9 +18,7 @@ export interface PricingPlan extends Omit<StoredPricingPlan, 'id'> {
   id: PaymentPlanId;
 }
 
-export type PricingPlanUpdate = Partial<
-  Omit<PricingPlan, 'id' | 'updatedAt'>
->;
+export type PricingPlanUpdate = Partial<Omit<PricingPlan, 'id' | 'updatedAt'>>;
 
 const PLAN_UUIDS: Record<PaymentPlanId, string> = {
   starter: '11111111-1111-1111-1111-111111111111',

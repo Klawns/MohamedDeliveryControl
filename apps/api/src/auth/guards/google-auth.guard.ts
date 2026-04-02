@@ -49,7 +49,9 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       );
     }
 
-    const flow = await this.googleOAuthStateService.createFlow(parsedQuery.data);
+    const flow = await this.googleOAuthStateService.createFlow(
+      parsedQuery.data,
+    );
 
     response.cookie(
       GOOGLE_OAUTH_FLOW_COOKIE,

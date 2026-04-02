@@ -68,7 +68,11 @@ export class DrizzleClientPaymentsRepository implements IClientPaymentsRepositor
     return results[0];
   }
 
-  async markAsUsed(clientId: string, userId: string, executor?: any): Promise<void> {
+  async markAsUsed(
+    clientId: string,
+    userId: string,
+    executor?: any,
+  ): Promise<void> {
     await this.getExecutor(executor)
       .update(this.schema.clientPayments)
       .set({ status: 'USED' })

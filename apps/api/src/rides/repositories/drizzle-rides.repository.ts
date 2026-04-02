@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and, ne } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.provider';
@@ -95,7 +95,7 @@ export class DrizzleRidesRepository implements IRidesRepository {
     return results[0];
   }
 
-  async getFrequentClients(userId: string) {
+  getFrequentClients(userId: string) {
     return this.rideReadRepository.getFrequentClients(userId);
   }
 

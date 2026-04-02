@@ -43,17 +43,14 @@ const googleOAuthCellphoneSchema = z
 
 export const googleOAuthStartQuerySchema = z.object({
   plan: z.enum(['starter', 'premium', 'lifetime']).optional(),
-  cellphone: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') {
-        return undefined;
-      }
+  cellphone: z.preprocess((value) => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
 
-      const trimmedValue = value.trim();
-      return trimmedValue.length > 0 ? trimmedValue : undefined;
-    },
-    googleOAuthCellphoneSchema.optional(),
-  ),
+    const trimmedValue = value.trim();
+    return trimmedValue.length > 0 ? trimmedValue : undefined;
+  }, googleOAuthCellphoneSchema.optional()),
 });
 
 export type GoogleOAuthStartQueryDto = z.infer<

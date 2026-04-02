@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import {
   BadRequestException,
   Inject,
@@ -540,9 +540,7 @@ export class FunctionalBackupImportService {
 
     if (
       dataset.clients.some(
-        (client) =>
-          client.displayId !== null &&
-          client.displayId !== undefined,
+        (client) => client.displayId !== null && client.displayId !== undefined,
       ) ||
       dataset.rides.some(
         (ride) => ride.displayId !== null && ride.displayId !== undefined,
@@ -790,11 +788,15 @@ export class FunctionalBackupImportService {
   }
 
   private async createPreImportBackup(userId: string, actorUserId: string) {
-    const job = await this.backupsRepository.createPreImportJob(userId, actorUserId);
+    const job = await this.backupsRepository.createPreImportJob(
+      userId,
+      actorUserId,
+    );
     await this.backupsRepository.markRunning(job.id);
 
     try {
-      const archive = await this.functionalBackupArchiveService.buildArchive(userId);
+      const archive =
+        await this.functionalBackupArchiveService.buildArchive(userId);
       const storageKey = this.buildPreImportStorageKey(userId, job.id);
 
       await this.storageProvider.uploadPrivate(
@@ -832,7 +834,10 @@ export class FunctionalBackupImportService {
   }
 
   async getImportStatus(userId: string, importJobId: string) {
-    const importJob = await this.backupsRepository.findImportJob(userId, importJobId);
+    const importJob = await this.backupsRepository.findImportJob(
+      userId,
+      importJobId,
+    );
 
     if (!importJob) {
       throw new NotFoundException('Importacao de backup nao encontrada.');
@@ -842,7 +847,10 @@ export class FunctionalBackupImportService {
   }
 
   async executeImport(userId: string, importJobId: string) {
-    const importJob = await this.backupsRepository.findImportJob(userId, importJobId);
+    const importJob = await this.backupsRepository.findImportJob(
+      userId,
+      importJobId,
+    );
 
     if (!importJob) {
       throw new NotFoundException('Importacao de backup nao encontrada.');

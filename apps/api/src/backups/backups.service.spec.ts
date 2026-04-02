@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Jest mocks are intentionally partial. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Jest mocks are intentionally partial. */
 import { ServiceUnavailableException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -57,7 +57,9 @@ describe('BackupsService', () => {
       markFailed: jest.fn().mockResolvedValue(undefined),
       listSuccessfulFunctionalJobs: jest.fn().mockResolvedValue([]),
       listSuccessfulTechnicalJobs: jest.fn().mockResolvedValue([]),
-      createScheduledFunctionalJob: jest.fn().mockResolvedValue({ id: 'job-sched-1' }),
+      createScheduledFunctionalJob: jest
+        .fn()
+        .mockResolvedValue({ id: 'job-sched-1' }),
       delete: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -120,7 +122,9 @@ describe('BackupsService', () => {
     };
 
     usersServiceMock = {
-      findAll: jest.fn().mockResolvedValue([{ id: 'user-1' }, { id: 'user-2' }]),
+      findAll: jest
+        .fn()
+        .mockResolvedValue([{ id: 'user-1' }, { id: 'user-2' }]),
     };
 
     configValues = {
@@ -273,7 +277,9 @@ describe('BackupsService', () => {
 
   it('should raise a service unavailable error when technical backup schema is missing', async () => {
     repositoryMock.listTechnicalJobs.mockRejectedValue(
-      new Error('invalid input value for enum backup_job_kind: "technical_full"'),
+      new Error(
+        'invalid input value for enum backup_job_kind: "technical_full"',
+      ),
     );
 
     await expect(service.listTechnicalBackups()).rejects.toBeInstanceOf(

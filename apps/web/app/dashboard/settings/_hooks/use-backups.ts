@@ -1,20 +1,25 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useBackupDownload } from '@/hooks/use-backup-download';
-import { clientKeys, financeKeys, rideKeys, settingsKeys } from '@/lib/query-keys';
-import { parseApiError } from '@/lib/api-error';
-import { useToast } from '@/hooks/use-toast';
-import backupsService from '@/services/backups-service';
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useBackupDownload } from "@/hooks/use-backup-download";
+import {
+  clientKeys,
+  financeKeys,
+  rideKeys,
+  settingsKeys,
+} from "@/lib/query-keys";
+import { parseApiError } from "@/lib/api-error";
+import { useToast } from "@/hooks/use-toast";
+import backupsService from "@/services/backups-service";
 import type {
   BackupAutomationStatus,
   BackupImportExecutionResponse,
   BackupImportJobResponse,
   BackupJobSummary,
-} from '@/types/backups';
+} from "@/types/backups";
 
-const ACTIVE_IMPORT_STORAGE_KEY = 'backups.activeImportJobId';
+const ACTIVE_IMPORT_STORAGE_KEY = "backups.activeImportJobId";
 
 export function useBackups() {
   const { toast } = useToast();
@@ -22,18 +27,20 @@ export function useBackups() {
   const [previewResult, setPreviewResult] =
     useState<BackupImportJobResponse | null>(null);
   const completedImportRefreshRef = useRef<string | null>(null);
-  const [activeImportJobId, setActiveImportJobId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
+  const [activeImportJobId, setActiveImportJobId] = useState<string | null>(
+    () => {
+      if (typeof window === "undefined") {
+        return null;
+      }
 
-    return window.localStorage.getItem(ACTIVE_IMPORT_STORAGE_KEY);
-  });
+      return window.localStorage.getItem(ACTIVE_IMPORT_STORAGE_KEY);
+    },
+  );
 
   const setPersistedActiveImportJobId = (importJobId: string | null) => {
     setActiveImportJobId(importJobId);
 
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
@@ -56,7 +63,9 @@ export function useBackups() {
     ]);
   };
 
-  const finalizeSuccessfulImport = async (importJob: BackupImportJobResponse) => {
+  const finalizeSuccessfulImport = async (
+    importJob: BackupImportJobResponse,
+  ) => {
     if (completedImportRefreshRef.current === importJob.id) {
       return;
     }
@@ -67,13 +76,27 @@ export function useBackups() {
     await refreshImportedData();
   };
 
+  const handleResolvedImportJob = useEffectEvent(
+    (importJob: BackupImportJobResponse) => {
+      if (importJob.status === "success") {
+        void finalizeSuccessfulImport(importJob);
+        return;
+      }
+
+      completedImportRefreshRef.current = null;
+      setPreviewResult(importJob);
+      setPersistedActiveImportJobId(null);
+    },
+  );
+
   const backupsQuery = useQuery({
     queryKey: settingsKeys.backups(),
     queryFn: ({ signal }) => backupsService.listUserBackups(signal),
     refetchInterval: (query) => {
-      const backups = (query.state.data as BackupJobSummary[] | undefined) ?? [];
+      const backups =
+        (query.state.data as BackupJobSummary[] | undefined) ?? [];
       return backups.some(
-        (backup) => backup.status === 'pending' || backup.status === 'running',
+        (backup) => backup.status === "pending" || backup.status === "running",
       )
         ? 3000
         : false;
@@ -87,13 +110,13 @@ export function useBackups() {
   });
 
   const importStatusQuery = useQuery({
-    queryKey: settingsKeys.backupImport(activeImportJobId ?? 'idle'),
+    queryKey: settingsKeys.backupImport(activeImportJobId ?? "idle"),
     enabled: Boolean(activeImportJobId),
     queryFn: ({ signal }) =>
       backupsService.getImportStatus(activeImportJobId!, signal),
     refetchInterval: (query) => {
       const importJob = query.state.data as BackupImportJobResponse | undefined;
-      return importJob?.status === 'running' ? 1500 : false;
+      return importJob?.status === "running" ? 1500 : false;
     },
     refetchIntervalInBackground: true,
     retry: false,
@@ -106,41 +129,24 @@ export function useBackups() {
       return;
     }
 
-    setPreviewResult((current) => {
-      if (
-        current &&
-        current.id === importJob.id &&
-        current.status === importJob.status &&
-        current.phase === importJob.phase &&
-        current.errorMessage === importJob.errorMessage
-      ) {
-        return current;
-      }
-
-      return importJob;
-    });
-
-    if (importJob.status === 'running') {
+    if (importJob.status === "running") {
       completedImportRefreshRef.current = null;
       return;
     }
 
-    setPersistedActiveImportJobId(null);
-
-    if (importJob.status === 'success') {
-      void finalizeSuccessfulImport(importJob);
-      return;
-    }
-
-    completedImportRefreshRef.current = null;
-  }, [importStatusQuery.data, queryClient]);
+    queueMicrotask(() => {
+      handleResolvedImportJob(importJob);
+    });
+  }, [importStatusQuery.data]);
 
   useEffect(() => {
     if (!importStatusQuery.error) {
       return;
     }
 
-    setPersistedActiveImportJobId(null);
+    queueMicrotask(() => {
+      setPersistedActiveImportJobId(null);
+    });
   }, [importStatusQuery.error]);
 
   const createManualBackupMutation = useMutation({
@@ -148,21 +154,23 @@ export function useBackups() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: settingsKeys.backups() }),
-        queryClient.invalidateQueries({ queryKey: settingsKeys.backupsStatus() }),
+        queryClient.invalidateQueries({
+          queryKey: settingsKeys.backupsStatus(),
+        }),
       ]);
       toast({
-        title: 'Backup iniciado',
-        description: 'A geracao do arquivo foi colocada na fila.',
+        title: "Backup iniciado",
+        description: "A geracao do arquivo foi colocada na fila.",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Falha ao iniciar backup',
+        title: "Falha ao iniciar backup",
         description: parseApiError(
           error,
-          'Nao foi possivel iniciar o backup agora. Tente novamente em instantes.',
+          "Nao foi possivel iniciar o backup agora. Tente novamente em instantes.",
         ),
-        variant: 'destructive',
+        variant: "destructive",
       });
     },
   });
@@ -178,26 +186,27 @@ export function useBackups() {
     onError: (error) => {
       setPreviewResult(null);
       toast({
-        title: 'Falha ao validar backup',
+        title: "Falha ao validar backup",
         description: parseApiError(
           error,
-          'Nao foi possivel validar o arquivo do backup. Tente novamente.',
+          "Nao foi possivel validar o arquivo do backup. Tente novamente.",
         ),
-        variant: 'destructive',
+        variant: "destructive",
       });
     },
   });
 
   const executeImportMutation = useMutation({
-    mutationFn: (importJobId: string) => backupsService.executeImport(importJobId),
+    mutationFn: (importJobId: string) =>
+      backupsService.executeImport(importJobId),
     onMutate: (importJobId) => {
       setPersistedActiveImportJobId(importJobId);
       setPreviewResult((current) =>
         current && current.id === importJobId
           ? {
               ...current,
-              status: 'running',
-              phase: 'backing_up',
+              status: "running",
+              phase: "backing_up",
               errorMessage: null,
               startedAt: new Date().toISOString(),
               finishedAt: null,
@@ -209,8 +218,8 @@ export function useBackups() {
       await finalizeSuccessfulImport(response);
 
       toast({
-        title: 'Backup importado',
-        description: 'Os dados operacionais foram restaurados com sucesso.',
+        title: "Backup importado",
+        description: "Os dados operacionais foram restaurados com sucesso.",
       });
 
       return response;
@@ -218,7 +227,7 @@ export function useBackups() {
     onError: (error) => {
       const description = parseApiError(
         error,
-        'Nao foi possivel concluir a importacao do backup. Tente novamente.',
+        "Nao foi possivel concluir a importacao do backup. Tente novamente.",
       );
 
       setPersistedActiveImportJobId(null);
@@ -227,8 +236,8 @@ export function useBackups() {
         current
           ? {
               ...current,
-              status: 'failed',
-              phase: 'failed',
+              status: "failed",
+              phase: "failed",
               errorMessage: description,
               finishedAt: new Date().toISOString(),
             }
@@ -236,9 +245,9 @@ export function useBackups() {
       );
 
       toast({
-        title: 'Falha ao importar backup',
+        title: "Falha ao importar backup",
         description,
-        variant: 'destructive',
+        variant: "destructive",
       });
     },
   });
@@ -250,11 +259,11 @@ export function useBackups() {
     startDownload,
   } = useBackupDownload({
     requestDownloadUrl: (backupId) => backupsService.getDownloadUrl(backupId),
-    successTitle: 'Download iniciado',
-    successDescription: 'O navegador ja iniciou a transferencia do backup.',
-    errorTitle: 'Falha ao baixar backup',
+    successTitle: "Download iniciado",
+    successDescription: "O navegador ja iniciou a transferencia do backup.",
+    errorTitle: "Falha ao baixar backup",
     errorDescription:
-      'Nao foi possivel preparar o download do backup. Tente novamente.',
+      "Nao foi possivel preparar o download do backup. Tente novamente.",
   });
 
   const previewImport = async (file: File) => {
@@ -280,7 +289,7 @@ export function useBackups() {
     isDownloadActive,
     isPreviewingImport: previewImportMutation.isPending,
     isExecutingImport:
-      executeImportMutation.isPending || activeImportJob?.status === 'running',
+      executeImportMutation.isPending || activeImportJob?.status === "running",
     createManualBackup: () => createManualBackupMutation.mutateAsync(),
     refreshBackups: backupsQuery.refetch,
     openDownloadUrl: startDownload,

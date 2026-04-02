@@ -12,6 +12,19 @@ import type {
   StorageVisibility,
 } from '../../interfaces/storage-provider.interface';
 
+interface ByteArrayBody {
+  transformToByteArray(): Promise<Uint8Array>;
+}
+
+function hasTransformToByteArray(body: unknown): body is ByteArrayBody {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'transformToByteArray' in body &&
+    typeof body.transformToByteArray === 'function'
+  );
+}
+
 @Injectable()
 export class R2StorageProvider implements IStorageProvider {
   private readonly logger = new Logger(R2StorageProvider.name);
@@ -80,12 +93,7 @@ export class R2StorageProvider implements IStorageProvider {
       return body;
     }
 
-    if (
-      typeof body === 'object' &&
-      body !== null &&
-      'transformToByteArray' in body &&
-      typeof body.transformToByteArray === 'function'
-    ) {
+    if (hasTransformToByteArray(body)) {
       const bytes = await body.transformToByteArray();
       return Buffer.from(bytes);
     }

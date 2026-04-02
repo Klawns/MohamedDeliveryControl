@@ -222,7 +222,7 @@ export class RideReadRepository {
     };
   }
 
-  async getFrequentClients(userId: string) {
+  getFrequentClients(userId: string) {
     return this.db
       .select({
         id: this.schema.clients.id,

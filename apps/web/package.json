@@ -7,7 +7,9 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:style": "prettier --check \"**/*.{ts,tsx,md}\"",
+    "lint:fix": "eslint . --fix && prettier --write \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

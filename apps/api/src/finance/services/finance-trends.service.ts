@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
 import { Injectable } from '@nestjs/common';
 import { and } from 'drizzle-orm';
 import { getDaysArray } from '../../common/utils/date.util';
@@ -11,12 +11,13 @@ export class FinanceTrendsService {
   ) {}
 
   async getTrends(userId: string, start: Date, end: Date, clientId?: string) {
-    const conditions = this.financeRideQueryService.buildFinancialRideConditions(
-      userId,
-      start,
-      end,
-      clientId,
-    );
+    const conditions =
+      this.financeRideQueryService.buildFinancialRideConditions(
+        userId,
+        start,
+        end,
+        clientId,
+      );
 
     const rides = await this.financeRideQueryService.db
       .select({
@@ -37,7 +38,9 @@ export class FinanceTrendsService {
           return;
         }
 
-        const dateValue = this.financeRideQueryService.toDateValue(ride.rideDate);
+        const dateValue = this.financeRideQueryService.toDateValue(
+          ride.rideDate,
+        );
         if (!dateValue) {
           return;
         }

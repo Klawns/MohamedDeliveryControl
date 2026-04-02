@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,12 +8,12 @@ import {
   FileArchive,
   Loader2,
   UploadCloud,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { ConfirmDangerousActionModal } from '@/components/confirm-dangerous-action-modal';
-import { useAuth } from '@/hooks/use-auth';
-import type { BackupImportJobResponse } from '@/types/backups';
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { ConfirmDangerousActionModal } from "@/components/confirm-dangerous-action-modal";
+import { useAuth } from "@/hooks/use-auth";
+import type { BackupImportJobResponse } from "@/types/backups";
 
 interface BackupImportCardProps {
   preview: BackupImportJobResponse | null;
@@ -39,22 +39,14 @@ export function BackupImportCard({
   const ownerDisplayName = preview
     ? preview.preview.ownerName?.trim() ||
       (preview.preview.ownerUserId === user?.id ? user.name : null) ||
-      'Usuario nao identificado'
+      "Usuario nao identificado"
     : null;
+  const isExpanded = preview?.status === "running" ? true : isOpen;
+  const displayedFileName = preview ? selectedFileName : null;
 
-  useEffect(() => {
-    if (!preview) {
-      setSelectedFileName(null);
-    }
-  }, [preview]);
-
-  useEffect(() => {
-    if (preview?.status === 'running') {
-      setIsOpen(true);
-    }
-  }, [preview?.status]);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -65,7 +57,7 @@ export function BackupImportCard({
     } catch {
       setSelectedFileName(null);
     } finally {
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
@@ -87,25 +79,30 @@ export function BackupImportCard({
     }
   };
 
-  const executionPhase =
-    preview?.status === 'running' ? preview.phase : null;
+  const executionPhase = preview?.status === "running" ? preview.phase : null;
   const step = executionPhase
-    ? executionPhase === 'backing_up'
+    ? executionPhase === "backing_up"
       ? 3
       : 4
     : preview
       ? 2
       : 1;
   const executeButtonLabel = !isExecuting
-    ? 'Confirmar e Restaurar'
-    : executionPhase === 'backing_up'
-      ? 'Gerando backup de seguranca...'
-      : 'Importando dados...';
+    ? "Confirmar e Restaurar"
+    : executionPhase === "backing_up"
+      ? "Gerando backup de seguranca..."
+      : "Importando dados...";
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-destructive/20 bg-destructive/5 transition-colors">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (preview?.status === "running") {
+            return;
+          }
+
+          setIsOpen((current) => !current);
+        }}
         className="flex w-full items-center justify-between p-6 text-left transition-colors hover:bg-destructive/10"
       >
         <div className="flex items-center gap-3">
@@ -123,40 +120,40 @@ export function BackupImportCard({
         </div>
         <ChevronDown
           className={`h-5 w-5 text-destructive transition-transform duration-300 ${
-            isOpen ? '-rotate-180' : ''
+            isExpanded ? "-rotate-180" : ""
           }`}
         />
       </button>
 
       <AnimatePresence initial={false}>
-        {isOpen && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             <div className="border-t border-destructive/20 p-6 pt-2">
               <div className="mb-6 space-y-2">
                 <p className="max-w-3xl text-sm leading-6 text-foreground/80">
-                  A restauracao ira{' '}
+                  A restauracao ira{" "}
                   <strong className="font-bold text-destructive">
                     apagar todos os dados atuais da sua operacao
-                  </strong>{' '}
+                  </strong>{" "}
                   e substitui-los pelo conteudo do backup selecionado.
-                  Certifique-se de que ninguem esta utilizando o sistema
-                  durante este processo.
+                  Certifique-se de que ninguem esta utilizando o sistema durante
+                  este processo.
                 </p>
               </div>
 
               <div className="space-y-6">
                 <div
                   className={`relative flex gap-4 ${
-                    step > 1 ? 'opacity-60 grayscale' : ''
+                    step > 1 ? "opacity-60 grayscale" : ""
                   }`}
                 >
                   <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive text-sm font-bold text-destructive-foreground">
-                    {step > 1 ? <CheckCircle2 className="h-4 w-4" /> : '1'}
+                    {step > 1 ? <CheckCircle2 className="h-4 w-4" /> : "1"}
                   </div>
                   {step === 1 && (
                     <div className="absolute left-4 top-8 -bottom-10 z-0 w-[2px] bg-border-subtle" />
@@ -181,7 +178,7 @@ export function BackupImportCard({
                             Arquivo selecionado
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {selectedFileName ?? 'Nenhum'}
+                            {displayedFileName ?? "Nenhum"}
                           </p>
                         </div>
                         <Button
@@ -191,7 +188,7 @@ export function BackupImportCard({
                           onClick={() => fileInputRef.current?.click()}
                         >
                           <UploadCloud className="mr-2 h-4 w-4" />
-                          {isPreviewing ? 'Validando...' : 'Fazer upload'}
+                          {isPreviewing ? "Validando..." : "Fazer upload"}
                         </Button>
                       </div>
                     </div>
@@ -201,7 +198,7 @@ export function BackupImportCard({
                 {(step === 2 || preview) && (
                   <div className="relative flex gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-bold text-warning-foreground">
-                      {step > 2 ? <CheckCircle2 className="h-4 w-4" /> : '2'}
+                      {step > 2 ? <CheckCircle2 className="h-4 w-4" /> : "2"}
                     </div>
 
                     <div className="flex-1">
@@ -213,16 +210,16 @@ export function BackupImportCard({
                         <div className="space-y-4 rounded-2xl border border-warning/20 bg-warning/10 p-5">
                           <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
-                              Dono original do backup:{' '}
+                              Dono original do backup:{" "}
                               <strong className="text-foreground">
                                 {ownerDisplayName}
                               </strong>
                               <br />
-                              Criado em:{' '}
+                              Criado em:{" "}
                               <strong className="text-foreground">
-                                {new Date(preview.preview.createdAt).toLocaleString(
-                                  'pt-BR',
-                                )}
+                                {new Date(
+                                  preview.preview.createdAt,
+                                ).toLocaleString("pt-BR")}
                               </strong>
                             </p>
                             <div className="rounded-xl border border-border-subtle bg-background/50 px-3 py-3 text-xs font-medium text-foreground/80">
@@ -245,11 +242,12 @@ export function BackupImportCard({
                             </div>
                           )}
 
-                          {preview.status === 'failed' && preview.errorMessage && (
-                            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-xs font-medium text-destructive">
-                              {preview.errorMessage}
-                            </div>
-                          )}
+                          {preview.status === "failed" &&
+                            preview.errorMessage && (
+                              <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-xs font-medium text-destructive">
+                                {preview.errorMessage}
+                              </div>
+                            )}
 
                           <div className="flex justify-start">
                             <Button
@@ -272,12 +270,12 @@ export function BackupImportCard({
                     <div className="relative flex gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                       <div
                         className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                          executionPhase === 'importing'
-                            ? 'bg-success text-success-foreground'
-                            : 'bg-primary text-primary-foreground'
+                          executionPhase === "importing"
+                            ? "bg-success text-success-foreground"
+                            : "bg-primary text-primary-foreground"
                         }`}
                       >
-                        {executionPhase === 'importing' ? (
+                        {executionPhase === "importing" ? (
                           <CheckCircle2 className="h-4 w-4" />
                         ) : (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -298,15 +296,15 @@ export function BackupImportCard({
                     <div className="relative flex gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                       <div
                         className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                          executionPhase === 'importing'
-                            ? 'bg-warning text-warning-foreground'
-                            : 'bg-muted text-muted-foreground'
+                          executionPhase === "importing"
+                            ? "bg-warning text-warning-foreground"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {executionPhase === 'importing' ? (
+                        {executionPhase === "importing" ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          '4'
+                          "4"
                         )}
                       </div>
 
@@ -315,8 +313,8 @@ export function BackupImportCard({
                           4. Importando dados do backup
                         </h4>
                         <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-foreground/80">
-                          Depois do backup de seguranca, os dados do arquivo
-                          sao aplicados no sistema.
+                          Depois do backup de seguranca, os dados do arquivo sao
+                          aplicados no sistema.
                         </div>
                       </div>
                     </div>

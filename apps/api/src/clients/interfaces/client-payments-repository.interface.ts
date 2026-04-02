@@ -12,9 +12,16 @@ export interface IClientPaymentsRepository {
     status?: 'UNUSED' | 'USED',
   ): Promise<ClientPayment[]>;
 
-  create(data: CreateClientPaymentDto, executor?: unknown): Promise<ClientPayment>;
+  create(
+    data: CreateClientPaymentDto,
+    executor?: unknown,
+  ): Promise<ClientPayment>;
 
-  markAsUsed(clientId: string, userId: string, executor?: unknown): Promise<void>;
+  markAsUsed(
+    clientId: string,
+    userId: string,
+    executor?: unknown,
+  ): Promise<void>;
 
   getUnusedPaymentsStats(
     clientId: string,

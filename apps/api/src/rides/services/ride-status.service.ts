@@ -5,9 +5,7 @@ import { RideAccountingService } from './ride-accounting.service';
 
 @Injectable()
 export class RideStatusService {
-  constructor(
-    private readonly rideAccountingService: RideAccountingService,
-  ) {}
+  constructor(private readonly rideAccountingService: RideAccountingService) {}
 
   prepareRideUpdate(existingRide: Ride, data: UpdateRideDto) {
     const { rideDate, ...restData } = data;
@@ -33,16 +31,12 @@ export class RideStatusService {
       data.paymentStatus !== undefined ||
       data.clientId !== undefined
     ) {
-      const {
-        rideTotal,
-        paidWithBalance,
-        debtValue,
-        paymentStatus,
-      } = this.rideAccountingService.resolvePaymentSnapshot({
-        value: nextRideValue,
-        paidWithBalance: nextPaidWithBalance,
-        paymentStatus: data.paymentStatus ?? existingRide.paymentStatus,
-      });
+      const { rideTotal, paidWithBalance, debtValue, paymentStatus } =
+        this.rideAccountingService.resolvePaymentSnapshot({
+          value: nextRideValue,
+          paidWithBalance: nextPaidWithBalance,
+          paymentStatus: data.paymentStatus ?? existingRide.paymentStatus,
+        });
 
       updateData.value = rideTotal;
       updateData.paidWithBalance = paidWithBalance;
@@ -63,7 +57,9 @@ export class RideStatusService {
   }
 
   prepareStatusUpdate(existingRide: Ride, data: UpdateRideStatusDto) {
-    const updateData: UpdateRideStatusDto & { debtValue?: number } = { ...data };
+    const updateData: UpdateRideStatusDto & { debtValue?: number } = {
+      ...data,
+    };
 
     if (data.status === 'CANCELLED') {
       updateData.debtValue = 0;

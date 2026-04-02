@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
-import { InfiniteScrollTrigger } from '@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger';
-import { useHybridList } from '@/hooks/use-hybrid-list';
-import { cn } from '@/lib/utils';
-import { VirtualizedInfiniteList } from './virtualized-infinite-list';
+import React, { useRef } from "react";
+import { InfiniteScrollTrigger } from "@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger";
+import { useHybridList } from "@/hooks/use-hybrid-list";
+import { cn } from "@/lib/utils";
+import { VirtualizedInfiniteList } from "./virtualized-infinite-list";
 
 interface HybridInfiniteListProps<T> {
   items: T[];
@@ -26,9 +26,9 @@ interface HybridInfiniteListProps<T> {
 }
 
 /**
- * Grids tendem a quebrar quando passam pela virtualizaÃ§Ã£o linear atual.
- * Nesses casos mantemos o infinite scroll sem virtualizaÃ§Ã£o atÃ© termos um
- * renderer especÃ­fico para grid.
+ * Grids tendem a quebrar quando passam pela virtualizacao linear atual.
+ * Nesses casos mantemos o infinite scroll sem virtualizacao ate termos um
+ * renderer especifico para grid.
  */
 export function HybridInfiniteList<T extends { id: string | number }>({
   items,
@@ -39,7 +39,7 @@ export function HybridInfiniteList<T extends { id: string | number }>({
   onLoadMore,
   isLoading,
   isFetchingNextPage,
-  className = '',
+  className = "",
   gap = 0,
   threshold,
   enabled = false,
@@ -50,9 +50,8 @@ export function HybridInfiniteList<T extends { id: string | number }>({
   listClassName,
 }: HybridInfiniteListProps<T>) {
   const localRef = useRef<HTMLDivElement>(null);
-  const containerRef = (externalRef || localRef) as React.RefObject<
-    HTMLElement | null
-  >;
+  const containerRef = (externalRef ||
+    localRef) as React.RefObject<HTMLElement | null>;
   const { isVirtualizing } = useHybridList(items, { threshold, enabled });
   const shouldUseVirtualization = isVirtualizing && !listClassName;
 
@@ -80,8 +79,8 @@ export function HybridInfiniteList<T extends { id: string | number }>({
       style={
         !listClassName
           ? {
-              display: 'flex',
-              flexDirection: 'column',
+              display: "flex",
+              flexDirection: "column",
               gap: gap ? `${gap}px` : undefined,
             }
           : undefined
@@ -109,9 +108,9 @@ export function HybridInfiniteList<T extends { id: string | number }>({
       <div
         ref={containerRef as React.RefObject<HTMLDivElement | null>}
         className={cn(
-          'min-h-0 w-full overflow-y-auto overscroll-contain scroll-smooth',
-          hideScrollbar && 'scrollbar-hide',
-          !hideScrollbar && 'custom-scrollbar',
+          "min-h-0 w-full overflow-y-auto overscroll-contain scroll-smooth",
+          hideScrollbar && "scrollbar-hide",
+          !hideScrollbar && "custom-scrollbar",
           className,
         )}
         style={{ maxHeight }}

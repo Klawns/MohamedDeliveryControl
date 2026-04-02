@@ -166,10 +166,7 @@ export class SubscriptionsService {
       };
     }
 
-    if (
-      subscription.status !== 'active' &&
-      subscription.status !== 'trial'
-    ) {
+    if (subscription.status !== 'active' && subscription.status !== 'trial') {
       return {
         status: 'inactive',
         subscription,

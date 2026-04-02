@@ -23,9 +23,9 @@ describe('RideCursorService', () => {
   });
 
   it('should reject malformed cursor payloads', () => {
-    const invalidCursor = Buffer.from(JSON.stringify({ id: 'ride-1' })).toString(
-      'base64',
-    );
+    const invalidCursor = Buffer.from(
+      JSON.stringify({ id: 'ride-1' }),
+    ).toString('base64');
 
     expect(() => service.decode(invalidCursor)).toThrow(BadRequestException);
   });

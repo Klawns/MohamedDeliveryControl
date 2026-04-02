@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
 /**
- * Mantemos a regra simples e determinÃ­stica para evitar conflitos com o
+ * Mantemos a regra simples e deterministica para evitar conflitos com o
  * compiler do React. Se a lista cair abaixo do threshold, voltamos para o
  * renderer direto.
  */

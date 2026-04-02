@@ -30,9 +30,9 @@ export const databaseProvider: FactoryProvider = {
         dialect: 'postgres',
       };
     } catch (error) {
-      logger.error(
-        `Failed to connect to postgres database: ${error.message}`,
-      );
+      const message =
+        error instanceof Error ? error.message : 'Unknown postgres error';
+      logger.error(`Failed to connect to postgres database: ${message}`);
       throw error;
     }
   },

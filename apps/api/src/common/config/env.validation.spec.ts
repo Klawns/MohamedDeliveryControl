@@ -50,7 +50,8 @@ describe('validateEnv', () => {
       validateEnv(
         createValidEnv({
           NODE_ENV: 'production',
-          POSTGRES_DATABASE_URL: 'postgresql://user:pass@db.example.com:5432/app',
+          POSTGRES_DATABASE_URL:
+            'postgresql://user:pass@db.example.com:5432/app',
           POSTGRES_SSL_REJECT_UNAUTHORIZED: 'false',
         }),
       ),

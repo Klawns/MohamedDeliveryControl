@@ -1,11 +1,26 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { useFreeTrial } from '@/hooks/use-free-trial';
-import { type User } from '@/hooks/use-auth';
+import { useEffect, useMemo, useState } from "react";
+import { useFreeTrial } from "@/hooks/use-free-trial";
+import { type User } from "@/hooks/use-auth";
 
 export function useLayoutSubscription(user: User | null) {
   const trial = useFreeTrial(user);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (trial.isStarter || !user?.subscription?.validUntil) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [trial.isStarter, user?.subscription?.validUntil]);
 
   return useMemo(() => {
     const premiumExpirationDate =
@@ -13,7 +28,7 @@ export function useLayoutSubscription(user: User | null) {
         ? new Date(user.subscription.validUntil)
         : null;
     const premiumDiffInMs = premiumExpirationDate
-      ? premiumExpirationDate.getTime() - Date.now()
+      ? premiumExpirationDate.getTime() - now
       : 0;
     const premiumDaysRemaining =
       premiumDiffInMs > 0
@@ -26,15 +41,17 @@ export function useLayoutSubscription(user: User | null) {
         ? trial.isExpiringSoon
         : Boolean(
             premiumExpirationDate &&
-              premiumDiffInMs > 0 &&
-              premiumDiffInMs < 5 * 24 * 60 * 60 * 1000,
+            premiumDiffInMs > 0 &&
+            premiumDiffInMs < 5 * 24 * 60 * 60 * 1000,
           ),
-      daysRemaining: trial.isStarter ? trial.daysRemaining : premiumDaysRemaining,
+      daysRemaining: trial.isStarter
+        ? trial.daysRemaining
+        : premiumDaysRemaining,
       showExpiringPopup:
         !trial.isStarter &&
         premiumDaysRemaining > 0 &&
         premiumDaysRemaining <= 3,
       trial,
     };
-  }, [trial, user]);
+  }, [now, trial, user]);
 }

@@ -105,7 +105,13 @@ describe('RideAccountingService', () => {
       balance: 3,
     });
 
-    await service.refundClientBalance('user-1', 'client-1', 7, 'ride-123', 'tx');
+    await service.refundClientBalance(
+      'user-1',
+      'client-1',
+      7,
+      'ride-123',
+      'tx',
+    );
 
     expect(clientsRepoMock.update).toHaveBeenCalledWith(
       'user-1',

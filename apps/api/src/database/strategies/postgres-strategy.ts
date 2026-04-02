@@ -55,7 +55,8 @@ export function buildPostgresSslConfig(
 ): ConnectionOptions | false {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
   const host = resolvePostgresHost(configService);
-  const shouldDefaultToSsl = isProduction && !host?.endsWith('.railway.internal');
+  const shouldDefaultToSsl =
+    isProduction && !host?.endsWith('.railway.internal');
   const sslEnabled = parseBooleanFlag(
     configService.get<string>('POSTGRES_SSL_ENABLED'),
     shouldDefaultToSsl,

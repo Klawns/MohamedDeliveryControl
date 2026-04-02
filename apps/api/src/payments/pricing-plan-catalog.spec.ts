@@ -6,9 +6,7 @@ import {
   type StoredPricingPlan,
 } from './pricing-plan-catalog';
 
-function createPlan(
-  overrides: Partial<StoredPricingPlan>,
-): StoredPricingPlan {
+function createPlan(overrides: Partial<StoredPricingPlan>): StoredPricingPlan {
   return {
     id: '00000000-0000-0000-0000-000000000000',
     name: 'Starter',
@@ -80,8 +78,8 @@ describe('pricing-plan-catalog', () => {
     expect(resolved.get('starter')).toBe(starter);
     expect(resolved.get('premium')).toBe(premium);
     expect(resolved.get('lifetime')).toBe(lifetime);
-    expect(getStoredPlanByPublicId([premium, lifetime, starter], 'premium')).toBe(
-      premium,
-    );
+    expect(
+      getStoredPlanByPublicId([premium, lifetime, starter], 'premium'),
+    ).toBe(premium);
   });
 });

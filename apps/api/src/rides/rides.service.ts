@@ -27,6 +27,28 @@ import type {
 } from './dto/rides.dto';
 import type { Ride } from './interfaces/rides-repository.interface';
 
+type TransactionRunner = {
+  transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T>;
+};
+
+type RideBalanceRow = {
+  id: string;
+  clientId: string;
+  paidWithBalance: number | null;
+};
+
+interface BulkDeleteTransaction {
+  select(selection: {
+    id: unknown;
+    clientId: unknown;
+    paidWithBalance: unknown;
+  }): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<RideBalanceRow[]>;
+    };
+  };
+}
+
 @Injectable()
 export class RidesService {
   private readonly logger = new Logger(RidesService.name);
@@ -83,7 +105,7 @@ export class RidesService {
     return this.ridesRepository.findAll(userId, limit, cursor, parsedFilters);
   }
 
-  async create(userId: string, data: CreateRideDto) {
+  async create(userId: string, data: CreateRideDto): Promise<Ride> {
     this.logger.log(
       `[RidesService] Criando corrida para usuário ${userId}`,
       'RidesService',
@@ -99,50 +121,52 @@ export class RidesService {
       throw new ForbiddenException('Plano não encontrado.');
     }
 
-    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
-      const paidWithBalance = data.useBalance
-        ? await this.rideAccountingService.consumeClientBalance(
-            userId,
-            data.clientId,
-            data.value,
-            tx,
-          )
-        : (await this.rideAccountingService.getClientOrThrow(
-            userId,
-            data.clientId,
-            tx,
-          ),
-          0);
+    const result = await (this.drizzle.db as TransactionRunner).transaction(
+      async (tx) => {
+        const paidWithBalance = data.useBalance
+          ? await this.rideAccountingService.consumeClientBalance(
+              userId,
+              data.clientId,
+              data.value,
+              tx,
+            )
+          : (await this.rideAccountingService.getClientOrThrow(
+              userId,
+              data.clientId,
+              tx,
+            ),
+            0);
 
-      const {
-        rideTotal,
-        paidWithBalance: normalizedPaidWithBalance,
-        debtValue,
-        paymentStatus,
-      } = this.rideAccountingService.resolvePaymentSnapshot({
-        value: data.value,
-        paidWithBalance,
-        paymentStatus: data.paymentStatus,
-      });
-
-      return this.ridesRepository.create(
-        {
-          id: randomUUID(),
-          clientId: data.clientId,
-          value: rideTotal,
+        const {
+          rideTotal,
           paidWithBalance: normalizedPaidWithBalance,
           debtValue,
-          location: data.location,
-          notes: data.notes,
-          status: data.status || 'COMPLETED',
           paymentStatus,
-          rideDate: data.rideDate ? new Date(data.rideDate) : new Date(),
-          photo: data.photo,
-          userId,
-        } as any,
-        tx,
-      );
-    });
+        } = this.rideAccountingService.resolvePaymentSnapshot({
+          value: data.value,
+          paidWithBalance,
+          paymentStatus: data.paymentStatus,
+        });
+
+        return this.ridesRepository.create(
+          {
+            id: randomUUID(),
+            clientId: data.clientId,
+            value: rideTotal,
+            paidWithBalance: normalizedPaidWithBalance,
+            debtValue,
+            location: data.location,
+            notes: data.notes,
+            status: data.status || 'COMPLETED',
+            paymentStatus,
+            rideDate: data.rideDate ? new Date(data.rideDate) : new Date(),
+            photo: data.photo,
+            userId,
+          } as any,
+          tx,
+        );
+      },
+    );
 
     if (result) {
       await this.invalidateRideMutations(userId);
@@ -155,32 +179,34 @@ export class RidesService {
     return result;
   }
 
-  async update(userId: string, id: string, data: UpdateRideDto) {
+  async update(userId: string, id: string, data: UpdateRideDto): Promise<Ride> {
     this.logger.log(`[RidesService] Atualizando corrida ${id}`, 'RidesService');
 
     const existingRide = await this.getRideOrThrow(userId, id);
     const { nextClientId, refundAmount, updateData } =
       this.rideStatusService.prepareRideUpdate(existingRide, data);
 
-    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
-      if (data.clientId !== undefined) {
-        await this.rideAccountingService.getClientOrThrow(
+    const result = await (this.drizzle.db as TransactionRunner).transaction(
+      async (tx) => {
+        if (data.clientId !== undefined) {
+          await this.rideAccountingService.getClientOrThrow(
+            userId,
+            nextClientId,
+            tx,
+          );
+        }
+
+        await this.rideAccountingService.refundClientBalance(
           userId,
-          nextClientId,
+          existingRide.clientId,
+          refundAmount,
+          id,
           tx,
         );
-      }
 
-      await this.rideAccountingService.refundClientBalance(
-        userId,
-        existingRide.clientId,
-        refundAmount,
-        id,
-        tx,
-      );
-
-      return this.ridesRepository.update(userId, id, updateData, tx);
-    });
+        return this.ridesRepository.update(userId, id, updateData, tx);
+      },
+    );
 
     if (!result) {
       throw new NotFoundException('Corrida não encontrada.');
@@ -194,20 +220,22 @@ export class RidesService {
     return result;
   }
 
-  async delete(userId: string, id: string) {
+  async delete(userId: string, id: string): Promise<Ride> {
     this.logger.log(`[RidesService] Removendo corrida ${id}`, 'RidesService');
     const existingRide = await this.getRideOrThrow(userId, id);
-    const result = await this.drizzle.db.transaction(async (tx: unknown) => {
-      await this.rideAccountingService.refundClientBalance(
-        userId,
-        existingRide.clientId,
-        Number(existingRide.paidWithBalance ?? 0),
-        id,
-        tx,
-      );
+    const result = await (this.drizzle.db as TransactionRunner).transaction(
+      async (tx) => {
+        await this.rideAccountingService.refundClientBalance(
+          userId,
+          existingRide.clientId,
+          Number(existingRide.paidWithBalance ?? 0),
+          id,
+          tx,
+        );
 
-      return this.ridesRepository.delete(userId, id, tx);
-    });
+        return this.ridesRepository.delete(userId, id, tx);
+      },
+    );
 
     if (!result) {
       throw new NotFoundException('Corrida não encontrada.');
@@ -221,13 +249,19 @@ export class RidesService {
     return result;
   }
 
-  async deleteAll(userId: string) {
+  async deleteAll(userId: string): Promise<{ success: true }> {
     this.logger.log(
       `[RidesService] Removendo TODAS as corridas do usuário ${userId}`,
       'RidesService',
     );
 
-    await this.drizzle.db.transaction(async (tx: any) => {
+    await (
+      this.drizzle.db as {
+        transaction<T>(
+          callback: (tx: BulkDeleteTransaction) => Promise<T>,
+        ): Promise<T>;
+      }
+    ).transaction(async (tx) => {
       const ridesWithBalance = await tx
         .select({
           id: this.drizzle.schema.rides.id,

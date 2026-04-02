@@ -69,13 +69,20 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
     info?: unknown,
   ): TUser {
     if (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'erro desconhecido';
       this.logger.error(
         `Falha ao concluir o callback do Google. Verifique GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_CALLBACK_URL. Motivo: ${message}`,
         err instanceof Error ? err.stack : undefined,
       );
 
-      throw new BadRequestException('Falha ao concluir autenticação com Google.');
+      throw new BadRequestException(
+        'Falha ao concluir autenticação com Google.',
+      );
     }
 
     if (!user) {

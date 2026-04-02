@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
 import { Injectable } from '@nestjs/common';
 import { and, sql } from 'drizzle-orm';
 import { FinanceRideQueryService } from './finance-ride-query.service';
@@ -16,12 +16,13 @@ export class FinanceSummaryService {
     period: string,
     clientId?: string,
   ) {
-    const conditions = this.financeRideQueryService.buildFinancialRideConditions(
-      userId,
-      start,
-      end,
-      clientId,
-    );
+    const conditions =
+      this.financeRideQueryService.buildFinancialRideConditions(
+        userId,
+        start,
+        end,
+        clientId,
+      );
 
     const stats = await this.financeRideQueryService.db
       .select({
@@ -70,7 +71,12 @@ export class FinanceSummaryService {
       prevEnd,
       clientId,
     );
-    const currentTotal = await this.getCurrentTotal(userId, start, end, clientId);
+    const currentTotal = await this.getCurrentTotal(
+      userId,
+      start,
+      end,
+      clientId,
+    );
 
     if (previousTotal === 0) {
       return currentTotal > 0 ? 100 : 0;
@@ -85,12 +91,13 @@ export class FinanceSummaryService {
     end: Date,
     clientId?: string,
   ) {
-    const conditions = this.financeRideQueryService.buildFinancialRideConditions(
-      userId,
-      start,
-      end,
-      clientId,
-    );
+    const conditions =
+      this.financeRideQueryService.buildFinancialRideConditions(
+        userId,
+        start,
+        end,
+        clientId,
+      );
 
     const stats = await this.financeRideQueryService.db
       .select({

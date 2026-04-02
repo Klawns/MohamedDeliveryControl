@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Test doubles intentionally use broad typing. */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await -- This spec uses partial infrastructure stubs to validate import flows. */
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
@@ -122,8 +122,8 @@ describe('FunctionalBackupImportService', () => {
 
     const drizzleMock = {
       db: {
-        transaction: jest.fn(async (callback: (trx: typeof tx) => Promise<void>) =>
-          callback(tx),
+        transaction: jest.fn(
+          async (callback: (trx: typeof tx) => Promise<void>) => callback(tx),
         ),
       },
       schema,
@@ -135,27 +135,37 @@ describe('FunctionalBackupImportService', () => {
         createdAt: new Date('2026-04-01T12:00:00.000Z'),
       }),
       createPreImportJob: jest.fn().mockResolvedValue({ id: 'pre-job-1' }),
-      findImportJob: jest.fn().mockImplementation(async () => ({ ...importJobState })),
-      markImportRunning: jest.fn().mockImplementation(async (_id: string, phase: string) => {
-        importJobState.status = 'running';
-        importJobState.phase = phase;
-        importJobState.startedAt = new Date('2026-04-01T12:05:00.000Z');
-      }),
-      updateImportPhase: jest.fn().mockImplementation(async (_id: string, phase: string) => {
-        importJobState.phase = phase;
-      }),
-      markImportSuccess: jest.fn().mockImplementation(async (_id: string, previewJson: string) => {
-        importJobState.status = 'success';
-        importJobState.phase = 'completed';
-        importJobState.previewJson = previewJson;
-        importJobState.finishedAt = new Date('2026-04-01T12:06:00.000Z');
-      }),
-      markImportFailed: jest.fn().mockImplementation(async (_id: string, errorMessage: string) => {
-        importJobState.status = 'failed';
-        importJobState.phase = 'failed';
-        importJobState.errorMessage = errorMessage;
-        importJobState.finishedAt = new Date('2026-04-01T12:06:00.000Z');
-      }),
+      findImportJob: jest
+        .fn()
+        .mockImplementation(async () => ({ ...importJobState })),
+      markImportRunning: jest
+        .fn()
+        .mockImplementation(async (_id: string, phase: string) => {
+          importJobState.status = 'running';
+          importJobState.phase = phase;
+          importJobState.startedAt = new Date('2026-04-01T12:05:00.000Z');
+        }),
+      updateImportPhase: jest
+        .fn()
+        .mockImplementation(async (_id: string, phase: string) => {
+          importJobState.phase = phase;
+        }),
+      markImportSuccess: jest
+        .fn()
+        .mockImplementation(async (_id: string, previewJson: string) => {
+          importJobState.status = 'success';
+          importJobState.phase = 'completed';
+          importJobState.previewJson = previewJson;
+          importJobState.finishedAt = new Date('2026-04-01T12:06:00.000Z');
+        }),
+      markImportFailed: jest
+        .fn()
+        .mockImplementation(async (_id: string, errorMessage: string) => {
+          importJobState.status = 'failed';
+          importJobState.phase = 'failed';
+          importJobState.errorMessage = errorMessage;
+          importJobState.finishedAt = new Date('2026-04-01T12:06:00.000Z');
+        }),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markSuccess: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),

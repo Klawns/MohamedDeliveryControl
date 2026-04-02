@@ -49,7 +49,11 @@ export class RideAccountingService {
   }
 
   async getClientOrThrow(userId: string, clientId: string, executor?: unknown) {
-    const client = await this.clientsRepository.findOne(userId, clientId, executor);
+    const client = await this.clientsRepository.findOne(
+      userId,
+      clientId,
+      executor,
+    );
 
     if (!client) {
       throw new NotFoundException('Cliente não encontrado.');

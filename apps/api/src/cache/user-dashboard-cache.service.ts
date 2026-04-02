@@ -6,9 +6,7 @@ import type { ICacheProvider } from './interfaces/cache-provider.interface';
 export class UserDashboardCacheService {
   private readonly logger = new Logger(UserDashboardCacheService.name);
 
-  constructor(
-    @Inject(CACHE_PROVIDER) private readonly cache: ICacheProvider,
-  ) {}
+  constructor(@Inject(CACHE_PROVIDER) private readonly cache: ICacheProvider) {}
 
   async invalidate(userId: string) {
     const keys = [
