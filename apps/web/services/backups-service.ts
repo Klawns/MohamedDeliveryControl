@@ -1,4 +1,4 @@
-import { apiClient, api } from '@/services/api';
+import { apiClient } from '@/services/api';
 import type {
   BackupAutomationStatus,
   BackupDownloadResponse,
@@ -31,13 +31,15 @@ export const backupsService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post('/backups/import/preview', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    return apiClient.post<BackupImportPreviewResponse>(
+      '/backups/import/preview',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       },
-    });
-
-    return response.data.data as BackupImportPreviewResponse;
+    );
   },
 
   async executeImport(

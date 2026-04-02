@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { clientKeys, settingsKeys } from '@/lib/query-keys';
-import { type Client } from '@/types/rides';
 import { rideModalService } from '../services/ride-modal-service';
 
 interface UseRideFormDataProps {
@@ -42,7 +41,7 @@ export function useRideFormData({
   });
 
   return {
-    clients: (clientsData?.clients || []) as Client[],
+    clients: clientsData?.data ?? [],
     presets,
     clientBalance: clientBalanceData?.clientBalance || 0,
     isLoadingData: isLoadingClients || isLoadingPresets,

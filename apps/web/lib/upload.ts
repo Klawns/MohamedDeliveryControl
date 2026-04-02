@@ -1,3 +1,6 @@
+import { isAxiosError } from 'axios';
+import { apiClient } from '@/services/api';
+
 export async function uploadImage(
   file: File,
   folder: string = "images",
@@ -5,18 +8,24 @@ export async function uploadImage(
   const formData = new FormData();
   formData.append("image", file);
 
-  const response = await fetch(`/api/upload/image?folder=${folder}`, {
-    method: "POST",
-    body: formData,
-    credentials: "include",
-    // Note: ao usar FormData com fetch, nao defina o Content-Type.
-    // O browser define o multipart/form-data com o boundary correto.
-  });
+  try {
+    return await apiClient.post<{ url: string; key: string }>(
+      '/upload/image',
+      formData,
+      {
+        params: { folder },
+      },
+    );
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message =
+        typeof error.response?.data?.message === 'string'
+          ? error.response.data.message
+          : undefined;
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Falha ao realizar o upload da imagem");
+      throw new Error(message || 'Falha ao realizar o upload da imagem');
+    }
+
+    throw error;
   }
-
-  return response.json();
 }
