@@ -3,6 +3,8 @@
 import { ReactNode, RefObject } from "react";
 import { HybridInfiniteList } from "./hybrid-infinite-list";
 
+type ScrollBoundaryMode = "contain" | "handoff";
+
 interface DashboardCompactRidesContainerProps<T extends { id: string | number }> {
     items: T[];
     renderItem: (item: T, index: number) => ReactNode;
@@ -15,6 +17,7 @@ interface DashboardCompactRidesContainerProps<T extends { id: string | number }>
     isFetchingNextPage?: boolean;
     error?: any;
     retry?: () => void;
+    scrollBoundaryMode?: ScrollBoundaryMode;
 }
 
 export function DashboardCompactRidesContainer<T extends { id: string | number }>({
@@ -28,7 +31,8 @@ export function DashboardCompactRidesContainer<T extends { id: string | number }
     onLoadMore,
     isFetchingNextPage,
     error,
-    retry
+    retry,
+    scrollBoundaryMode = "contain",
 }: DashboardCompactRidesContainerProps<T>) {
     return (
         <HybridInfiniteList<T>
@@ -46,6 +50,7 @@ export function DashboardCompactRidesContainer<T extends { id: string | number }
             gap={gap}
             hideScrollbar={true}
             className="w-full h-full pr-0.5"
+            scrollBoundaryMode={scrollBoundaryMode}
         />
     );
 }

@@ -60,6 +60,7 @@ export function RecentRidesList({
                     error={error}
                     retry={retry}
                     gap={12}
+                    scrollBoundaryMode="handoff"
                     renderItem={(ride: RideViewModel) => (
                         <RecentRideCard
                             key={ride.id}
