@@ -1,14 +1,18 @@
 import React, { useRef } from "react";
 import { InfiniteScrollTrigger } from "@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger";
 import { useHybridList } from "@/hooks/use-hybrid-list";
+import { useScrollBoundaryHandoff } from "@/hooks/use-scroll-boundary-handoff";
 import { cn } from "@/lib/utils";
 import { VirtualizedInfiniteList } from "./virtualized-infinite-list";
+
+type ScrollBoundaryMode = "contain" | "handoff";
 
 interface HybridInfiniteListProps<T> {
   items: T[];
   renderItem: (item: T, index: number) => React.ReactNode;
   estimateSize: number;
   containerRef?: React.RefObject<HTMLElement | null>;
+  scrollParentRef?: React.RefObject<HTMLElement | null>;
   hasMore: boolean;
   onLoadMore: () => void;
   isLoading?: boolean;
@@ -23,6 +27,7 @@ interface HybridInfiniteListProps<T> {
   error?: unknown;
   retry?: () => void;
   listClassName?: string;
+  scrollBoundaryMode?: ScrollBoundaryMode;
 }
 
 /**
@@ -35,6 +40,7 @@ export function HybridInfiniteList<T extends { id: string | number }>({
   renderItem,
   estimateSize,
   containerRef: externalRef,
+  scrollParentRef,
   hasMore,
   onLoadMore,
   isLoading,
@@ -48,12 +54,20 @@ export function HybridInfiniteList<T extends { id: string | number }>({
   error,
   retry,
   listClassName,
+  scrollBoundaryMode = "contain",
 }: HybridInfiniteListProps<T>) {
   const localRef = useRef<HTMLDivElement>(null);
   const containerRef = (externalRef ||
     localRef) as React.RefObject<HTMLElement | null>;
   const { isVirtualizing } = useHybridList(items, { threshold, enabled });
   const shouldUseVirtualization = isVirtualizing && !listClassName;
+  const shouldHandoffScrollBoundary = scrollBoundaryMode === "handoff";
+
+  useScrollBoundaryHandoff({
+    containerRef,
+    parentRef: scrollParentRef,
+    enabled: shouldHandoffScrollBoundary,
+  });
 
   if (shouldUseVirtualization) {
     return (
@@ -108,12 +122,15 @@ export function HybridInfiniteList<T extends { id: string | number }>({
       <div
         ref={containerRef as React.RefObject<HTMLDivElement | null>}
         className={cn(
-          "min-h-0 w-full overflow-y-auto overscroll-contain scroll-smooth",
+          "min-h-0 w-full overflow-y-auto scroll-smooth",
           hideScrollbar && "scrollbar-hide",
           !hideScrollbar && "custom-scrollbar",
           className,
         )}
-        style={{ maxHeight }}
+        style={{
+          maxHeight,
+          overscrollBehaviorY: shouldHandoffScrollBoundary ? "auto" : "contain",
+        }}
       >
         {content}
       </div>

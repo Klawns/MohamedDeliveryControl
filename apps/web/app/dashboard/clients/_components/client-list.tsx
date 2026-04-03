@@ -87,6 +87,7 @@ export function ClientsListContainer({
                 className="w-full scrollbar-hide"
                 maxHeight="min(68dvh, 56rem)"
                 hideScrollbar={true}
+                scrollBoundaryMode="handoff"
             />
         );
     };
