@@ -19,6 +19,7 @@ import { BackupsAutomationService } from './backups-automation.service';
 import { FunctionalBackupArchiveService } from './services/functional-backup-archive.service';
 import { FunctionalBackupImportService } from './services/functional-backup-import.service';
 import { TechnicalBackupRunnerService } from './services/technical-backup-runner.service';
+import type { BackupImportUploadSource } from './utils/backup-import-upload.util';
 import {
   BACKUPS_QUEUE,
   DEFAULT_BACKUP_HISTORY_LIMIT,
@@ -384,8 +385,8 @@ export class BackupsService {
     };
   }
 
-  previewFunctionalImport(userId: string, file: Express.Multer.File) {
-    return this.functionalBackupImportService.previewImport(userId, file);
+  previewFunctionalImport(userId: string, upload: BackupImportUploadSource) {
+    return this.functionalBackupImportService.previewImport(userId, upload);
   }
 
   getFunctionalImportStatus(userId: string, importJobId: string) {

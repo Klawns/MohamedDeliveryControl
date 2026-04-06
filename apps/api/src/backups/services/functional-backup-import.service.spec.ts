@@ -2,12 +2,14 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { FunctionalBackupImportService } from './functional-backup-import.service';
 import {
   BACKUP_MANIFEST_VERSION,
   FUNCTIONAL_BACKUP_KIND,
 } from '../backups.constants';
 import { createZipArchive } from '../utils/zip-builder.util';
+import type { BackupImportUploadSource } from '../utils/backup-import-upload.util';
 
 jest.mock('drizzle-orm', () => ({
   eq: jest.fn(() => 'eq-condition'),
@@ -173,7 +175,14 @@ describe('FunctionalBackupImportService', () => {
 
     const storageProviderMock = {
       uploadPrivate: jest.fn().mockResolvedValue(undefined),
-      download: jest.fn(),
+      uploadPrivateStream: jest.fn().mockImplementation(async ({ stream }) => {
+        for await (const _chunk of stream as AsyncIterable<Buffer>) {
+          // Drain the upload stream in tests to simulate the storage client.
+        }
+
+        return { key: 'imports/user-1/import-job-1.zip' };
+      }),
+      downloadStream: jest.fn(),
     };
 
     const archiveServiceMock = {
@@ -232,6 +241,18 @@ describe('FunctionalBackupImportService', () => {
     };
   };
 
+  const createUploadSource = (
+    archiveBuffer: Buffer,
+    originalname = 'backup.zip',
+  ): BackupImportUploadSource => ({
+    completed: Promise.resolve(),
+    fieldName: 'file',
+    mimetype: 'application/zip',
+    originalname,
+    stream: Readable.from([archiveBuffer]),
+    cancel: jest.fn(),
+  });
+
   it('should reject invalid enum values during preview before execution', async () => {
     const { service, repositoryMock } = createService();
     const archiveBuffer = buildArchiveBuffer({
@@ -258,10 +279,7 @@ describe('FunctionalBackupImportService', () => {
     });
 
     await expect(
-      service.previewImport('user-1', {
-        buffer: archiveBuffer,
-        originalname: 'backup.zip',
-      } as Express.Multer.File),
+      service.previewImport('user-1', createUploadSource(archiveBuffer)),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(repositoryMock.createImportJob).not.toHaveBeenCalled();
@@ -271,10 +289,54 @@ describe('FunctionalBackupImportService', () => {
     const { service, repositoryMock } = createService();
 
     await expect(
-      service.previewImport('user-1', {
-        buffer: Buffer.from('not-a-zip'),
-        originalname: 'backup.zip',
-      } as Express.Multer.File),
+      service.previewImport(
+        'user-1',
+        createUploadSource(Buffer.from('not-a-zip')),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repositoryMock.createImportJob).not.toHaveBeenCalled();
+  });
+
+  it('should reject archive bombs during preview before persisting the import job', async () => {
+    const { service, repositoryMock } = createService();
+    const archiveBuffer = createZipArchive([
+      {
+        name: 'manifest.json',
+        content: JSON.stringify({
+          version: BACKUP_MANIFEST_VERSION,
+          kind: FUNCTIONAL_BACKUP_KIND,
+          createdAt: '2026-04-01T12:00:00.000Z',
+          ownerUserId: 'source-user',
+          ownerName: 'Origem',
+          appVersion: '0.0.1',
+          modules: [
+            'clients',
+            'rides',
+            'client_payments',
+            'balance_transactions',
+            'ride_presets',
+          ],
+          counts: {
+            clients: 0,
+            rides: 0,
+            client_payments: 0,
+            balance_transactions: 0,
+            ride_presets: 0,
+          },
+          sha256:
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        }),
+      },
+      { name: 'clients.json', content: 'A'.repeat(1024 * 1024) },
+      { name: 'rides.json', content: '[]' },
+      { name: 'client-payments.json', content: '[]' },
+      { name: 'balance-transactions.json', content: '[]' },
+      { name: 'ride-presets.json', content: '[]' },
+    ]);
+
+    await expect(
+      service.previewImport('user-1', createUploadSource(archiveBuffer)),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(repositoryMock.createImportJob).not.toHaveBeenCalled();
@@ -357,7 +419,58 @@ describe('FunctionalBackupImportService', () => {
       ],
     });
 
-    storageProviderMock.download.mockResolvedValue(archiveBuffer);
+    const archiveChecksum = createHash('sha256')
+      .update(archiveBuffer)
+      .digest('hex');
+
+    const validatedImportJob = {
+      id: 'import-job-1',
+      uploadedStorageKey: 'imports/user-1/import-job-1.zip',
+      archiveChecksum,
+      sizeBytes: archiveBuffer.length,
+      status: 'validated',
+      phase: 'validated',
+      previewJson: JSON.stringify({
+        manifestVersion: BACKUP_MANIFEST_VERSION,
+        ownerUserId: 'source-user',
+        ownerName: 'Origem',
+        createdAt: '2026-04-01T12:00:00.000Z',
+        archiveChecksum,
+        sizeBytes: archiveBuffer.length,
+        modules: [
+          'clients',
+          'rides',
+          'client_payments',
+          'balance_transactions',
+          'ride_presets',
+        ],
+        counts: {
+          clients: 1,
+          rides: 1,
+          client_payments: 1,
+          balance_transactions: 1,
+          ride_presets: 1,
+        },
+        warnings: [],
+      }),
+      errorMessage: null,
+      createdAt: new Date('2026-04-01T12:00:00.000Z'),
+      startedAt: null,
+      finishedAt: null,
+    };
+
+    repositoryMock.findImportJob
+      .mockResolvedValueOnce(validatedImportJob)
+      .mockResolvedValueOnce({
+        ...validatedImportJob,
+        status: 'success',
+        phase: 'completed',
+        finishedAt: new Date('2026-04-01T12:06:00.000Z'),
+      });
+
+    storageProviderMock.downloadStream.mockResolvedValue(
+      Readable.from([archiveBuffer]),
+    );
 
     const response = await service.executeImport('user-1', 'import-job-1');
 
@@ -420,5 +533,67 @@ describe('FunctionalBackupImportService', () => {
         userId: 'user-1',
       }),
     ]);
+  });
+
+  it('should reject execution when the stored archive no longer matches the validated preview', async () => {
+    const { service, repositoryMock, storageProviderMock } = createService();
+    const archiveBuffer = buildArchiveBuffer({
+      clients: [],
+      rides: [],
+      clientPayments: [],
+      balanceTransactions: [],
+      ridePresets: [],
+    });
+
+    repositoryMock.findImportJob.mockResolvedValue({
+      id: 'import-job-1',
+      uploadedStorageKey: 'imports/user-1/import-job-1.zip',
+      archiveChecksum:
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      sizeBytes: 123,
+      status: 'validated',
+      phase: 'validated',
+      previewJson: JSON.stringify({
+        manifestVersion: BACKUP_MANIFEST_VERSION,
+        ownerUserId: 'source-user',
+        ownerName: 'Origem',
+        createdAt: '2026-04-01T12:00:00.000Z',
+        archiveChecksum:
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        sizeBytes: 123,
+        modules: [
+          'clients',
+          'rides',
+          'client_payments',
+          'balance_transactions',
+          'ride_presets',
+        ],
+        counts: {
+          clients: 0,
+          rides: 0,
+          client_payments: 0,
+          balance_transactions: 0,
+          ride_presets: 0,
+        },
+        warnings: [],
+      }),
+      errorMessage: null,
+      createdAt: new Date('2026-04-01T12:00:00.000Z'),
+      startedAt: null,
+      finishedAt: null,
+    });
+
+    storageProviderMock.downloadStream.mockResolvedValue(
+      Readable.from([archiveBuffer]),
+    );
+
+    await expect(service.executeImport('user-1', 'import-job-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+
+    expect(repositoryMock.markImportFailed).toHaveBeenCalledWith(
+      'import-job-1',
+      expect.any(String),
+    );
   });
 });

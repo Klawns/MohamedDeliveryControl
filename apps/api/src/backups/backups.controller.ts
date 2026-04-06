@@ -3,12 +3,10 @@ import {
   Get,
   Post,
   Request,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import type { RequestWithUser } from '../auth/auth.types';
 import { ZodBody, ZodParam } from '../common/decorators/zod.decorator';
 import { BackupsService } from './backups.service';
@@ -18,7 +16,13 @@ import {
   executeBackupImportSchema,
   type ExecuteBackupImportDto,
 } from './dto/backups.dto';
-import { DEFAULT_BACKUP_IMPORT_FILE_SIZE_LIMIT_BYTES } from './backups.constants';
+import { parseBackupImportUploadRequest } from './utils/backup-import-upload.util';
+
+function getBackupImportTracker(req: RequestWithUser) {
+  const userId = typeof req.user?.id === 'string' ? req.user.id : 'anonymous';
+  const ip = typeof req.ip === 'string' ? req.ip : 'unknown';
+  return `backup-import:${userId}:${ip}`;
+}
 
 @Controller('backups')
 @UseGuards(AuthGuard('jwt'))
@@ -49,36 +53,27 @@ export class BackupsController {
   }
 
   @Post('import/preview')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: {
-        fileSize: DEFAULT_BACKUP_IMPORT_FILE_SIZE_LIMIT_BYTES,
-      },
-      fileFilter: (req, file, cb) => {
-        const looksLikeZip =
-          file.mimetype === 'application/zip' ||
-          file.mimetype === 'application/x-zip-compressed' ||
-          file.originalname.toLowerCase().endsWith('.zip');
+  @Throttle({
+    default: {
+      limit: 2,
+      ttl: 60000,
+      getTracker: getBackupImportTracker,
+    },
+  })
+  async previewImport(@Request() req: RequestWithUser) {
+    const upload = await parseBackupImportUploadRequest(req);
 
-        if (!looksLikeZip) {
-          return cb(
-            new Error('Apenas arquivos .zip sao aceitos para importacao.'),
-            false,
-          );
-        }
-
-        cb(null, true);
-      },
-    }),
-  )
-  previewImport(
-    @Request() req: RequestWithUser,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.backupsService.previewFunctionalImport(req.user.id, file);
+    return this.backupsService.previewFunctionalImport(req.user.id, upload);
   }
 
   @Post('import/execute')
+  @Throttle({
+    default: {
+      limit: 2,
+      ttl: 60000,
+      getTracker: getBackupImportTracker,
+    },
+  })
   executeImport(
     @Request() req: RequestWithUser,
     @ZodBody(executeBackupImportSchema) body: ExecuteBackupImportDto,

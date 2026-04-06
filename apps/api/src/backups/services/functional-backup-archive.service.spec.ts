@@ -212,7 +212,7 @@ describe('FunctionalBackupArchiveService', () => {
     } as any);
 
     const result = await service.buildArchive('user-1');
-    const entries = readZipArchive(result.archiveBuffer);
+    const entries = await readZipArchive(result.archiveBuffer);
     const clients = JSON.parse(
       entries
         .find((entry) => entry.name === 'clients.json')!

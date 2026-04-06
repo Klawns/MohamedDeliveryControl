@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
+import { PassThrough } from 'node:stream';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.provider';
 import type { DrizzleClient } from '../../database/database.provider';
@@ -17,12 +18,17 @@ import type { IStorageProvider } from '../../storage/interfaces/storage-provider
 import { BackupsRepository } from '../backups.repository';
 import {
   BACKUP_MANIFEST_VERSION,
+  DEFAULT_BACKUP_IMPORT_MAX_COMPRESSION_RATIO,
+  DEFAULT_BACKUP_IMPORT_MAX_ENTRY_BYTES,
+  DEFAULT_BACKUP_IMPORT_MAX_ENTRY_COUNT,
+  DEFAULT_BACKUP_IMPORT_MAX_UNCOMPRESSED_BYTES,
   DEFAULT_BACKUP_STORAGE_PREFIX,
 } from '../backups.constants';
 import { getBackupPublicErrorMessage } from '../backups-public-errors';
 import type { FunctionalBackupManifest } from './functional-backup-archive.service';
 import { FunctionalBackupArchiveService } from './functional-backup-archive.service';
-import { readZipArchive } from '../utils/zip-reader.util';
+import type { BackupImportUploadSource } from '../utils/backup-import-upload.util';
+import { readZipArchiveFromSource } from '../utils/zip-reader.util';
 
 type ImportableBackupModuleName =
   | 'clients'
@@ -98,6 +104,16 @@ interface FunctionalBackupImportDataset {
   clientPayments: ImportedClientPaymentRecord[];
   balanceTransactions: ImportedBalanceTransactionRecord[];
   ridePresets: ImportedRidePresetRecord[];
+}
+
+interface ParsedArchiveResult {
+  archiveChecksum: string;
+  dataset: FunctionalBackupImportDataset;
+  preview: Omit<
+    FunctionalBackupImportPreview,
+    'archiveChecksum' | 'sizeBytes'
+  >;
+  sizeBytes: number;
 }
 
 const RIDE_STATUSES = ['PENDING', 'COMPLETED', 'CANCELLED'] as const;
@@ -293,6 +309,57 @@ export class FunctionalBackupImportService {
       },
       error instanceof Error ? error.stack : undefined,
     );
+  }
+
+  private logArchiveRejection(
+    context: string,
+    userId: string,
+    originalname: string | undefined,
+    error: unknown,
+  ) {
+    this.logger.warn({
+      context,
+      userId,
+      originalname: originalname ?? null,
+      message: this.getErrorMessage(error),
+    });
+  }
+
+  private async writeChunkToWritable(stream: PassThrough, chunk: Buffer) {
+    if (stream.destroyed || !stream.writable) {
+      throw new Error('Upload de backup interrompido.');
+    }
+
+    if (stream.write(chunk)) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        stream.off('drain', handleDrain);
+        stream.off('error', handleError);
+        stream.off('close', handleClose);
+      };
+
+      const handleDrain = () => {
+        cleanup();
+        resolve();
+      };
+
+      const handleError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const handleClose = () => {
+        cleanup();
+        reject(new Error('Upload de backup interrompido.'));
+      };
+
+      stream.once('drain', handleDrain);
+      stream.once('error', handleError);
+      stream.once('close', handleClose);
+    });
   }
 
   private computeBalances(
@@ -662,10 +729,11 @@ export class FunctionalBackupImportService {
     };
   }
 
-  private parseArchiveBuffer(archiveBuffer: Buffer) {
+  private async parseArchiveSource(
+    source: AsyncIterable<Buffer | Uint8Array | string>,
+    onChunk?: (chunk: Buffer) => Promise<void> | void,
+  ): Promise<ParsedArchiveResult> {
     try {
-      const entries = readZipArchive(archiveBuffer);
-      const entriesMap = new Map(entries.map((entry) => [entry.name, entry]));
       const requiredFiles = [
         'manifest.json',
         'clients.json',
@@ -674,6 +742,25 @@ export class FunctionalBackupImportService {
         'balance-transactions.json',
         'ride-presets.json',
       ] as const;
+      const archiveHash = createHash('sha256');
+      let sizeBytes = 0;
+      const entries = await readZipArchiveFromSource(source, {
+        allowedEntryNames: requiredFiles,
+        blockNestedZip: true,
+        maxCompressionRatio: DEFAULT_BACKUP_IMPORT_MAX_COMPRESSION_RATIO,
+        maxEntries: DEFAULT_BACKUP_IMPORT_MAX_ENTRY_COUNT,
+        maxEntryBytes: DEFAULT_BACKUP_IMPORT_MAX_ENTRY_BYTES,
+        maxTotalUncompressedBytes: DEFAULT_BACKUP_IMPORT_MAX_UNCOMPRESSED_BYTES,
+        onChunk: async (chunk) => {
+          archiveHash.update(chunk);
+          sizeBytes += chunk.length;
+
+          if (onChunk) {
+            await onChunk(chunk);
+          }
+        },
+      });
+      const entriesMap = new Map(entries.map((entry) => [entry.name, entry]));
 
       for (const fileName of requiredFiles) {
         if (!entriesMap.has(fileName)) {
@@ -711,10 +798,8 @@ export class FunctionalBackupImportService {
       return {
         dataset,
         preview,
-        archiveChecksum: createHash('sha256')
-          .update(archiveBuffer)
-          .digest('hex'),
-        sizeBytes: archiveBuffer.length,
+        archiveChecksum: archiveHash.digest('hex'),
+        sizeBytes,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -725,66 +810,127 @@ export class FunctionalBackupImportService {
     }
   }
 
-  async previewImport(userId: string, file: Express.Multer.File) {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException('Arquivo de backup nao enviado.');
-    }
-
-    const parsed = this.parseArchiveBuffer(file.buffer);
-    const importJobId = randomUUID();
-    const storageKey = this.buildImportStorageKey(userId, importJobId);
-    const importJob = await this.backupsRepository.createImportJob({
-      id: importJobId,
-      scopeUserId: userId,
-      actorUserId: userId,
-      uploadedStorageKey: storageKey,
+  private buildPreviewPayload(parsed: ParsedArchiveResult) {
+    return {
+      ...parsed.preview,
       archiveChecksum: parsed.archiveChecksum,
       sizeBytes: parsed.sizeBytes,
-      manifestVersion: parsed.preview.manifestVersion,
-      previewJson: JSON.stringify(parsed.preview),
-    });
+    };
+  }
+
+  private async cleanupUploadedArchive(
+    storageKey: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    try {
+      await this.storageProvider.delete(storageKey, {
+        visibility: 'private',
+      });
+    } catch (error) {
+      this.logOperationalError('previewImport.cleanupUploadedArchive', error, {
+        storageKey,
+        ...metadata,
+      });
+    }
+  }
+
+  async previewImport(userId: string, upload: BackupImportUploadSource) {
+    const importJobId = randomUUID();
+    const storageKey = this.buildImportStorageKey(userId, importJobId);
+    const uploadStream = new PassThrough();
+    let uploadCompleted = false;
+
+    const uploadPromise = this.storageProvider
+      .uploadPrivateStream(
+        {
+          stream: uploadStream,
+          mimetype: upload.mimetype,
+          originalname: upload.originalname || `${importJobId}.zip`,
+        },
+        storageKey,
+        {
+          contentDisposition: `attachment; filename="${importJobId}.zip"`,
+        },
+      )
+      .then((result) => {
+        uploadCompleted = true;
+        return result;
+      });
 
     try {
-      await this.storageProvider.uploadPrivate(
-        {
-          buffer: file.buffer,
-          mimetype: 'application/zip',
-          originalname: file.originalname || `${importJob.id}.zip`,
-        },
-        storageKey,
-        {
-          contentDisposition: `attachment; filename="${importJob.id}.zip"`,
+      const parsed = await this.parseArchiveSource(
+        upload.stream as AsyncIterable<Buffer | Uint8Array | string>,
+        async (chunk) => {
+          await this.writeChunkToWritable(uploadStream, chunk);
         },
       );
-    } catch (error) {
-      this.logOperationalError('previewImport.uploadPrivate', error, {
-        importJobId: importJob.id,
-        userId,
-        storageKey,
+
+      uploadStream.end();
+      await upload.completed;
+      await uploadPromise;
+
+      const previewPayload = this.buildPreviewPayload(parsed);
+      const importJob = await this.backupsRepository.createImportJob({
+        id: importJobId,
+        scopeUserId: userId,
+        actorUserId: userId,
+        uploadedStorageKey: storageKey,
+        archiveChecksum: parsed.archiveChecksum,
+        sizeBytes: parsed.sizeBytes,
+        manifestVersion: parsed.preview.manifestVersion,
+        previewJson: JSON.stringify(previewPayload),
       });
-      await this.backupsRepository.markImportFailed(
-        importJob.id,
-        getBackupPublicErrorMessage('previewUpload'),
+
+      return this.toImportJobResponse({
+        id: importJob.id,
+        status: 'validated',
+        phase: 'validated',
+        previewJson: JSON.stringify(previewPayload),
+        errorMessage: null,
+        createdAt: importJob.createdAt ?? null,
+        startedAt: null,
+        finishedAt: null,
+      });
+    } catch (error) {
+      upload.cancel(error instanceof Error ? error : undefined);
+      uploadStream.destroy(
+        error instanceof Error ? error : new Error('Importacao interrompida.'),
       );
+
+      try {
+        await uploadPromise;
+      } catch {
+        // The original failure is handled below.
+      }
+
+      if (uploadCompleted) {
+        await this.cleanupUploadedArchive(storageKey, {
+          importJobId,
+          originalname: upload.originalname,
+          userId,
+        });
+      }
+
+      if (error instanceof BadRequestException) {
+        this.logArchiveRejection(
+          'previewImport.rejectedArchive',
+          userId,
+          upload.originalname,
+          error,
+        );
+        throw error;
+      }
+
+      this.logOperationalError('previewImport.streamingPipeline', error, {
+        importJobId,
+        originalname: upload.originalname,
+        storageKey,
+        userId,
+      });
       throw new BadRequestException(
         getBackupPublicErrorMessage('previewUpload'),
       );
     }
-
-    return this.toImportJobResponse({
-      id: importJob.id,
-      status: 'validated',
-      phase: 'validated',
-      previewJson: JSON.stringify({
-        ...parsed.preview,
-        archiveChecksum: parsed.archiveChecksum,
-        sizeBytes: parsed.sizeBytes,
-      }),
-      errorMessage: null,
-      createdAt: importJob.createdAt ?? null,
-      startedAt: null,
-      finishedAt: null,
-    });
   }
 
   private async createPreImportBackup(userId: string, actorUserId: string) {
@@ -877,16 +1023,24 @@ export class FunctionalBackupImportService {
     await this.backupsRepository.markImportRunning(importJob.id, 'backing_up');
 
     try {
-      const archiveBuffer = await this.storageProvider.download(
+      const archiveStream = await this.storageProvider.downloadStream(
         importJob.uploadedStorageKey,
         { visibility: 'private' },
       );
-      const parsed = this.parseArchiveBuffer(archiveBuffer);
-      const preview = {
-        ...parsed.preview,
-        archiveChecksum: parsed.archiveChecksum,
-        sizeBytes: parsed.sizeBytes,
-      };
+      const parsed = await this.parseArchiveSource(
+        archiveStream as AsyncIterable<Buffer | Uint8Array | string>,
+      );
+
+      if (
+        parsed.archiveChecksum !== importJob.archiveChecksum ||
+        parsed.sizeBytes !== importJob.sizeBytes
+      ) {
+        throw new BadRequestException(
+          'O arquivo desta importacao nao corresponde ao preview validado.',
+        );
+      }
+
+      const preview = this.buildPreviewPayload(parsed);
 
       await this.createPreImportBackup(userId, userId);
       await this.backupsRepository.updateImportPhase(importJob.id, 'importing');

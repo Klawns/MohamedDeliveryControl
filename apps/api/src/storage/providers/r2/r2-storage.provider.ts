@@ -4,11 +4,15 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl as presignGetObjectUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Readable } from 'node:stream';
 import type {
   IStorageProvider,
+  StorageBufferUploadFile,
+  StorageStreamUploadFile,
   StorageVisibility,
 } from '../../interfaces/storage-provider.interface';
 
@@ -115,8 +119,28 @@ export class R2StorageProvider implements IStorageProvider {
     throw new Error('Resposta de download do storage nao suportada.');
   }
 
+  private bodyToReadable(body: unknown): Readable {
+    if (!body) {
+      return Readable.from([]);
+    }
+
+    if (body instanceof Readable) {
+      return body;
+    }
+
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      Symbol.asyncIterator in body
+    ) {
+      return Readable.from(body as AsyncIterable<Buffer | Uint8Array>);
+    }
+
+    throw new Error('Resposta de download por stream do storage nao suportada.');
+  }
+
   async upload(
-    file: { buffer: Buffer; mimetype: string; originalname: string },
+    file: StorageBufferUploadFile,
     path: string,
     options?: { cacheControl?: string },
   ): Promise<{ url: string; key: string }> {
@@ -160,7 +184,7 @@ export class R2StorageProvider implements IStorageProvider {
   }
 
   async uploadPrivate(
-    file: { buffer: Buffer; mimetype: string; originalname: string },
+    file: StorageBufferUploadFile,
     path: string,
     options?: { cacheControl?: string; contentDisposition?: string },
   ): Promise<{ key: string }> {
@@ -183,6 +207,52 @@ export class R2StorageProvider implements IStorageProvider {
         }),
       );
       this.logger.log(`Upload privado concluido com sucesso: ${key}`);
+    } catch (error) {
+      const message = this.buildOperationErrorMessage(
+        'upload privado',
+        bucket,
+        key,
+        error,
+      );
+
+      this.logger.error(
+        message,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new Error(message);
+    }
+
+    return { key };
+  }
+
+  async uploadPrivateStream(
+    file: StorageStreamUploadFile,
+    path: string,
+    options?: { cacheControl?: string; contentDisposition?: string },
+  ): Promise<{ key: string }> {
+    const key = path;
+    const bucket = this.resolveBucket('private');
+
+    this.logger.log(`Iniciando upload privado por stream para R2: ${key}`);
+
+    const upload = new Upload({
+      client: this.client,
+      params: {
+        Bucket: bucket,
+        Key: key,
+        Body: file.stream,
+        ContentType: file.mimetype,
+        CacheControl: options?.cacheControl ?? 'private, no-store',
+        ContentDisposition:
+          options?.contentDisposition ??
+          `attachment; filename="${file.originalname}"`,
+      },
+      leavePartsOnError: false,
+    });
+
+    try {
+      await upload.done();
+      this.logger.log(`Upload privado por stream concluido com sucesso: ${key}`);
     } catch (error) {
       const message = this.buildOperationErrorMessage(
         'upload privado',
@@ -277,6 +347,15 @@ export class R2StorageProvider implements IStorageProvider {
     key: string,
     options?: { visibility?: StorageVisibility },
   ): Promise<Buffer> {
+    const stream = await this.downloadStream(key, options);
+
+    return this.bodyToBuffer(stream);
+  }
+
+  async downloadStream(
+    key: string,
+    options?: { visibility?: StorageVisibility },
+  ): Promise<Readable> {
     const bucket = this.resolveBucket(options?.visibility ?? 'private');
 
     try {
@@ -287,7 +366,7 @@ export class R2StorageProvider implements IStorageProvider {
         }),
       );
 
-      return this.bodyToBuffer(response.Body);
+      return this.bodyToReadable(response.Body);
     } catch (error) {
       const message = this.buildOperationErrorMessage(
         'download',
