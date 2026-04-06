@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { financeKeys } from '@/lib/query-keys';
 import { financeService } from '@/services/finance-service';
@@ -47,6 +47,7 @@ export function useFinanceDashboard() {
     staleTime: 1000 * 60,
     gcTime: 300000,
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
   const currentPeriod: Period = useMemo(
     () => PERIODS.find((period) => period.id === filters.period) || PERIODS[0],
@@ -56,6 +57,7 @@ export function useFinanceDashboard() {
 
   return {
     data: query.data,
+    dataUpdatedAt: query.dataUpdatedAt,
     dashboardParams,
     isPending: query.isPending,
     isError: query.isError,
