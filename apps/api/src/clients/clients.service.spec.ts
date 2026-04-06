@@ -156,13 +156,34 @@ describe('ClientsService', () => {
     });
   });
 
-  it('should reject debt closing when partial payments do not cover the debt', async () => {
-    await expect(
-      service.closeDebt('user-1', 'uuid-123'),
-    ).rejects.toBeInstanceOf(BadRequestException);
+  it('should not reject debt closing when partial payments do not cover the debt', async () => {
+    paymentsRepoMock.getUnusedPaymentsStats.mockResolvedValueOnce({
+      totalPaid: 50,
+      unusedPaymentsCount: 1,
+    });
+    clientsRepoMock.findOne.mockResolvedValueOnce({
+      id: 'uuid-123',
+      name: 'Client Test',
+      balance: 10,
+    });
 
-    expect(ridesRepoMock.markAllAsPaidForClient).not.toHaveBeenCalled();
-    expect(paymentsRepoMock.markAsUsed).not.toHaveBeenCalled();
+    const result = await service.closeDebt('user-1', 'uuid-123');
+
+    expect(ridesRepoMock.markAllAsPaidForClient).toHaveBeenCalledWith(
+      'uuid-123',
+      'user-1',
+      'tx',
+    );
+    expect(paymentsRepoMock.markAsUsed).toHaveBeenCalledWith(
+      'uuid-123',
+      'user-1',
+      'tx',
+    );
+    expect(result).toEqual({
+      success: true,
+      settledRides: 2,
+      generatedBalance: 0,
+    });
   });
 
   it('should close debt atomically when total paid covers the debt', async () => {

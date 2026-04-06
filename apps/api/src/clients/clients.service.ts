@@ -187,11 +187,7 @@ export class ClientsService {
             tx,
           );
 
-        if (Number(totalPaid) < Number(totalDebt)) {
-          throw new BadRequestException(
-            'Pagamento insuficiente para quitar a dívida.',
-          );
-        }
+        // Apenas prossegue para quitar (marcar como pago e consumir pagamentos)
 
         const settledCount = await this.ridesRepository.markAllAsPaidForClient(
           clientId,
