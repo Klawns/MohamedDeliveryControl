@@ -57,6 +57,7 @@ export function parseBackupImportUploadRequest(
   return new Promise((resolve, reject) => {
     let activeFile: Readable | null = null;
     let completedResolved = false;
+    let failed = false;
     let outerResolved = false;
     let fileSeen = false;
 
@@ -113,6 +114,12 @@ export function parseBackupImportUploadRequest(
         'Falha ao processar o upload do arquivo de backup.',
       );
 
+      if (failed) {
+        return normalizedError;
+      }
+
+      failed = true;
+
       finalizeCompletedError(normalizedError);
 
       try {
@@ -127,8 +134,10 @@ export function parseBackupImportUploadRequest(
         // The request might already be detached.
       }
 
-      if (!parser.destroyed) {
-        parser.destroy(normalizedError);
+      try {
+        req.resume();
+      } catch {
+        // Ignore request draining failures during abort.
       }
 
       if (!outerResolved) {
@@ -140,6 +149,11 @@ export function parseBackupImportUploadRequest(
     };
 
     parser.on('file', (fieldName, file, info) => {
+      if (failed) {
+        file.resume();
+        return;
+      }
+
       if (fileSeen) {
         file.resume();
         fail(new BadRequestException('Apenas um arquivo .zip e aceito por requisicao.'));
@@ -192,6 +206,10 @@ export function parseBackupImportUploadRequest(
     });
 
     parser.on('field', () => {
+      if (failed) {
+        return;
+      }
+
       fail(
         new BadRequestException(
           'Campos adicionais nao sao permitidos neste endpoint.',
@@ -220,6 +238,10 @@ export function parseBackupImportUploadRequest(
     });
 
     parser.once('close', () => {
+      if (failed) {
+        return;
+      }
+
       if (!fileSeen) {
         fail(new BadRequestException('Arquivo de backup nao enviado.'));
         return;

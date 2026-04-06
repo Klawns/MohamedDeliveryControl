@@ -10,6 +10,10 @@ import { BackupsRepository } from './backups.repository';
 import { BackupsService } from './backups.service';
 import { BackupJobsWorker } from './queue/backup-jobs.worker';
 import { FunctionalBackupArchiveService } from './services/functional-backup-archive.service';
+import { FunctionalBackupImportArchiveParserService } from './services/functional-backup-import-archive-parser.service';
+import { FunctionalBackupImportDatasetValidatorService } from './services/functional-backup-import-dataset-validator.service';
+import { FunctionalBackupImportExecutorService } from './services/functional-backup-import-executor.service';
+import { FunctionalBackupImportPreviewUploadCoordinatorService } from './services/functional-backup-import-preview-upload-coordinator.service';
 import { FunctionalBackupImportService } from './services/functional-backup-import.service';
 import { TechnicalBackupRunnerService } from './services/technical-backup-runner.service';
 
@@ -28,6 +32,10 @@ import { TechnicalBackupRunnerService } from './services/technical-backup-runner
     BackupsAutomationService,
     BackupJobsWorker,
     FunctionalBackupArchiveService,
+    FunctionalBackupImportArchiveParserService,
+    FunctionalBackupImportDatasetValidatorService,
+    FunctionalBackupImportExecutorService,
+    FunctionalBackupImportPreviewUploadCoordinatorService,
     FunctionalBackupImportService,
     TechnicalBackupRunnerService,
   ],

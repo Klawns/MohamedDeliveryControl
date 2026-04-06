@@ -1,13 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await -- This spec uses partial infrastructure stubs to validate import flows. */
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { FunctionalBackupImportArchiveParserService } from './functional-backup-import-archive-parser.service';
+import { FunctionalBackupImportDatasetValidatorService } from './functional-backup-import-dataset-validator.service';
+import { FunctionalBackupImportExecutorService } from './functional-backup-import-executor.service';
+import { FunctionalBackupImportPreviewUploadCoordinatorService } from './functional-backup-import-preview-upload-coordinator.service';
 import { FunctionalBackupImportService } from './functional-backup-import.service';
 import {
   BACKUP_MANIFEST_VERSION,
   FUNCTIONAL_BACKUP_KIND,
 } from '../backups.constants';
+import { getBackupPublicErrorMessage } from '../backups-public-errors';
 import { createZipArchive } from '../utils/zip-builder.util';
 import type { BackupImportUploadSource } from '../utils/backup-import-upload.util';
 
@@ -182,6 +187,7 @@ describe('FunctionalBackupImportService', () => {
 
         return { key: 'imports/user-1/import-job-1.zip' };
       }),
+      delete: jest.fn().mockResolvedValue(undefined),
       downloadStream: jest.fn(),
     };
 
@@ -218,16 +224,31 @@ describe('FunctionalBackupImportService', () => {
       invalidate: jest.fn().mockResolvedValue(undefined),
     };
 
-    const service = new FunctionalBackupImportService(
+    const archiveParser = new FunctionalBackupImportArchiveParserService();
+    const datasetValidator =
+      new FunctionalBackupImportDatasetValidatorService();
+    const importExecutor = new FunctionalBackupImportExecutorService(
       drizzleMock as any,
+      cacheServiceMock as any,
+    );
+    const previewUploadCoordinator =
+      new FunctionalBackupImportPreviewUploadCoordinatorService(
+        archiveParser,
+        storageProviderMock as any,
+      );
+
+    const service = new FunctionalBackupImportService(
       repositoryMock as any,
       {
         get: jest.fn((key: string, fallback?: unknown) =>
           key === 'BACKUP_STORAGE_PREFIX' ? 'backups' : fallback,
         ),
       } as ConfigService,
+      archiveParser,
+      datasetValidator,
+      importExecutor,
+      previewUploadCoordinator,
       archiveServiceMock as any,
-      cacheServiceMock as any,
       storageProviderMock as any,
     );
 
@@ -338,6 +359,33 @@ describe('FunctionalBackupImportService', () => {
     await expect(
       service.previewImport('user-1', createUploadSource(archiveBuffer)),
     ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repositoryMock.createImportJob).not.toHaveBeenCalled();
+  });
+
+  it('should return service unavailable when preview upload storage fails', async () => {
+    const { service, repositoryMock, storageProviderMock } = createService();
+    const archiveBuffer = buildArchiveBuffer({
+      clients: [],
+      rides: [],
+      clientPayments: [],
+      balanceTransactions: [],
+      ridePresets: [],
+    });
+
+    storageProviderMock.uploadPrivateStream.mockImplementationOnce(
+      async ({ stream }: { stream: AsyncIterable<Buffer> }) => {
+        for await (const _chunk of stream) {
+          // Drain the stream before failing to mirror an upload pipeline error.
+        }
+
+        throw new Error('storage unavailable');
+      },
+    );
+
+    await expect(
+      service.previewImport('user-1', createUploadSource(archiveBuffer)),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
     expect(repositoryMock.createImportJob).not.toHaveBeenCalled();
   });
@@ -594,6 +642,23 @@ describe('FunctionalBackupImportService', () => {
     expect(repositoryMock.markImportFailed).toHaveBeenCalledWith(
       'import-job-1',
       expect.any(String),
+    );
+  });
+
+  it('should return service unavailable when archive download fails during execution', async () => {
+    const { service, repositoryMock, storageProviderMock } = createService();
+
+    storageProviderMock.downloadStream.mockRejectedValueOnce(
+      new Error('storage unavailable'),
+    );
+
+    await expect(
+      service.executeImport('user-1', 'import-job-1'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(repositoryMock.markImportFailed).toHaveBeenCalledWith(
+      'import-job-1',
+      getBackupPublicErrorMessage('executeImport'),
     );
   });
 });

@@ -1,6 +1,12 @@
 import { readZipArchive } from './zip-reader.util';
 import { createZipArchive } from './zip-builder.util';
 
+function overwriteLocalHeaderCrc32(archiveBuffer: Buffer, crc32: number) {
+  const corruptedArchive = Buffer.from(archiveBuffer);
+  corruptedArchive.writeUInt32LE(crc32 >>> 0, 14);
+  return corruptedArchive;
+}
+
 describe('readZipArchive', () => {
   it('should extract expected entries with asynchronous ZIP streaming', async () => {
     const archiveBuffer = createZipArchive([
@@ -70,5 +76,20 @@ describe('readZipArchive', () => {
         maxTotalUncompressedBytes: 2048,
       }),
     ).rejects.toThrow('limite de 1 arquivos');
+  });
+
+  it('should reject entries with invalid CRC32 checksums', async () => {
+    const archiveBuffer = createZipArchive([
+      { name: 'manifest.json', content: '{"ok":true}' },
+    ]);
+
+    await expect(
+      readZipArchive(overwriteLocalHeaderCrc32(archiveBuffer, 0), {
+        allowedEntryNames: ['manifest.json'],
+        maxEntries: 1,
+        maxEntryBytes: 1024,
+        maxTotalUncompressedBytes: 1024,
+      }),
+    ).rejects.toThrow('Checksum invalido');
   });
 });

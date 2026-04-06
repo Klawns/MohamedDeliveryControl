@@ -8,12 +8,28 @@ const CRC32_TABLE = new Uint32Array(256).map((_, index) => {
   return crc >>> 0;
 });
 
-export function crc32(buffer: Buffer): number {
+export interface Crc32Accumulator {
+  digest(): number;
+  update(buffer: Buffer): void;
+}
+
+export function createCrc32Accumulator(): Crc32Accumulator {
   let crc = 0xffffffff;
 
-  for (const byte of buffer) {
-    crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-  }
+  return {
+    update(buffer: Buffer) {
+      for (const byte of buffer) {
+        crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+      }
+    },
+    digest() {
+      return (crc ^ 0xffffffff) >>> 0;
+    },
+  };
+}
 
-  return (crc ^ 0xffffffff) >>> 0;
+export function crc32(buffer: Buffer): number {
+  const accumulator = createCrc32Accumulator();
+  accumulator.update(buffer);
+  return accumulator.digest();
 }
