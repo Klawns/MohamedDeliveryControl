@@ -5,6 +5,7 @@ import { DollarSign, Wallet } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { PaymentStatus } from "@/types/rides";
 import { PaymentComposition } from "@/components/ui/payment-composition";
+import { RideFinancialImpactNotice } from "../ride-financial-impact-notice";
 
 interface StepPaymentStatusProps {
     paymentStatus: PaymentStatus;
@@ -15,6 +16,8 @@ interface StepPaymentStatusProps {
     rideValue: number;
     paidWithBalance: number;
     debtValue: number;
+    willReopenDebtOnSave?: boolean;
+    projectedDebtValue?: number;
 }
 
 export function StepPaymentStatus({
@@ -25,7 +28,9 @@ export function StepPaymentStatus({
     availableBalance,
     rideValue,
     paidWithBalance,
-    debtValue
+    debtValue,
+    willReopenDebtOnSave = false,
+    projectedDebtValue = debtValue,
 }: StepPaymentStatusProps) {
     const remainingBalanceAfterRide = availableBalance - paidWithBalance;
 
@@ -59,17 +64,23 @@ export function StepPaymentStatus({
                     <button
                         type="button"
                         onClick={() => setPaymentStatus('PAID')}
+                        disabled={willReopenDebtOnSave}
                         className={cn(
                             "py-4 rounded-[1.75rem] text-[11px] font-black transition-all uppercase tracking-widest active:scale-95",
                             paymentStatus === 'PAID' 
                                 ? "bg-button-primary text-button-primary-foreground shadow-lg shadow-button-shadow scale-[1.02]" 
-                                : "text-text-secondary hover:text-text-primary hover:bg-secondary/20"
+                                : "text-text-secondary hover:text-text-primary hover:bg-secondary/20",
+                            willReopenDebtOnSave && "opacity-50 cursor-not-allowed"
                         )}
                     >
                         Pago
                     </button>
                 </div>
             </div>
+
+            {willReopenDebtOnSave ? (
+                <RideFinancialImpactNotice debtValue={projectedDebtValue} />
+            ) : null}
 
             {availableBalance > 0 && (
                 <div className="space-y-4 pt-4">

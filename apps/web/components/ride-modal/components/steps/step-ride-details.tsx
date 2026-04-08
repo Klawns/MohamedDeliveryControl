@@ -5,6 +5,7 @@ import { DollarSign, Star, MapPin } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { RidePreset } from "@/types/rides";
+import { RideFinancialImpactNotice } from "../ride-financial-impact-notice";
 
 const QUICK_VALUES = [10, 12, 15, 20, 25, 30];
 
@@ -17,6 +18,8 @@ interface StepRideDetailsProps {
     isCustomValue: boolean;
     setIsCustomValue: (v: boolean) => void;
     clientName?: string;
+    willReopenDebtOnSave?: boolean;
+    projectedDebtValue?: number;
     handlePresetClick: (preset: RidePreset) => void;
 }
 
@@ -29,6 +32,8 @@ export function StepRideDetails({
     isCustomValue,
     setIsCustomValue,
     clientName,
+    willReopenDebtOnSave = false,
+    projectedDebtValue = 0,
     handlePresetClick
 }: StepRideDetailsProps) {
     return (
@@ -143,6 +148,10 @@ export function StepRideDetails({
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {willReopenDebtOnSave ? (
+                    <RideFinancialImpactNotice debtValue={projectedDebtValue} />
+                ) : null}
             </div>
         </motion.div>
     );

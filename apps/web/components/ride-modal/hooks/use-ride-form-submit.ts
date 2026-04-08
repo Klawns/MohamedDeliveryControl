@@ -22,8 +22,14 @@ export function useRideFormSubmit({
   onClose,
 }: UseRideFormSubmitProps) {
   const mutation = useSubmitRideMutation({
-    onSuccess: async () => {
-      toast.success(rideToEdit ? 'Corrida atualizada' : 'Corrida registrada');
+    onSuccess: async (ride) => {
+      if (rideToEdit && ride.paymentStatus === 'PENDING') {
+        toast.success(
+          'Corrida atualizada. O status financeiro voltou para pendente.',
+        );
+      } else {
+        toast.success(rideToEdit ? 'Corrida atualizada' : 'Corrida registrada');
+      }
 
       if (!rideToEdit) {
         resetForm();

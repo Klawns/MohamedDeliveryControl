@@ -9,24 +9,24 @@ import { rideModalService } from '../services/ride-modal-service';
 interface UseRideFormDataProps {
   isOpen?: boolean;
   userId?: string;
-  clientId?: string;
   clientSearch: string;
   selectedClientId: string;
+  shouldLoadDirectory?: boolean;
 }
 
 export function useRideFormData({
   isOpen,
   userId,
-  clientId,
   clientSearch,
   selectedClientId,
+  shouldLoadDirectory = true,
 }: UseRideFormDataProps) {
   const isEnabled = Boolean(isOpen && userId);
-  const shouldLoadDirectory = isEnabled && !clientId;
+  const canLoadDirectory = isEnabled && shouldLoadDirectory;
   const deferredClientSearch = useDeferredValue(clientSearch.trim());
 
   const clientDirectory = useClientDirectory({
-    enabled: shouldLoadDirectory,
+    enabled: canLoadDirectory,
     search: deferredClientSearch,
     limit: 24,
     selectedClientId,
@@ -48,15 +48,15 @@ export function useRideFormData({
   });
 
   return {
-    clients: shouldLoadDirectory ? clientDirectory.clients : [],
+    clients: canLoadDirectory ? clientDirectory.clients : [],
     presets,
     clientBalance: clientBalanceData?.clientBalance || 0,
-    isLoadingData: (shouldLoadDirectory && clientDirectory.isLoading) || isLoadingPresets,
-    isFetchingClients: shouldLoadDirectory ? clientDirectory.isFetching : false,
-    isClientDirectoryError: shouldLoadDirectory ? clientDirectory.isError : false,
-    clientDirectoryError: shouldLoadDirectory ? clientDirectory.error : null,
+    isLoadingData: (canLoadDirectory && clientDirectory.isLoading) || isLoadingPresets,
+    isFetchingClients: canLoadDirectory ? clientDirectory.isFetching : false,
+    isClientDirectoryError: canLoadDirectory ? clientDirectory.isError : false,
+    clientDirectoryError: canLoadDirectory ? clientDirectory.error : null,
     retryClientDirectory: clientDirectory.refetch,
-    isClientDirectoryReady: shouldLoadDirectory ? clientDirectory.isReady : true,
-    clientDirectoryMeta: shouldLoadDirectory ? clientDirectory.meta : null,
+    isClientDirectoryReady: canLoadDirectory ? clientDirectory.isReady : true,
+    clientDirectoryMeta: canLoadDirectory ? clientDirectory.meta : null,
   };
 }

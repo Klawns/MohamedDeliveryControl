@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { toLocalInputValue } from '@/lib/date-utils';
 import { type RideModalProps } from '@/types/rides';
@@ -18,6 +19,9 @@ export function useRideForm({
 }: Partial<RideModalProps>) {
   const { user } = useAuth();
   const form = useRideFormState({ clientId });
+  const originalRideClientId = rideToEdit?.clientId || clientId || '';
+  const hasShownFinancialImpactWarningRef = useRef(false);
+  const shouldLoadClientDirectory = !clientId || Boolean(rideToEdit);
   const {
     clientSearch,
     currentStep,
@@ -52,9 +56,9 @@ export function useRideForm({
   const data = useRideFormData({
     isOpen,
     userId: user?.id,
-    clientId,
     clientSearch,
     selectedClientId,
+    shouldLoadDirectory: shouldLoadClientDirectory,
   });
 
   useEffect(() => {
@@ -63,7 +67,7 @@ export function useRideForm({
     }
 
     if (rideToEdit) {
-      setSelectedClientId(rideToEdit.clientId || '');
+      setSelectedClientId(originalRideClientId);
       setValue(rideToEdit.value.toString());
       setLocation(rideToEdit.location || '');
       setNotes(rideToEdit.notes || '');
@@ -80,6 +84,7 @@ export function useRideForm({
     isOpen,
     resetForm,
     rideToEdit,
+    originalRideClientId,
     setCurrentStep,
     setIsCustomValue,
     setLocation,
@@ -102,6 +107,60 @@ export function useRideForm({
     setPaymentStatus(debt > 0 ? 'PENDING' : 'PAID');
   }, [data.clientBalance, setPaymentStatus, useBalance, value]);
 
+  const previousPaidWithBalance = Number(rideToEdit?.paidWithBalance ?? 0);
+  const previousDebtValue = Number(rideToEdit?.debtValue ?? 0);
+  const previousPaidExternally = rideToEdit
+    ? Math.max(0, Number(rideToEdit.value) - previousPaidWithBalance - previousDebtValue)
+    : 0;
+  const nextRideValue = Number(value) || 0;
+  const didPaymentInputsChange = Boolean(
+    rideToEdit &&
+      (selectedClientId !== originalRideClientId ||
+        nextRideValue !== Number(rideToEdit.value)),
+  );
+  const nextPaidWithBalance = rideToEdit
+    ? selectedClientId === originalRideClientId
+      ? Math.min(
+          previousPaidWithBalance,
+          Math.max(0, nextRideValue - previousPaidExternally),
+        )
+      : 0
+    : 0;
+  const recalculatedDebtOnSave = rideToEdit
+    ? Math.max(0, nextRideValue - previousPaidExternally - nextPaidWithBalance)
+    : 0;
+  const willReopenDebtOnSave = Boolean(
+    rideToEdit && didPaymentInputsChange && recalculatedDebtOnSave > 0,
+  );
+
+  useEffect(() => {
+    if (!willReopenDebtOnSave) {
+      hasShownFinancialImpactWarningRef.current = false;
+      return;
+    }
+
+    setPaymentStatus('PENDING');
+  }, [setPaymentStatus, willReopenDebtOnSave]);
+
+  useEffect(() => {
+    if (!didPaymentInputsChange || !willReopenDebtOnSave) {
+      hasShownFinancialImpactWarningRef.current = false;
+      return;
+    }
+
+    if (hasShownFinancialImpactWarningRef.current) {
+      return;
+    }
+
+    hasShownFinancialImpactWarningRef.current = true;
+    toast.warning('Essa edicao reabre a pendencia. A corrida sera salva como pendente.', {
+      duration: 10000,
+      closeButton: true,
+    });
+  }, [didPaymentInputsChange, willReopenDebtOnSave]);
+
+  const effectivePaymentStatus = willReopenDebtOnSave ? 'PENDING' : paymentStatus;
+
   const clientCreation = useRideClientCreation({
     newClientName,
     setSelectedClientId,
@@ -117,7 +176,7 @@ export function useRideForm({
       notes,
       photo,
       rideDate,
-      paymentStatus,
+      paymentStatus: effectivePaymentStatus,
       useBalance,
     },
     rideToEdit,
@@ -202,6 +261,7 @@ export function useRideForm({
     isClientDirectoryReady: data.isClientDirectoryReady,
     clientDirectoryMeta: data.clientDirectoryMeta,
     ...form,
+    paymentStatus: effectivePaymentStatus,
     paidWithBalance,
     debtValue,
     isSubmitting: submission.isSubmitting,
@@ -213,5 +273,7 @@ export function useRideForm({
     handlePhotoChange,
     handleSubmit: submission.handleSubmit,
     handleKeyDown,
+    willReopenDebtOnSave,
+    projectedDebtValue: recalculatedDebtOnSave,
   };
 }

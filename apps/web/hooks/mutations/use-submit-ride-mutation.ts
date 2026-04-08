@@ -38,7 +38,11 @@ export function useSubmitRideMutation(
 
       const affectedClientIds = Array.from(
         new Set(
-          [ride.clientId, variables.rideToEdit?.clientId]
+          [
+            ride.clientId,
+            variables.draft.selectedClientId,
+            variables.rideToEdit?.clientId,
+          ]
             .filter((value): value is string => Boolean(value)),
         ),
       );
