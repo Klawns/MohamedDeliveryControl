@@ -18,7 +18,12 @@ export function SidebarBrand({
   onClose,
 }: SidebarBrandProps) {
   return (
-    <div className="flex items-center justify-between mb-10 overflow-hidden h-12">
+    <div
+      className={cn(
+        'mb-8 flex h-12 items-center overflow-hidden',
+        isOpen ? 'justify-between' : 'justify-center',
+      )}
+    >
       <AnimatePresence mode="wait">
         {isOpen && (
           <Link
@@ -53,7 +58,7 @@ export function SidebarBrand({
           onClick={onToggle}
           className={cn(
             'hidden lg:flex p-2 hover:bg-sidebar-accent rounded-xl transition-all text-sidebar-foreground-muted hover:text-sidebar-foreground bg-sidebar-accent/50 active:scale-90 border border-transparent hover:border-sidebar-border',
-            !isOpen && 'flex',
+            !isOpen && 'flex rounded-2xl p-2.5',
           )}
           aria-label={isOpen ? 'Recolher Sidebar' : 'Expandir Sidebar'}
         >

@@ -18,7 +18,7 @@ export function RideCardFinancialBadge({
     <span
       data-financial-state={financialState}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]',
+        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] sm:gap-2 sm:px-2.5 sm:py-1 sm:text-[10px]',
         className,
       )}
     >

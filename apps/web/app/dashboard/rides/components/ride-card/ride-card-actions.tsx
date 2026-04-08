@@ -38,7 +38,7 @@ export function RideCardActions({
           onClick={(event) => {
             event.stopPropagation();
           }}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-card-background text-text-secondary transition-colors hover:border-border hover:bg-hover-accent hover:text-text-primary"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border-subtle bg-card-background text-text-secondary transition-colors hover:border-border hover:bg-hover-accent hover:text-text-primary sm:h-9 sm:w-9"
           title="Abrir acoes da corrida"
           aria-label="Abrir menu de acoes da corrida"
         >

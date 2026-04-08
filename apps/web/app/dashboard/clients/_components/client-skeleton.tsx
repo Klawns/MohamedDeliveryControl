@@ -1,31 +1,23 @@
-"use client";
-
-import { motion } from "framer-motion";
+'use client';
 
 export function ClientSkeleton() {
-    return (
-        <div className="p-5 rounded-[2.5rem] border border-border-subtle bg-muted/20 animate-pulse relative overflow-hidden shadow-sm">
-            <div className="flex flex-col gap-5 relative z-10">
-                <div className="flex items-start gap-4">
-                    {/* Icone Skeleton */}
-                    <div className="flex-shrink-0 w-14 h-14 bg-muted/40 rounded-2xl" />
+  return (
+    <div className="rounded-[1.6rem] border border-border-subtle bg-card-background p-4 shadow-sm animate-pulse">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-7 w-2/5 rounded-lg bg-muted/40" />
+            <div className="h-4 w-4/5 rounded-md bg-muted/40" />
+          </div>
 
-                    <div className="flex-1 min-w-0 pt-1 space-y-2">
-                        <div className="h-6 bg-muted/40 rounded-lg w-3/4" />
-                        <div className="h-4 bg-muted/40 rounded-md w-1/2" />
-                    </div>
-                </div>
-
-                {/* Barra de Ações Skeleton */}
-                <div className="flex items-center justify-between bg-muted/20 p-2 rounded-2xl border border-border-subtle">
-                    <div className="flex items-center gap-2">
-                        <div className="h-11 w-11 bg-muted/40 rounded-xl" />
-                        <div className="h-11 w-11 bg-muted/40 rounded-xl" />
-                        <div className="h-11 w-11 bg-muted/40 rounded-xl" />
-                    </div>
-                    <div className="h-6 w-6 bg-muted/40 rounded-full mr-2" />
-                </div>
-            </div>
+          <div className="h-9 w-9 rounded-full bg-muted/40" />
         </div>
-    );
+
+        <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-3">
+          <div className="h-4 w-24 rounded-md bg-muted/40" />
+          <div className="h-4 w-40 rounded-md bg-muted/30" />
+        </div>
+      </div>
+    </div>
+  );
 }

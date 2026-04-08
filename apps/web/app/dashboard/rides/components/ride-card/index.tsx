@@ -43,18 +43,18 @@ export const RideCard = React.memo(
           open={isOpen}
           onOpenChange={setIsOpen}
           className={cn(
-            'rounded-[1.6rem] border border-border-subtle bg-card-background p-4 shadow-sm transition-shadow hover:shadow-md',
+            'rounded-[1.6rem] border border-border-subtle bg-card-background p-3.5 shadow-sm transition-shadow hover:shadow-md sm:p-4',
             financialTheme.cardClassName,
           )}
         >
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <RideCardHeader presentation={presentation} />
 
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-3">
+            <div className="flex items-center justify-between gap-2 border-t border-border-subtle/70 pt-2.5 sm:gap-3 sm:pt-3">
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
                 >
                   {isOpen ? 'Ocultar detalhes' : 'Ver detalhes'}
                   <ChevronDown

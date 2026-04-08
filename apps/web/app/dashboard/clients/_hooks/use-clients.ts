@@ -16,7 +16,7 @@ function dedupeClients<T extends { id?: string | null }>(items: T[]) {
 }
 
 export function useClients() {
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState('');
     const limit = 16;
     const filters = useMemo(() => ({ search, limit }), [search, limit]);
 
@@ -27,12 +27,13 @@ export function useClients() {
         isFetchingNextPage,
         hasNextPage,
         fetchNextPage,
-        refetch
+        refetch,
+        error,
     } = useInfiniteQuery({
         queryKey: clientKeys.infinite(filters),
         queryFn: ({ pageParam, signal }) => clientsService.getClients({
             ...filters,
-            cursor: pageParam as string | undefined
+            cursor: pageParam as string | undefined,
         }, signal),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) =>
@@ -43,6 +44,7 @@ export function useClients() {
 
     const allClients = data?.pages.flatMap((page) => page.data || []) || [];
     const clients = dedupeClients(allClients);
+    const totalCount = data?.pages[0]?.meta?.total ?? clients.length;
 
     return {
         clients,
@@ -53,8 +55,9 @@ export function useClients() {
         isFetchingNextPage,
         hasNextPage,
         fetchNextPage,
-        total: clients.length,
+        totalCount,
         limit,
-        fetchClients: refetch
+        error,
+        fetchClients: refetch,
     };
 }

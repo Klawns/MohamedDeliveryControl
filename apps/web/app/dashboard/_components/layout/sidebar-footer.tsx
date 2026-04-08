@@ -16,14 +16,24 @@ export function SidebarFooter({
   onLogout,
 }: SidebarFooterProps) {
   return (
-    <div className="pt-6 border-t border-sidebar-border mt-auto">
+    <div
+      className={cn(
+        'mt-auto border-t border-sidebar-border pt-6',
+        !isOpen && 'px-1',
+      )}
+    >
       <div
         className={cn(
           'flex items-center gap-3 px-4 py-3 mb-4',
           !isOpen && 'lg:justify-center lg:px-0',
         )}
       >
-        <div className="w-10 h-10 rounded-full bg-icon-brand/10 text-icon-brand flex items-center justify-center font-bold text-sm shrink-0 border border-icon-brand/20 transition-colors">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-icon-brand/20 bg-icon-brand/10 text-sm font-bold text-icon-brand transition-colors',
+            !isOpen && 'lg:h-11 lg:w-11',
+          )}
+        >
           {user?.name?.charAt(0).toUpperCase() || 'U'}
         </div>
         {isOpen && (
@@ -44,7 +54,8 @@ export function SidebarFooter({
         onClick={onLogout}
         className={cn(
           'w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-icon-destructive/10 text-sidebar-foreground-muted hover:text-icon-destructive transition-all group active:scale-95',
-          !isOpen && 'lg:justify-center lg:px-0',
+          !isOpen &&
+            'lg:mx-auto lg:h-12 lg:w-12 lg:justify-center lg:rounded-2xl lg:px-0 lg:py-0',
         )}
         title={!isOpen ? 'Sair' : ''}
       >

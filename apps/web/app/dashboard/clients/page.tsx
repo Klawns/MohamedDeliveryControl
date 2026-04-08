@@ -21,7 +21,7 @@ export default function ClientsPage() {
     // Data Hooks
     const { 
         clients, search, setSearch, isLoading, isFetching,
-        hasNextPage, isFetchingNextPage, fetchNextPage, total
+        hasNextPage, isFetchingNextPage, fetchNextPage, totalCount, error, fetchClients
     } = useClients();
     
     const state = useClientsPageState(clients);
@@ -86,9 +86,13 @@ export default function ClientsPage() {
                 className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide"
                 data-scroll-lock-root="true"
             >
-                <div className="mx-auto flex w-full max-w-[1400px] flex-col pb-6">
-                    <div className="shrink-0 pb-8">
-                        <ClientHeader onNewClient={state.openNewClientModal} />
+                <div className="mx-auto flex w-full max-w-[1400px] flex-col pb-8">
+                    <div className="flex shrink-0 flex-col gap-8 pb-8">
+                        <ClientHeader
+                            onNewClient={state.openNewClientModal}
+                            totalCount={totalCount}
+                            hasActiveSearch={search.trim().length > 0}
+                        />
                     </div>
 
                     <ClientListSection 
@@ -100,7 +104,9 @@ export default function ClientsPage() {
                         hasNextPage={hasNextPage}
                         isFetchingNextPage={isFetchingNextPage}
                         onLoadMore={fetchNextPage}
-                        total={total}
+                        totalCount={totalCount}
+                        error={error}
+                        retry={fetchClients}
                         onEdit={state.openEditClientModal}
                         onDelete={state.openDeleteClientConfirm}
                         onPin={handlePinClient}

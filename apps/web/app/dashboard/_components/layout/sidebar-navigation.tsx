@@ -36,7 +36,8 @@ export function SidebarNavigation({
             key={item.label}
             className={cn(
               'flex items-center gap-4 px-4 py-3 rounded-xl border border-sidebar-border/60 bg-sidebar-accent/20 opacity-60 cursor-not-allowed',
-              !isOpen && 'lg:justify-center lg:px-0',
+              !isOpen &&
+                'lg:mx-auto lg:h-12 lg:w-12 lg:justify-center lg:rounded-2xl lg:px-0 lg:py-0',
             )}
             title={!isOpen ? `${item.label} bloqueado` : ''}
           >
@@ -62,7 +63,8 @@ export function SidebarNavigation({
               'flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-sidebar-accent/50 transition-all group active:scale-95 border border-transparent',
               pathname === item.href &&
                 'bg-sidebar-accent-active text-sidebar-foreground-primary shadow-sm border-sidebar-border-active',
-              !isOpen && 'lg:justify-center lg:px-0',
+              !isOpen &&
+                'lg:mx-auto lg:h-12 lg:w-12 lg:justify-center lg:rounded-2xl lg:px-0 lg:py-0',
             )}
             title={!isOpen ? item.label : ''}
           >

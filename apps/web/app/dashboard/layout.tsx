@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     data-dashboard-scroll-root="true"
                     className={cn(
                         "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden scrollbar-hide",
-                        sidebar.isSidebarOpen ? "lg:ml-72" : "lg:ml-24"
+                        sidebar.isSidebarOpen ? "lg:ml-72" : "lg:ml-[88px]"
                     )}
                 >
                     {/* 4. Banners de Status de Assinatura */}

@@ -119,17 +119,17 @@ export function RidesListContainer({
     return (
       <div
         ref={scrollContainerRef}
-        className="max-h-[min(68dvh,56rem)] space-y-8 overflow-y-auto pr-1 scrollbar-hide"
+        className="max-h-[min(68dvh,56rem)] space-y-6 overflow-y-auto pr-1 scrollbar-hide sm:space-y-8"
       >
         {groupedRides.map((group) => (
-          <section key={group.id} className="space-y-3">
+          <section key={group.id} className="space-y-2.5 sm:space-y-3">
             <div className="sticky top-0 z-10 -mx-1 bg-background/90 px-1 py-1 backdrop-blur-sm">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-text-secondary/75">
                 {group.label}
               </p>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {group.rides.map((ride) => (
                 <RideCard
                   key={ride.id}
