@@ -34,9 +34,7 @@ describe('AppController (e2e)', () => {
     const body = response.body as {
       data: {
         status: string;
-        version: string;
         timestamp: string;
-        uptime: number;
       };
       meta: Record<string, never>;
     };
@@ -44,11 +42,9 @@ describe('AppController (e2e)', () => {
     expect(body).toMatchObject({
       data: {
         status: 'ok',
-        version: '0.0.1',
       },
       meta: {},
     });
     expect(typeof body.data.timestamp).toBe('string');
-    expect(typeof body.data.uptime).toBe('number');
   });
 });

@@ -41,6 +41,16 @@ import type {
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get('health')
+  async getHealth() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '0.0.1',
+    };
+  }
+
   @Get('stats')
   async getStats() {
     return this.adminService.getStats();
