@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:unit": "tsx --test app/dashboard/finance/_lib/finance-client-autocomplete.test.ts",
+    "test:unit": "tsx --test lib/client-autocomplete.test.ts app/dashboard/finance/_lib/finance-dashboard-query.test.ts",
     "lint:style": "prettier --check \"**/*.{ts,tsx,md}\"",
     "lint:fix": "eslint . --fix && prettier --write \"**/*.{ts,tsx,md}\""
   },
