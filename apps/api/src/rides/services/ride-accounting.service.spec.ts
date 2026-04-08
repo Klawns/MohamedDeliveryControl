@@ -75,8 +75,24 @@ describe('RideAccountingService', () => {
     });
   });
 
+  it('should preserve external payment when recalculating a paid ride', () => {
+    expect(
+      service.resolvePaymentSnapshot({
+        value: 25,
+        paidWithBalance: 10,
+        paidExternally: 15,
+        paymentStatus: 'PAID',
+      }),
+    ).toEqual({
+      rideTotal: 25,
+      paidWithBalance: 10,
+      paymentStatus: 'PAID',
+      debtValue: 0,
+    });
+  });
+
   it('should consume client balance and register a debit transaction', async () => {
-    clientsRepoMock.findOne.mockResolvedValueOnce({
+    clientsRepoMock.findOneForUpdate.mockResolvedValueOnce({
       id: 'client-1',
       balance: 10,
     });

@@ -14,27 +14,37 @@ export class RideStatusService {
       paidWithBalance?: number;
       debtValue?: number;
     } = { ...restData };
+    const financialInputsChanged =
+      data.value !== undefined ||
+      data.paymentStatus !== undefined ||
+      data.clientId !== undefined;
+    const paymentInputsChanged =
+      data.value !== undefined || data.clientId !== undefined;
+    const previousRideValue = Number(existingRide.value);
     const nextClientId = data.clientId ?? existingRide.clientId;
     const nextRideValue = Number(data.value ?? Number(existingRide.value));
     const previousPaidWithBalance = Number(existingRide.paidWithBalance ?? 0);
+    const previousDebtValue = Number(existingRide.debtValue ?? 0);
+    const previousPaidExternally = Math.max(
+      0,
+      previousRideValue - previousPaidWithBalance - previousDebtValue,
+    );
+    const maxRetainedBalance = Math.max(0, nextRideValue - previousPaidExternally);
     const nextPaidWithBalance =
       nextClientId === existingRide.clientId
-        ? Math.min(previousPaidWithBalance, nextRideValue)
+        ? Math.min(previousPaidWithBalance, maxRetainedBalance)
         : 0;
 
     if (rideDate !== undefined) {
       updateData.rideDate = !rideDate ? null : new Date(rideDate);
     }
 
-    if (
-      data.value !== undefined ||
-      data.paymentStatus !== undefined ||
-      data.clientId !== undefined
-    ) {
+    if (financialInputsChanged) {
       const { rideTotal, paidWithBalance, debtValue, paymentStatus } =
         this.rideAccountingService.resolvePaymentSnapshot({
           value: nextRideValue,
           paidWithBalance: nextPaidWithBalance,
+          paidExternally: paymentInputsChanged ? previousPaidExternally : undefined,
           paymentStatus: data.paymentStatus ?? existingRide.paymentStatus,
         });
 
