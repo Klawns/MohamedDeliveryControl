@@ -29,10 +29,22 @@ export class RedisCacheProvider
 
   constructor(private readonly configService: ConfigService) {}
 
+  private getNodeEnv() {
+    return (
+      this.configService.get<string>('NODE_ENV') ??
+      process.env.NODE_ENV ??
+      'development'
+    );
+  }
+
+  private canUseMemoryFallback() {
+    return this.getNodeEnv() !== 'production';
+  }
+
   onModuleInit() {
     if (!hasRedisConfig(this.configService)) {
-      this.enableMemoryFallback(
-        'Nenhuma configuracao Redis encontrada. Usando cache em memoria neste processo.',
+      this.handleRedisFailure(
+        'Redis e obrigatorio em producao para manter coerencia distribuida.',
       );
       return;
     }
@@ -52,10 +64,7 @@ export class RedisCacheProvider
           `[RedisCacheProvider] Conectando via URL: ${url.hostname}:${url.port}`,
         );
       } catch (error: unknown) {
-        this.enableMemoryFallback(
-          'REDIS_URL invalida. Usando cache em memoria.',
-          error,
-        );
+        this.handleRedisFailure('REDIS_URL invalida.', error);
         return;
       }
     } else {
@@ -76,10 +85,7 @@ export class RedisCacheProvider
     }
 
     this.redisClient.on('error', (error: Error) => {
-      this.enableMemoryFallback(
-        'Falha na conexao Redis. Alternando para cache em memoria.',
-        error,
-      );
+      this.handleRedisFailure('Falha na conexao Redis.', error);
     });
 
     this.redisClient.on('ready', () => {
@@ -109,6 +115,26 @@ export class RedisCacheProvider
     if (this.redisClient) {
       this.redisClient.disconnect();
     }
+  }
+
+  private handleRedisFailure(message: string, error?: unknown) {
+    if (this.canUseMemoryFallback()) {
+      this.enableMemoryFallback(
+        error
+          ? `${message} Alternando para cache em memoria.`
+          : `${message} Usando cache em memoria neste processo.`,
+        error,
+      );
+      return;
+    }
+
+    if (error) {
+      this.logger.error(`${message} ${getErrorMessage(error)}`);
+      throw error instanceof Error ? error : new Error(message);
+    }
+
+    this.logger.error(message);
+    throw new Error(message);
   }
 
   private pruneExpiredMemoryEntry(key: string) {
@@ -167,10 +193,7 @@ export class RedisCacheProvider
 
       return JSON.parse(data) as T;
     } catch (error: unknown) {
-      this.enableMemoryFallback(
-        `Erro ao buscar cache [${key}]. Alternando para memoria.`,
-        error,
-      );
+      this.handleRedisFailure(`Erro ao buscar cache [${key}].`, error);
       return this.getMemoryValue<T>(key);
     }
   }
@@ -190,10 +213,7 @@ export class RedisCacheProvider
 
       await this.redisClient.set(key, data);
     } catch (error: unknown) {
-      this.enableMemoryFallback(
-        `Erro ao salvar cache [${key}]. Alternando para memoria.`,
-        error,
-      );
+      this.handleRedisFailure(`Erro ao salvar cache [${key}].`, error);
       this.setMemoryValue(key, value, ttlSeconds);
     }
   }
@@ -207,10 +227,7 @@ export class RedisCacheProvider
     try {
       await this.redisClient.del(key);
     } catch (error: unknown) {
-      this.enableMemoryFallback(
-        `Erro ao deletar cache [${key}]. Alternando para memoria.`,
-        error,
-      );
+      this.handleRedisFailure(`Erro ao deletar cache [${key}].`, error);
       this.delMemoryValue(key);
     }
   }
@@ -228,8 +245,8 @@ export class RedisCacheProvider
 
       return JSON.parse(data as string) as T;
     } catch (error: unknown) {
-      this.enableMemoryFallback(
-        `Erro ao buscar e deletar cache [${key}]. Alternando para memoria.`,
+      this.handleRedisFailure(
+        `Erro ao buscar e deletar cache [${key}].`,
         error,
       );
       return this.getDelMemoryValue<T>(key);
@@ -266,10 +283,7 @@ export class RedisCacheProvider
         await this.redisClient.del(...keysToDelete);
       }
     } catch (error: unknown) {
-      this.enableMemoryFallback(
-        `Erro ao invalidar prefixo [${prefix}]. Alternando para memoria.`,
-        error,
-      );
+      this.handleRedisFailure(`Erro ao invalidar prefixo [${prefix}].`, error);
 
       for (const key of Array.from(this.memoryStore.keys())) {
         if (key.startsWith(prefix)) {

@@ -178,6 +178,19 @@ const envSchema = z
       requireField('FRONTEND_URL', 'FRONTEND_URL e obrigatorio em producao.');
     }
 
+    if (
+      env.NODE_ENV === 'production' &&
+      !env.REDIS_URL &&
+      !env.REDISURL &&
+      !env.REDIS_HOST &&
+      !env.REDISHOST
+    ) {
+      requireField(
+        'REDIS_URL',
+        'REDIS_URL ou REDIS_HOST e obrigatorio em producao.',
+      );
+    }
+
     const debugEnabled = env.ENABLE_DEBUG_ENDPOINTS === 'true';
     if (
       debugEnabled &&

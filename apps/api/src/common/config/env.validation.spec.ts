@@ -45,6 +45,16 @@ describe('validateEnv', () => {
     ).toThrow('FRONTEND_URL');
   });
 
+  it('rejects production without Redis configuration', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          NODE_ENV: 'production',
+        }),
+      ),
+    ).toThrow('REDIS_URL');
+  });
+
   it('rejects insecure postgres TLS in production', () => {
     expect(() =>
       validateEnv(
