@@ -11,6 +11,8 @@ import { RideAccountingService } from './services/ride-accounting.service';
 import { RideStatusService } from './services/ride-status.service';
 
 describe('RidesService', () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+
   let service: RidesService;
   let repoMock: any;
   let subsMock: any;
@@ -19,6 +21,27 @@ describe('RidesService', () => {
   let profileCacheMock: any;
   let rideAccountingMock: any;
   let rideStatusMock: any;
+
+  const sampleRide = {
+    id: 'ride-456',
+    displayId: 2,
+    clientId: 'client-2',
+    userId: 'user-1',
+    value: 42,
+    notes: 'Aeroporto',
+    status: 'COMPLETED',
+    paymentStatus: 'PAID',
+    paidWithBalance: 10,
+    debtValue: 0,
+    rideDate: new Date('2026-04-08T15:00:00.000Z'),
+    createdAt: new Date('2026-04-08T15:05:00.000Z'),
+    location: 'Terminal 1',
+    photo: null,
+    client: {
+      id: 'client-2',
+      name: 'Cliente C',
+    },
+  };
 
   beforeEach(async () => {
     repoMock = {
@@ -177,6 +200,10 @@ describe('RidesService', () => {
     }).compile();
 
     service = module.get<RidesService>(RidesService);
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = ORIGINAL_NODE_ENV;
   });
 
   it('should be defined', () => {
@@ -397,5 +424,193 @@ describe('RidesService', () => {
     expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(result).toEqual({ success: true });
+  });
+
+  it('should return cached frequent clients without reading from the repository', async () => {
+    const cachedClients = [
+      { id: 'client-1', name: 'Cliente B', isPinned: true },
+    ];
+    dashboardCacheMock.getFrequentClients.mockResolvedValueOnce(cachedClients);
+
+    const result = await service.getFrequentClients('user-1');
+
+    expect(result).toEqual(cachedClients);
+    expect(repoMock.getFrequentClients).not.toHaveBeenCalled();
+    expect(dashboardCacheMock.setFrequentClients).not.toHaveBeenCalled();
+  });
+
+  it('should populate frequent clients cache after a cache miss', async () => {
+    const frequentClients = [
+      { id: 'client-2', name: 'Cliente C', isPinned: true },
+    ];
+    repoMock.getFrequentClients.mockResolvedValueOnce(frequentClients);
+
+    const result = await service.getFrequentClients('user-1');
+
+    expect(result).toEqual(frequentClients);
+    expect(dashboardCacheMock.getFrequentClients).toHaveBeenCalledWith(
+      'user-1',
+    );
+    expect(repoMock.getFrequentClients).toHaveBeenCalledWith('user-1');
+    expect(dashboardCacheMock.setFrequentClients).toHaveBeenCalledWith(
+      'user-1',
+      frequentClients,
+    );
+  });
+
+  it('should return cached production stats without reading from the repository', async () => {
+    process.env.NODE_ENV = 'production';
+    const cachedStats = {
+      count: 1,
+      totalValue: 42,
+      rides: [
+        {
+          id: 'ride-456',
+          value: 42,
+          location: 'Terminal 1',
+          notes: 'Aeroporto',
+          photo: null,
+          status: 'COMPLETED',
+          paymentStatus: 'PAID',
+          rideDate: new Date('2026-04-08T15:00:00.000Z'),
+          createdAt: new Date('2026-04-08T15:05:00.000Z'),
+          paidWithBalance: 10,
+          debtValue: 0,
+          client: { id: 'client-2', name: 'Cliente C' },
+        },
+      ],
+    };
+    dashboardCacheMock.getStats.mockResolvedValueOnce(cachedStats);
+
+    const result = await service.getStats('user-1', { period: 'month' });
+
+    expect(result).toEqual(cachedStats);
+    expect(dashboardCacheMock.getStats).toHaveBeenCalledWith('user-1', 'month');
+    expect(repoMock.getStats).not.toHaveBeenCalled();
+    expect(dashboardCacheMock.setStats).not.toHaveBeenCalled();
+  });
+
+  it('should populate production stats cache after a cache miss', async () => {
+    process.env.NODE_ENV = 'production';
+    repoMock.getStats.mockResolvedValueOnce({
+      count: 1,
+      totalValue: 42,
+      rides: [sampleRide],
+    });
+
+    const result = await service.getStats('user-1', { period: 'month' });
+
+    expect(dashboardCacheMock.getStats).toHaveBeenCalledWith('user-1', 'month');
+    expect(repoMock.getStats).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      undefined,
+    );
+    expect(result).toEqual({
+      count: 1,
+      totalValue: 42,
+      rides: [
+        expect.objectContaining({
+          id: 'ride-456',
+          value: 42,
+          client: { id: 'client-2', name: 'Cliente C' },
+        }),
+      ],
+    });
+    expect(dashboardCacheMock.setStats).toHaveBeenCalledWith(
+      'user-1',
+      'month',
+      result,
+    );
+  });
+
+  it('should bypass stats cache for custom periods and client-scoped stats', async () => {
+    process.env.NODE_ENV = 'production';
+    repoMock.getStats.mockResolvedValue({
+      count: 1,
+      totalValue: 42,
+      rides: [sampleRide],
+    });
+
+    await service.getStats('user-1', {
+      period: 'custom',
+      start: '2026-04-01',
+      end: '2026-04-08',
+    });
+    await service.getStats('user-1', {
+      period: 'month',
+      clientId: 'client-2',
+    });
+
+    expect(dashboardCacheMock.getStats).not.toHaveBeenCalled();
+    expect(dashboardCacheMock.setStats).not.toHaveBeenCalled();
+    expect(repoMock.getStats).toHaveBeenCalledTimes(2);
+    expect(repoMock.getStats).toHaveBeenLastCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      'client-2',
+    );
+  });
+
+  it('should handle concurrent cache misses in production stats without stale cache errors', async () => {
+    process.env.NODE_ENV = 'production';
+    repoMock.getStats.mockResolvedValue({
+      count: 1,
+      totalValue: 42,
+      rides: [sampleRide],
+    });
+
+    const [firstResult, secondResult] = await Promise.all([
+      service.getStats('user-1', { period: 'week' }),
+      service.getStats('user-1', { period: 'week' }),
+    ]);
+
+    expect(firstResult).toEqual(secondResult);
+    expect(repoMock.getStats).toHaveBeenCalledTimes(2);
+    expect(dashboardCacheMock.setStats).toHaveBeenCalledTimes(2);
+    expect(dashboardCacheMock.setStats).toHaveBeenNthCalledWith(
+      1,
+      'user-1',
+      'week',
+      firstResult,
+    );
+    expect(dashboardCacheMock.setStats).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      'week',
+      secondResult,
+    );
+  });
+
+  it('should invalidate dashboard and profile caches after updating a ride', async () => {
+    await service.update('user-1', 'ride-123', {
+      value: 32,
+    });
+
+    expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+    expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+  });
+
+  it('should invalidate dashboard and profile caches after deleting a ride', async () => {
+    await service.delete('user-1', 'ride-123');
+
+    expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+    expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+  });
+
+  it('should surface dashboard cache invalidation failures after updating a ride', async () => {
+    dashboardCacheMock.invalidate.mockRejectedValueOnce(
+      new Error('dashboard cache invalidation failed'),
+    );
+
+    await expect(
+      service.update('user-1', 'ride-123', {
+        value: 32,
+      }),
+    ).rejects.toThrow('dashboard cache invalidation failed');
+
+    expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
   });
 });

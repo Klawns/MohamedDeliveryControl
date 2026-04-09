@@ -25,7 +25,10 @@ import type {
   GetStatsDto,
 } from './dto/rides.dto';
 import type { RideResponseDto } from './dto/ride-response.dto';
-import type { Ride, RideWithClient } from './interfaces/rides-repository.interface';
+import type {
+  Ride,
+  RideWithClient,
+} from './interfaces/rides-repository.interface';
 
 type TransactionRunner = {
   transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T>;
@@ -377,7 +380,7 @@ export class RidesService {
     }
 
     this.logger.debug(
-      `[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB...`,
+      `[RidesService] CACHE MISS: frequent-clients:${userId}. Buscando no DB...`,
       'RidesService',
     );
     const result = await this.ridesRepository.getFrequentClients(userId);
@@ -438,7 +441,7 @@ export class RidesService {
       }
 
       this.logger.debug(
-        `[RidesService] CACHE MISS: ${cacheKey}. Buscando no DB e mapeando...`,
+        `[RidesService] CACHE MISS: stats:${userId}:${query.period}. Buscando no DB e mapeando...`,
         'RidesService',
       );
     }
