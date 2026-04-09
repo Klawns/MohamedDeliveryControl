@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { SearchX, Users } from 'lucide-react';
 import { InfiniteScrollTrigger } from '@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger';
+import { ScrollBoundaryContainer } from '@/components/ui/scroll-boundary-container';
 import { parseApiError } from '@/lib/api-error';
 import { Client } from '@/types/rides';
 import { ClientCard } from './client-card';
@@ -120,8 +121,10 @@ export function ClientsListContainer({
     }
 
     return (
-      <div
-        ref={scrollContainerRef}
+      <ScrollBoundaryContainer
+        containerRef={scrollContainerRef}
+        handoff
+        hideScrollbar
         className="max-h-[min(68dvh,56rem)] space-y-4 overflow-y-auto pr-1 scrollbar-hide"
       >
         <div className="flex flex-col gap-4">
@@ -148,7 +151,7 @@ export function ClientsListContainer({
             rootRef={scrollContainerRef}
           />
         ) : null}
-      </div>
+      </ScrollBoundaryContainer>
     );
   };
 

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { Bike, SearchX } from 'lucide-react';
 import { InfiniteScrollTrigger } from '@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger';
+import { ScrollBoundaryContainer } from '@/components/ui/scroll-boundary-container';
 import { parseApiError } from '@/lib/api-error';
 import { PaymentStatus, RideViewModel } from '@/types/rides';
 import { groupRidesByDate } from '../_lib/rides-list-groups';
@@ -117,8 +118,10 @@ export function RidesListContainer({
     }
 
     return (
-      <div
-        ref={scrollContainerRef}
+      <ScrollBoundaryContainer
+        containerRef={scrollContainerRef}
+        handoff
+        hideScrollbar
         className="max-h-[min(68dvh,56rem)] space-y-6 overflow-y-auto pr-1 scrollbar-hide sm:space-y-8"
       >
         {groupedRides.map((group) => (
@@ -154,7 +157,7 @@ export function RidesListContainer({
             rootRef={scrollContainerRef}
           />
         ) : null}
-      </div>
+      </ScrollBoundaryContainer>
     );
   };
 
