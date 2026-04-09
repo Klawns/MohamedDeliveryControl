@@ -16,27 +16,9 @@ import { apiClient } from "@/services/api";
 import { useCurrentUserQuery } from "@/hooks/auth/use-current-user-query";
 import { resetAuthQueryCache } from "@/hooks/auth/reset-auth-query-cache";
 import { useUnauthorizedRedirect } from "@/hooks/auth/use-unauthorized-redirect";
+import type { User } from "@/hooks/auth/auth.types";
 import { isApiErrorStatus } from "@/lib/api-error";
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "user";
-  taxId?: string;
-  cellphone?: string;
-  hasSeenTutorial: boolean;
-  subscription?: {
-    plan: "starter" | "premium" | "lifetime";
-    status: "active" | "inactive" | "canceled" | "trial" | "expired" | "invalid";
-    trialStartedAt?: string | null;
-    trialEndsAt?: string | null;
-    trialDaysRemaining?: number;
-    isTrialExpiringSoon?: boolean;
-    validUntil: string | null;
-    rideCount?: number;
-  } | null;
-}
+export type { User } from "@/hooks/auth/auth.types";
 
 interface AuthContextType {
   user: User | null;
