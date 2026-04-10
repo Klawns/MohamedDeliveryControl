@@ -6,6 +6,7 @@ import type { User } from './auth.types';
 
 export interface UseCurrentUserQueryOptions {
   enabled?: boolean;
+  refetchInterval?: number | false;
   refetchOnWindowFocus?: boolean | 'always';
   refetchOnReconnect?: boolean | 'always';
 }
@@ -18,8 +19,9 @@ export function buildCurrentUserQueryOptions(
 ): UseQueryOptions<User, Error, User, ReturnType<typeof authKeys.user>> {
   const enabled = options?.enabled ?? true;
   const refetchInterval: number | false = enabled
-    ? AUTH_QUERY_POLL_INTERVAL_MS
+    ? options?.refetchInterval ?? AUTH_QUERY_POLL_INTERVAL_MS
     : false;
+  const shouldRefetchInBackground = typeof refetchInterval === 'number';
 
   return {
     queryKey: authKeys.user(),
@@ -28,7 +30,7 @@ export function buildCurrentUserQueryOptions(
     retry: false,
     enabled,
     refetchInterval,
-    refetchIntervalInBackground: enabled,
+    refetchIntervalInBackground: shouldRefetchInBackground,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? 'always',
     refetchOnReconnect: options?.refetchOnReconnect ?? 'always',
   };

@@ -10,11 +10,11 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authKeys } from "@/lib/query-keys";
 import { authService } from "@/services/auth-service";
 import { apiClient } from "@/services/api";
 import { useCurrentUserQuery } from "@/hooks/auth/use-current-user-query";
 import { resetAuthQueryCache } from "@/hooks/auth/reset-auth-query-cache";
+import { syncAuthUserCache } from "@/hooks/auth/sync-auth-user-cache";
 import { useUnauthorizedRedirect } from "@/hooks/auth/use-unauthorized-redirect";
 import type { User } from "@/hooks/auth/auth.types";
 import { isApiErrorStatus } from "@/lib/api-error";
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     (userData: User, redirectTo?: string) => {
       authService.resetRedirectLock();
-      queryClient.setQueryData(authKeys.user(), userData);
+      syncAuthUserCache(queryClient, userData);
       router.replace(redirectTo || "/dashboard");
     },
     [queryClient, router],
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = useCallback(
     (userData: User) => {
-      queryClient.setQueryData(authKeys.user(), userData);
+      syncAuthUserCache(queryClient, userData);
     },
     [queryClient],
   );

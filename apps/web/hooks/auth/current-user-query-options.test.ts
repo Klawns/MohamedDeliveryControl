@@ -24,3 +24,18 @@ test('disables background freshness work when the auth query is disabled', () =>
   assert.equal(options.refetchInterval, false);
   assert.equal(options.refetchIntervalInBackground, false);
 });
+
+test('allows auth/me checks without polling for restricted auth gates', () => {
+  const options = buildCurrentUserQueryOptions({
+    enabled: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  assert.equal(options.enabled, true);
+  assert.equal(options.refetchInterval, false);
+  assert.equal(options.refetchIntervalInBackground, false);
+  assert.equal(options.refetchOnWindowFocus, false);
+  assert.equal(options.refetchOnReconnect, false);
+});
