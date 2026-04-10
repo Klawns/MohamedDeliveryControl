@@ -18,5 +18,22 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    container_name: rotta-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - rotta_redis_data:/data
+    command: ['redis-server', '--appendonly', 'yes']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 volumes:
   rotta_postgres_data:
+  rotta_redis_data:
