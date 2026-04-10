@@ -26,7 +26,6 @@ export default function AdminDashboardPage() {
     refetchStats,
     refetchUsers,
     isUpdatingUserPlan,
-    handleDeleteUser,
     handleUpdateUserPlan,
   } = useAdminDashboard(state.currentPage, isAdmin);
 
@@ -159,11 +158,9 @@ export default function AdminDashboardPage() {
       />
 
       <DeleteUserModal
-        key={state.userToDelete?.id ?? "delete-none"}
         user={state.userToDelete}
         open={state.isDeleteModalOpen}
         onOpenChange={state.setIsDeleteModalOpen}
-        onConfirm={handleDeleteUser}
       />
     </>
   );
