@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Save } from "lucide-react";
+import { RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { RidePreset } from "../types";
@@ -15,6 +16,7 @@ interface RideFormProps {
     form: RideFormState;
     actions: RideFormActions;
     onDeletePreset: (presetId: string) => void;
+    valueSectionRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function RideForm({
@@ -22,6 +24,7 @@ export function RideForm({
     form,
     actions,
     onDeletePreset,
+    valueSectionRef,
 }: RideFormProps) {
     return (
         <motion.section
@@ -35,12 +38,14 @@ export function RideForm({
                 onChange={actions.setPaymentStatus}
             />
 
-            <RideValueSection
-                presets={presets}
-                form={form}
-                actions={actions}
-                onDeletePreset={onDeletePreset}
-            />
+            <div ref={valueSectionRef} className="scroll-mt-6 sm:scroll-mt-8">
+                <RideValueSection
+                    presets={presets}
+                    form={form}
+                    actions={actions}
+                    onDeletePreset={onDeletePreset}
+                />
+            </div>
 
             <RideOptionalFields form={form} actions={actions} />
 

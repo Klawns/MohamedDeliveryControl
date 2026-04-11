@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { QueryErrorState } from "@/components/query-error-state";
 import { RideModal } from "@/components/ride-modal";
@@ -8,6 +9,7 @@ import { FinanceSummary } from "./components/finance-summary";
 import { PDFExport } from "./components/pdf-export";
 import { RecentRidesList } from "./components/recent-rides-list";
 import { RideForm } from "./components/ride-form";
+import { useAutoScrollToRideValueSection } from "./hooks/use-auto-scroll-to-ride-value-section";
 import { useMobileDashboardController } from "./hooks/use-mobile-dashboard-controller";
 import type { MobileDashboardProps } from "./types";
 import { FeatureLockShell } from "@/app/dashboard/_components/feature-lock-shell";
@@ -15,6 +17,12 @@ import { FeatureLockShell } from "@/app/dashboard/_components/feature-lock-shell
 export default function MobileDashboard(props: MobileDashboardProps) {
     const dashboard = useMobileDashboardController(props);
     const { trial } = props;
+    const rideValueSectionRef = useRef<HTMLDivElement>(null);
+
+    useAutoScrollToRideValueSection({
+        selectedClientId: dashboard.clients.selectedClient?.id ?? null,
+        targetRef: rideValueSectionRef,
+    });
 
     return (
         <>
@@ -74,6 +82,7 @@ export default function MobileDashboard(props: MobileDashboardProps) {
                             form={dashboard.rideForm.form}
                             actions={dashboard.rideForm.actions}
                             onDeletePreset={dashboard.rideForm.deletePreset}
+                            valueSectionRef={rideValueSectionRef}
                         />
                     </FeatureLockShell>
                 ) : null}
