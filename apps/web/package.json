@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:unit": "tsx --test lib/client-autocomplete.test.ts app/dashboard/finance/_lib/finance-dashboard-query.test.ts hooks/auth/current-user-query-options.test.ts hooks/payment-plans-query-options.test.ts",
+    "test:unit": "tsx --test lib/client-autocomplete.test.ts app/dashboard/finance/_lib/finance-dashboard-query.test.ts hooks/auth/current-user-query-options.test.ts hooks/payment-plans-query-options.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.presenter.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.navigation.test.ts",
     "lint:style": "prettier --check \"**/*.{ts,tsx,md}\"",
     "lint:fix": "eslint . --fix && prettier --write \"**/*.{ts,tsx,md}\""
   },
