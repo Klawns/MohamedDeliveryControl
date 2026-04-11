@@ -9,8 +9,8 @@ import { ridesService } from '@/services/rides-service';
 import { RideViewModel, RidesFilterState } from '@/types/rides';
 
 interface UseRidesDataProps {
-    filters: RidesFilterState;
-    pageSize: number;
+  filters: RidesFilterState;
+  pageSize: number;
 }
 
 function buildRideFilters(filters: RidesFilterState, pageSize: number) {
@@ -28,9 +28,7 @@ function buildRideFilters(filters: RidesFilterState, pageSize: number) {
 function getUniqueRides(rides: RideViewModel[]) {
   return Array.from(
     new Map(
-      rides
-        .filter((ride) => ride?.id)
-        .map((ride) => [String(ride.id), ride]),
+      rides.filter((ride) => ride?.id).map((ride) => [String(ride.id), ride]),
     ).values(),
   );
 }
@@ -49,6 +47,7 @@ export function useRidesData({ filters, pageSize }: UseRidesDataProps) {
     isLoading: isRidesLoading,
     isFetching: isRidesFetching,
     isFetchingNextPage,
+    isFetchNextPageError,
     hasNextPage,
     fetchNextPage,
     error: ridesError,
@@ -74,6 +73,7 @@ export function useRidesData({ filters, pageSize }: UseRidesDataProps) {
   const allRides = ridesData?.pages.flatMap((page) => page.data) || [];
   const rides = getUniqueRides(allRides);
   const totalCount = ridesData?.pages[0]?.meta?.total ?? rides.length;
+  const loadMoreError = isFetchNextPageError ? ridesError : undefined;
 
   const {
     data: frequentClients = [],
@@ -96,7 +96,9 @@ export function useRidesData({ filters, pageSize }: UseRidesDataProps) {
     fetchNextPage,
     isFrequentLoading,
     ridesError,
+    loadMoreError,
     fetchRides,
+    retryLoadMore: fetchNextPage,
     fetchFrequentClients,
     setPaymentStatus: paymentStatus.setPaymentStatus,
     isUpdatingRide: paymentStatus.isUpdatingRide,
