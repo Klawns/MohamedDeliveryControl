@@ -21,7 +21,7 @@ interface StepClientSelectionProps {
     newClientName: string;
     setNewClientName: (name: string) => void;
     handleCreateClient: () => Promise<void>;
-    isLoadingData: boolean;
+    isLoadingClientDirectory?: boolean;
     isFetchingClients?: boolean;
     isClientDirectoryReady?: boolean;
     isClientDirectoryError?: boolean;
@@ -49,7 +49,7 @@ export function StepClientSelection({
     newClientName,
     setNewClientName,
     handleCreateClient,
-    isLoadingData,
+    isLoadingClientDirectory = false,
     isFetchingClients = false,
     isClientDirectoryReady = false,
     isClientDirectoryError = false,
@@ -58,6 +58,13 @@ export function StepClientSelection({
     clientDirectoryMeta = null,
     isSubmittingClient = false,
 }: StepClientSelectionProps) {
+    const hasVisibleClients = clients.length > 0;
+    const showInitialClientLoading = isLoadingClientDirectory && !hasVisibleClients;
+    const showRefreshingClients =
+        !showInitialClientLoading &&
+        isFetchingClients &&
+        isClientDirectoryReady &&
+        hasVisibleClients;
     const gridItems: ClientGridItem[] = [
         ...[...clients.filter(Boolean)].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)),
         { kind: "create" },
@@ -87,13 +94,13 @@ export function StepClientSelection({
                 className="h-12 rounded-2xl border-border-subtle bg-secondary/10 text-text-primary font-medium shadow-sm"
             />
 
-            {isLoadingData ? (
+            {showInitialClientLoading ? (
                 <p className="text-xs font-medium text-text-secondary">
                     Carregando clientes para selecao...
                 </p>
             ) : null}
 
-            {!isLoadingData && isFetchingClients && isClientDirectoryReady ? (
+            {showRefreshingClients ? (
                 <p className="text-xs font-medium text-text-secondary">
                     Atualizando lista de clientes...
                 </p>
@@ -114,7 +121,7 @@ export function StepClientSelection({
                 </div>
             ) : null}
 
-            {!isLoadingData && !isClientDirectoryError && isClientDirectoryReady && clients.length === 0 ? (
+            {!showInitialClientLoading && !isClientDirectoryError && isClientDirectoryReady && clients.length === 0 ? (
                 <p className="text-xs font-medium text-text-secondary">
                     {clientSearch.trim()
                         ? "Nenhum cliente encontrado para a busca informada."
@@ -122,7 +129,7 @@ export function StepClientSelection({
                 </p>
             ) : null}
 
-            {!isLoadingData && !isClientDirectoryError && isClientDirectoryReady && clientDirectoryMeta?.hasMore && !clientSearch.trim() ? (
+            {!showInitialClientLoading && !isClientDirectoryError && isClientDirectoryReady && clientDirectoryMeta?.hasMore && !clientSearch.trim() ? (
                 <p className="text-xs font-medium text-text-secondary">
                     Mostrando {clientDirectoryMeta.returned} clientes. Digite para buscar mais.
                 </p>
@@ -132,7 +139,6 @@ export function StepClientSelection({
                 items={gridItems}
                 maxHeight="40vh"
                 gap={16}
-                isLoading={isLoadingData}
                 renderItem={(row) => (
                     <div className="grid grid-cols-3 gap-4 w-full">
                         {row.map((item) => {

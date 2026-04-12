@@ -253,6 +253,9 @@ export function useRideForm({
   return {
     clients: data.clients,
     presets: data.presets,
+    isLoadingClientDirectory: data.isLoadingClientDirectory,
+    isFetchingClientDirectory: data.isFetchingClientDirectory,
+    isLoadingPresets: data.isLoadingPresets,
     isLoadingData: data.isLoadingData,
     isFetchingClients: data.isFetchingClients,
     isClientDirectoryError: data.isClientDirectoryError,
