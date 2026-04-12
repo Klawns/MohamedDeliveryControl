@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
 import { Injectable } from '@nestjs/common';
 import { and, sql } from 'drizzle-orm';
+import type { GetFinanceStatsDto } from '../dto/finance.dto';
 import { FinanceRideQueryService } from './finance-ride-query.service';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class FinanceSummaryService {
     end: Date,
     period: string,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
@@ -22,6 +24,7 @@ export class FinanceSummaryService {
         start,
         end,
         clientId,
+        paymentStatus,
       );
 
     const stats = await this.financeRideQueryService.db
@@ -46,6 +49,7 @@ export class FinanceSummaryService {
         end,
         period,
         clientId,
+        paymentStatus,
       ),
       projection: this.calculateProjection(currentTotal, start, end, period),
     };
@@ -57,6 +61,7 @@ export class FinanceSummaryService {
     end: Date,
     period: string,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     if (period === 'custom') {
       return 0;
@@ -70,12 +75,14 @@ export class FinanceSummaryService {
       prevStart,
       prevEnd,
       clientId,
+      paymentStatus,
     );
     const currentTotal = await this.getCurrentTotal(
       userId,
       start,
       end,
       clientId,
+      paymentStatus,
     );
 
     if (previousTotal === 0) {
@@ -90,6 +97,7 @@ export class FinanceSummaryService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
@@ -97,6 +105,7 @@ export class FinanceSummaryService {
         start,
         end,
         clientId,
+        paymentStatus,
       );
 
     const stats = await this.financeRideQueryService.db

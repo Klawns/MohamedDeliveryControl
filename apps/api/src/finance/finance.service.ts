@@ -33,6 +33,7 @@ export class FinanceService {
     startDate: Date;
     endDate: Date;
     clientId?: string;
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'];
   } {
     const { startDate, endDate } = getDatesFromPeriod(
       query.period,
@@ -45,6 +46,7 @@ export class FinanceService {
       endDate,
       clientId:
         query.clientId && query.clientId !== 'all' ? query.clientId : undefined,
+      paymentStatus: query.paymentStatus,
     };
   }
 
@@ -54,14 +56,17 @@ export class FinanceService {
     startDate: Date,
     endDate: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     const searchClientId = clientId ?? 'all';
+    const searchPaymentStatus = paymentStatus ?? 'all';
 
     return [
       'finance-dashboard',
       userId,
       query.period,
       searchClientId,
+      searchPaymentStatus,
       startDate.toISOString(),
       endDate.toISOString(),
     ].join(':');
@@ -71,13 +76,15 @@ export class FinanceService {
     userId: string,
     query: GetFinanceStatsDto,
   ): Promise<FinanceDashboardResponse> {
-    const { startDate, endDate, clientId } = this.resolveFilters(query);
+    const { startDate, endDate, clientId, paymentStatus } =
+      this.resolveFilters(query);
     const cacheKey = this.getDashboardCacheKey(
       userId,
       query,
       startDate,
       endDate,
       clientId,
+      paymentStatus,
     );
 
     this.logger.debug({
@@ -85,6 +92,7 @@ export class FinanceService {
       userId,
       period: query.period,
       clientId: clientId ?? 'all',
+      paymentStatus: paymentStatus ?? 'all',
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
     });
@@ -98,6 +106,7 @@ export class FinanceService {
         userId,
         period: query.period,
         clientId: clientId ?? 'all',
+        paymentStatus: paymentStatus ?? 'all',
       });
 
       return cachedDashboard;
@@ -111,25 +120,34 @@ export class FinanceService {
           endDate,
           query.period,
           clientId,
+          paymentStatus,
         ),
         this.financeTrendsService.getTrends(
           userId,
           startDate,
           endDate,
           clientId,
+          paymentStatus,
         ),
-        this.financeBreakdownService.getByClient(userId, startDate, endDate),
+        this.financeBreakdownService.getByClient(
+          userId,
+          startDate,
+          endDate,
+          paymentStatus,
+        ),
         this.financeBreakdownService.getByStatus(
           userId,
           startDate,
           endDate,
           clientId,
+          paymentStatus,
         ),
         this.financeBreakdownService.getRecentRides(
           userId,
           startDate,
           endDate,
           clientId,
+          paymentStatus,
         ),
       ])) as [
         FinanceSummaryResponse,
@@ -158,6 +176,7 @@ export class FinanceService {
       userId,
       period: query.period,
       clientId: clientId ?? 'all',
+      paymentStatus: paymentStatus ?? 'all',
       rideCount: summary.count,
       recentRideCount: recentRides.length,
     });
@@ -169,13 +188,15 @@ export class FinanceService {
     userId: string,
     query: GetFinanceStatsDto,
   ): Promise<FinanceReportResponse> {
-    const { startDate, endDate, clientId } = this.resolveFilters(query);
+    const { startDate, endDate, clientId, paymentStatus } =
+      this.resolveFilters(query);
 
     this.logger.debug({
       context: 'getReport:start',
       userId,
       period: query.period,
       clientId: clientId ?? 'all',
+      paymentStatus: paymentStatus ?? 'all',
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
     });
@@ -185,6 +206,7 @@ export class FinanceService {
       startDate,
       endDate,
       clientId,
+      paymentStatus,
     );
 
     this.logger.debug({
@@ -192,6 +214,7 @@ export class FinanceService {
       userId,
       period: query.period,
       clientId: clientId ?? 'all',
+      paymentStatus: paymentStatus ?? 'all',
       rideCount: rides.length,
     });
 

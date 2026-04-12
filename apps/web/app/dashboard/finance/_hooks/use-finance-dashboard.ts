@@ -17,6 +17,7 @@ export function useFinanceDashboard() {
   const { user } = useAuth();
   const [filters, setFiltersState] = useState<FinanceFiltersState>({
     period: 'month',
+    paymentStatus: 'all',
   });
   const clientAutocomplete = useFinanceClientAutocomplete();
 

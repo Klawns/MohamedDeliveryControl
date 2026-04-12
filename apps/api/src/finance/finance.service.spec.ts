@@ -113,6 +113,7 @@ describe('FinanceService', () => {
     const result = await service.getDashboard('user-1', {
       period: 'month',
       clientId: 'all',
+      paymentStatus: 'PAID',
     });
 
     expect(result).toEqual(cachedDashboard);
@@ -127,13 +128,44 @@ describe('FinanceService', () => {
     const result = await service.getDashboard('user-1', {
       period: 'month',
       clientId: 'all',
+      paymentStatus: 'PENDING',
     });
 
-    expect(summaryServiceMock.getSummary).toHaveBeenCalled();
-    expect(trendsServiceMock.getTrends).toHaveBeenCalled();
-    expect(breakdownServiceMock.getByClient).toHaveBeenCalled();
-    expect(breakdownServiceMock.getByStatus).toHaveBeenCalled();
-    expect(breakdownServiceMock.getRecentRides).toHaveBeenCalled();
+    expect(summaryServiceMock.getSummary).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      'month',
+      undefined,
+      'PENDING',
+    );
+    expect(trendsServiceMock.getTrends).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      undefined,
+      'PENDING',
+    );
+    expect(breakdownServiceMock.getByClient).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      'PENDING',
+    );
+    expect(breakdownServiceMock.getByStatus).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      undefined,
+      'PENDING',
+    );
+    expect(breakdownServiceMock.getRecentRides).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+      expect.any(Date),
+      undefined,
+      'PENDING',
+    );
     expect(result).toEqual({
       summary: { totalValue: 42 },
       trends: [{ date: '2026-03-29', value: 42 }],
@@ -141,7 +173,7 @@ describe('FinanceService', () => {
       byStatus: [{ status: 'PAID', value: 42 }],
       recentRides: [{ id: 'ride-1', value: 42 }],
     });
-    expect(cacheMock.set).toHaveBeenCalledTimes(1);
+    expect(cacheMock.set.mock.calls).toHaveLength(1);
   });
 
   it('should return the full report payload for the selected filter', async () => {
@@ -150,13 +182,15 @@ describe('FinanceService', () => {
       start: '2026-03-01',
       end: '2026-03-31',
       clientId: 'client-1',
+      paymentStatus: 'PAID',
     });
-    const [userId, startDate, endDate, clientId] =
+    const [userId, startDate, endDate, clientId, paymentStatus] =
       breakdownServiceMock.getReportRides.mock.calls[0];
 
-    expect(breakdownServiceMock.getReportRides).toHaveBeenCalled();
+    expect(breakdownServiceMock.getReportRides.mock.calls).toHaveLength(1);
     expect(userId).toBe('user-1');
     expect(clientId).toBe('client-1');
+    expect(paymentStatus).toBe('PAID');
     expect(startDate.toISOString()).toBe(
       new Date(2026, 2, 1, 0, 0, 0, 0).toISOString(),
     );

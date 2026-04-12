@@ -2,6 +2,7 @@ import { CarFront, Clock3, Target, TrendingUp, Wallet } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   FinanceByStatus,
+  FinancePaymentStatusFilter,
   FinanceSummary,
 } from '@/services/finance-service';
 import { getFinanceStatusTotals } from '../_lib/finance-metrics';
@@ -12,50 +13,92 @@ interface FinanceKpiGridProps {
   currentPeriod: Period;
   summary: FinanceSummary | null;
   byStatus: FinanceByStatus[];
+  paymentStatusFilter: FinancePaymentStatusFilter;
 }
 
 export function FinanceKpiGrid({
   currentPeriod,
   summary,
   byStatus,
+  paymentStatusFilter,
 }: FinanceKpiGridProps) {
   const accent = getPeriodAccent(currentPeriod.id);
   const { paidValue, pendingValue } = getFinanceStatusTotals(byStatus);
-  const items = [
-    {
-      label: 'Corridas',
-      value: String(summary?.count || 0),
-      helper: 'No periodo',
-      icon: CarFront,
-    },
-    {
-      label: 'Media',
-      value: formatCurrency(summary?.ticketMedio || 0),
-      helper: 'Por corrida',
-      icon: TrendingUp,
-    },
-    {
-      label: 'Recebido',
-      value: formatCurrency(paidValue),
-      helper: 'Pago',
-      icon: Wallet,
-    },
-    {
-      label: 'Pendente',
-      value: formatCurrency(pendingValue),
-      helper: 'A receber',
-      icon: Clock3,
-    },
-    {
-      label: 'Projecao',
-      value: formatCurrency(summary?.projection || 0),
-      helper: 'Estimativa',
-      icon: Target,
-    },
-  ];
+  const items =
+    paymentStatusFilter === 'all'
+      ? [
+          {
+            label: 'Corridas',
+            value: String(summary?.count || 0),
+            helper: 'No periodo',
+            icon: CarFront,
+          },
+          {
+            label: 'Media',
+            value: formatCurrency(summary?.ticketMedio || 0),
+            helper: 'Por corrida',
+            icon: TrendingUp,
+          },
+          {
+            label: 'Recebido',
+            value: formatCurrency(paidValue),
+            helper: 'Pago',
+            icon: Wallet,
+          },
+          {
+            label: 'Pendente',
+            value: formatCurrency(pendingValue),
+            helper: 'A receber',
+            icon: Clock3,
+          },
+          {
+            label: 'Projecao',
+            value: formatCurrency(summary?.projection || 0),
+            helper: 'Estimativa',
+            icon: Target,
+          },
+        ]
+      : [
+          {
+            label: 'Corridas',
+            value: String(summary?.count || 0),
+            helper: 'No periodo',
+            icon: CarFront,
+          },
+          {
+            label: 'Media',
+            value: formatCurrency(summary?.ticketMedio || 0),
+            helper: 'Por corrida',
+            icon: TrendingUp,
+          },
+          paymentStatusFilter === 'PAID'
+            ? {
+                label: 'Recebido',
+                value: formatCurrency(paidValue),
+                helper: 'Corridas pagas',
+                icon: Wallet,
+              }
+            : {
+                label: 'Pendente',
+                value: formatCurrency(pendingValue),
+                helper: 'Em aberto',
+                icon: Clock3,
+              },
+          {
+            label: 'Projecao',
+            value: formatCurrency(summary?.projection || 0),
+            helper: 'Estimativa',
+            icon: Target,
+          },
+        ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section
+      className={cn(
+        'grid gap-4 sm:grid-cols-2',
+        paymentStatusFilter === 'all' ? 'xl:grid-cols-5' : 'xl:grid-cols-4',
+      )}
+    >
       {items.map((item) => {
         const Icon = item.icon;
 

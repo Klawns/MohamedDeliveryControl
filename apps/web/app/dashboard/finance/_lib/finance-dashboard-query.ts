@@ -1,11 +1,13 @@
 import {
   type FinanceDashboardParams,
   type FinanceDashboardQueryKey,
+  type FinancePaymentStatusFilter,
 } from '@/services/finance-service';
 import { type PeriodId } from '../_types';
 
 export interface FinanceFiltersState {
   period: PeriodId;
+  paymentStatus: FinancePaymentStatusFilter;
   startDate?: string;
   endDate?: string;
 }
@@ -22,6 +24,8 @@ export function buildFinanceDashboardParams(
     return {
       period: 'custom',
       clientId,
+      paymentStatus:
+        filters.paymentStatus === 'all' ? undefined : filters.paymentStatus,
       start: filters.startDate,
       end: filters.endDate,
     };
@@ -30,6 +34,8 @@ export function buildFinanceDashboardParams(
   return {
     period: filters.period,
     clientId,
+    paymentStatus:
+      filters.paymentStatus === 'all' ? undefined : filters.paymentStatus,
   };
 }
 
@@ -40,6 +46,7 @@ export function buildFinanceDashboardQueryKey(
   return {
     period: filters.period,
     clientId,
+    paymentStatus: filters.paymentStatus,
     start: filters.period === 'custom' ? filters.startDate : undefined,
     end: filters.period === 'custom' ? filters.endDate : undefined,
   };

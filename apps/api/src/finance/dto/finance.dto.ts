@@ -5,6 +5,7 @@ export const getFinanceStatsSchema = z.object({
   start: z.string().optional(),
   end: z.string().optional(),
   clientId: z.string().optional(),
+  paymentStatus: z.enum(['PAID', 'PENDING']).optional(),
 });
 
 export type GetFinanceStatsDto = z.infer<typeof getFinanceStatsSchema>;

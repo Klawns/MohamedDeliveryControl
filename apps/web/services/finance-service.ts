@@ -1,9 +1,30 @@
 import { apiClient } from '@/services/api';
 
 export type FinancePeriod = 'today' | 'week' | 'month' | 'year' | 'custom';
+export type FinancePaymentStatus = 'PAID' | 'PENDING';
+export type FinancePaymentStatusFilter = 'all' | FinancePaymentStatus;
+
+export const financePaymentStatusOptions = [
+  { value: 'all', label: 'Todas' },
+  { value: 'PAID', label: 'Pagas' },
+  { value: 'PENDING', label: 'Pendentes' },
+] as const satisfies ReadonlyArray<{
+  value: FinancePaymentStatusFilter;
+  label: string;
+}>;
+
+export function getFinancePaymentStatusFilterLabel(
+  status: FinancePaymentStatusFilter,
+) {
+  return (
+    financePaymentStatusOptions.find((option) => option.value === status)
+      ?.label ?? 'Todas'
+  );
+}
 
 interface FinanceDashboardBaseParams {
   clientId?: string;
+  paymentStatus?: FinancePaymentStatus;
 }
 
 export type FinanceDashboardParams =
@@ -23,6 +44,7 @@ export interface FinanceDashboardQueryKey extends Record<string, unknown> {
   start?: string;
   end?: string;
   clientId?: string;
+  paymentStatus: FinancePaymentStatusFilter;
 }
 
 export interface FinanceSummary {
@@ -45,7 +67,7 @@ export interface FinanceByClient {
 }
 
 export interface FinanceByStatus {
-  status: 'PAID' | 'PENDING';
+  status: FinancePaymentStatus;
   value: number;
 }
 
@@ -53,7 +75,7 @@ export interface RecentRide {
   id: string;
   value: number;
   rideDate: string;
-  paymentStatus: 'PAID' | 'PENDING';
+  paymentStatus: FinancePaymentStatus;
   location?: string;
   clientName: string;
 }

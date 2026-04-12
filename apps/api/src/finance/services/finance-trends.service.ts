@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { and } from 'drizzle-orm';
 import { getDaysArray } from '../../common/utils/date.util';
+import type { GetFinanceStatsDto } from '../dto/finance.dto';
 import { FinanceRideQueryService } from './finance-ride-query.service';
 
 @Injectable()
@@ -10,13 +11,20 @@ export class FinanceTrendsService {
     private readonly financeRideQueryService: FinanceRideQueryService,
   ) {}
 
-  async getTrends(userId: string, start: Date, end: Date, clientId?: string) {
+  async getTrends(
+    userId: string,
+    start: Date,
+    end: Date,
+    clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
+  ) {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
         userId,
         start,
         end,
         clientId,
+        paymentStatus,
       );
 
     const rides = await this.financeRideQueryService.db

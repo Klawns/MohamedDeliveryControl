@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { getFinancePaymentStatusFilterLabel } from '@/services/finance-service';
 import { type Client, type ClientBalance } from '@/types/rides';
 import {
   getClientDebtReportFileName,
@@ -34,7 +35,7 @@ export class PDFService {
     options: ExportOptions,
   ) {
     const doc = new jsPDF() as AutoTableDoc;
-    const { userName, period, dateRange, pixKey } = options;
+    const { userName, period, dateRange, pixKey, paymentStatus } = options;
 
     doc.setFontSize(22);
     doc.setTextColor(30, 41, 59);
@@ -49,6 +50,12 @@ export class PDFService {
     currentY += 5;
     doc.text(`Periodo: ${getPeriodLabel(period, dateRange)}`, 14, currentY);
     currentY += 5;
+    doc.text(
+      `Status: ${getFinancePaymentStatusFilterLabel(paymentStatus ?? 'all')}`,
+      14,
+      currentY,
+    );
+    currentY += 5;
     doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, currentY);
     currentY += 8;
 
@@ -61,7 +68,7 @@ export class PDFService {
     drawRidesTable(doc, currentY, rides);
     drawFooter(doc);
 
-    doc.save(getFinancialReportFileName(period, dateRange));
+    doc.save(getFinancialReportFileName(period, dateRange, paymentStatus));
   }
 
   static async generateClientDebtReport(

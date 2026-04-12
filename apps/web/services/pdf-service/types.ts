@@ -1,10 +1,14 @@
 import jsPDF from 'jspdf';
-import type { FinancePeriod } from '@/services/finance-service';
+import type {
+  FinancePaymentStatus,
+  FinancePeriod,
+} from '@/services/finance-service';
 import { type PaymentStatus, type RideStatus } from '@/types/rides';
 
 export interface ExportOptions {
   clients?: string[];
   period: FinancePeriod;
+  paymentStatus?: FinancePaymentStatus;
   userName: string;
   dateRange?: {
     start: string;

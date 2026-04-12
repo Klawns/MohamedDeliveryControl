@@ -36,6 +36,7 @@ export function useExportPdf({
         rides: report.rides,
         expectedRideCount: currentExpectedRideCount,
         period: currentDashboardParams.period,
+        paymentStatus: currentDashboardParams.paymentStatus,
         userName,
         dateRange: report.period,
       });

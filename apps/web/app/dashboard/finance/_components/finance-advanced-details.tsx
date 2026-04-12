@@ -8,7 +8,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { FinanceDashboardData } from '@/services/finance-service';
+import type {
+  FinanceDashboardData,
+  FinancePaymentStatusFilter,
+} from '@/services/finance-service';
 import { PERIODS, type FinanceDashboardTab, type Period } from '../_types';
 import { ClientHighlightsCard } from './client-highlights-card';
 import { ClientDistributionChart, RevenueTrendChart } from './finance-charts';
@@ -24,6 +27,7 @@ interface FinanceAdvancedDetailsProps {
   isClientView: boolean;
   selectedClientName: string | null;
   currentPeriod: Period;
+  paymentStatusFilter: FinancePaymentStatusFilter;
   onChangePaymentStatus: (
     ride: FinanceDashboardData['recentRides'][number],
     status: 'PAID' | 'PENDING',
@@ -37,6 +41,7 @@ export function FinanceAdvancedDetails({
   isClientView,
   selectedClientName,
   currentPeriod,
+  paymentStatusFilter,
   onChangePaymentStatus,
   isPaymentUpdating,
 }: FinanceAdvancedDetailsProps) {
@@ -183,6 +188,7 @@ export function FinanceAdvancedDetails({
             summary={data?.summary || null}
             currentPeriod={currentPeriod}
             byStatus={data?.byStatus || []}
+            paymentStatusFilter={paymentStatusFilter}
           />
 
           <TabsContent value="overview" className="space-y-6">
@@ -192,13 +198,18 @@ export function FinanceAdvancedDetails({
                 isLoading={isLoading}
                 color={chartColor}
               />
-              <PaymentSummaryCard data={data?.byStatus || []} />
+              <PaymentSummaryCard
+                data={data?.byStatus || []}
+                paymentStatusFilter={paymentStatusFilter}
+                rideCount={data?.summary?.count || 0}
+              />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)]">
               <PaymentStatusBarChart
                 data={data?.byStatus || []}
                 isLoading={isLoading}
+                paymentStatusFilter={paymentStatusFilter}
               />
               <ClientHighlightsCard data={data?.byClient || []} />
             </div>
@@ -250,8 +261,13 @@ export function FinanceAdvancedDetails({
           <PaymentStatusBarChart
             data={data?.byStatus || []}
             isLoading={isLoading}
+            paymentStatusFilter={paymentStatusFilter}
           />
-          <PaymentSummaryCard data={data?.byStatus || []} />
+          <PaymentSummaryCard
+            data={data?.byStatus || []}
+            paymentStatusFilter={paymentStatusFilter}
+            rideCount={data?.summary?.count || 0}
+          />
         </div>
       </TabsContent>
 

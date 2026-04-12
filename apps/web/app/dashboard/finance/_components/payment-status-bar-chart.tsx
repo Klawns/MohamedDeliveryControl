@@ -11,12 +11,16 @@ import {
   YAxis,
 } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
-import { FinanceByStatus } from '@/services/finance-service';
+import {
+  FinanceByStatus,
+  FinancePaymentStatusFilter,
+} from '@/services/finance-service';
 import { usePaymentStatusChart } from '../_hooks/use-payment-status-chart';
 
 interface PaymentStatusBarChartProps {
   data: FinanceByStatus[];
   isLoading?: boolean;
+  paymentStatusFilter: FinancePaymentStatusFilter;
 }
 
 function ChartSkeleton() {
@@ -36,6 +40,7 @@ function EmptyChartState({ message }: { message: string }) {
 export function PaymentStatusBarChart({
   data,
   isLoading,
+  paymentStatusFilter,
 }: PaymentStatusBarChartProps) {
   const { chartData, hasData } = usePaymentStatusChart({ data });
 
@@ -52,7 +57,9 @@ export function PaymentStatusBarChart({
       <div className="mb-8">
         <h3 className="text-xl font-black text-foreground">Status Financeiro</h3>
         <p className="text-xs font-medium text-muted-foreground">
-          Valores pagos e pendentes no periodo selecionado
+          {paymentStatusFilter === 'all'
+            ? 'Valores pagos e pendentes no periodo selecionado'
+            : `Valores de corridas ${paymentStatusFilter === 'PAID' ? 'pagas' : 'pendentes'} no periodo selecionado`}
         </p>
       </div>
 

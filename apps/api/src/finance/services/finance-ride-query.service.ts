@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this service. */
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, gte, lte, ne } from 'drizzle-orm';
+import type { GetFinanceStatsDto } from '../dto/finance.dto';
 import { DRIZZLE } from '../../database/database.provider';
 import type { DrizzleClient } from '../../database/database.provider';
 
@@ -32,6 +33,7 @@ export class FinanceRideQueryService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     const conditions = [
       eq(this.schema.rides.userId, userId),
@@ -42,6 +44,10 @@ export class FinanceRideQueryService {
 
     if (clientId) {
       conditions.push(eq(this.schema.rides.clientId, clientId));
+    }
+
+    if (paymentStatus) {
+      conditions.push(eq(this.schema.rides.paymentStatus, paymentStatus));
     }
 
     return conditions;

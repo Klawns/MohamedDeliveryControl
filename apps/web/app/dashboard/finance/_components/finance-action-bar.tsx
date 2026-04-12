@@ -1,11 +1,13 @@
 import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { FinanceFilterChip } from '../_lib/finance-filter-chips';
 import { getPeriodAccent } from '../_lib/finance-theme';
 import type { Period } from '../_types';
 
 interface FinanceActionBarProps {
   currentPeriod: Period;
+  activeFilterChips: FinanceFilterChip[];
   isLoading: boolean;
   isFetching: boolean;
   isExportingPdf: boolean;
@@ -16,6 +18,7 @@ interface FinanceActionBarProps {
 
 export function FinanceActionBar({
   currentPeriod,
+  activeFilterChips,
   isLoading,
   isFetching,
   isExportingPdf,
@@ -38,6 +41,22 @@ export function FinanceActionBar({
           <span className="text-xs font-medium text-text-muted">
             PDF ou planilha
           </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {activeFilterChips.map((chip, index) => (
+            <span
+              key={chip.id}
+              className={cn(
+                'inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-xs font-semibold',
+                index === 0
+                  ? cn(accent.badge, 'shadow-none')
+                  : 'border border-border-subtle bg-background text-text-secondary',
+              )}
+            >
+              <span className="truncate">{chip.label}</span>
+            </span>
+          ))}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

@@ -4,6 +4,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import type {
   FinanceByClientItem,
   FinanceByStatusItem,
+  GetFinanceStatsDto,
   RecentRideItem,
 } from '../dto/finance.dto';
 import { FinanceRideQueryService } from './finance-ride-query.service';
@@ -19,6 +20,7 @@ export class FinanceBreakdownService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ) {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
@@ -26,6 +28,7 @@ export class FinanceBreakdownService {
         start,
         end,
         clientId,
+        paymentStatus,
       );
 
     return this.financeRideQueryService.db
@@ -53,12 +56,15 @@ export class FinanceBreakdownService {
     userId: string,
     start: Date,
     end: Date,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ): Promise<FinanceByClientItem[]> {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
         userId,
         start,
         end,
+        undefined,
+        paymentStatus,
       );
 
     const results = await this.financeRideQueryService.db
@@ -103,6 +109,7 @@ export class FinanceBreakdownService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ): Promise<FinanceByStatusItem[]> {
     const conditions =
       this.financeRideQueryService.buildFinancialRideConditions(
@@ -110,6 +117,7 @@ export class FinanceBreakdownService {
         start,
         end,
         clientId,
+        paymentStatus,
       );
 
     const results = await this.financeRideQueryService.db
@@ -137,10 +145,15 @@ export class FinanceBreakdownService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ): Promise<RecentRideItem[]> {
-    return this.buildRidesQuery(userId, start, end, clientId).limit(
-      10,
-    ) as Promise<RecentRideItem[]>;
+    return this.buildRidesQuery(
+      userId,
+      start,
+      end,
+      clientId,
+      paymentStatus,
+    ).limit(10) as Promise<RecentRideItem[]>;
   }
 
   getReportRides(
@@ -148,9 +161,14 @@ export class FinanceBreakdownService {
     start: Date,
     end: Date,
     clientId?: string,
+    paymentStatus?: GetFinanceStatsDto['paymentStatus'],
   ): Promise<RecentRideItem[]> {
-    return this.buildRidesQuery(userId, start, end, clientId) as Promise<
-      RecentRideItem[]
-    >;
+    return this.buildRidesQuery(
+      userId,
+      start,
+      end,
+      clientId,
+      paymentStatus,
+    ) as Promise<RecentRideItem[]>;
   }
 }
