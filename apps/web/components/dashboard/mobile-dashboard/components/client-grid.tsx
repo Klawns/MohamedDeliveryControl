@@ -12,6 +12,7 @@ import type {
 } from "../hooks/use-client-selection";
 import { ClientGridSkeleton } from "./client-grid-skeleton";
 import { CreateClientDialog } from "./create-client-dialog";
+import { SelectionSummaryCard } from "./selection-summary-card";
 
 type ClientGridItem = Client | { kind: "create" };
 
@@ -51,14 +52,6 @@ export function ClientGrid({
                     <Users size={18} className="text-primary" />
                     {selectedClient ? "Cliente" : "Selecione o Cliente"}
                 </h2>
-                {selectedClient ? (
-                    <button
-                        onClick={() => onSelect(null)}
-                        className="text-xs font-medium text-primary hover:underline"
-                    >
-                        Trocar
-                    </button>
-                ) : null}
             </div>
 
             {!selectedClient ? (
@@ -92,19 +85,13 @@ export function ClientGrid({
                     )}
                 </div>
             ) : (
-                <div className="animate-in slide-in-from-top-2 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/10 p-5 shadow-lg shadow-primary/5 fade-in">
-                    <div>
-                        <h3 className="text-xl font-display font-extrabold uppercase tracking-tighter text-text-primary">
-                            {selectedClient.name || "Sem nome"}
-                        </h3>
-                        <p className="mt-1 text-[10px] font-display font-bold uppercase tracking-widest text-primary opacity-80">
-                            Cliente selecionado
-                        </p>
-                    </div>
-                    <div className="rounded-xl bg-primary/20 p-2">
-                        <Users size={20} className="text-primary" />
-                    </div>
-                </div>
+                <SelectionSummaryCard
+                    title={selectedClient.name || "Sem nome"}
+                    description="Cliente selecionado"
+                    icon={Users}
+                    onClick={() => onSelect(null)}
+                    ariaLabel={`Trocar cliente ${selectedClient.name || "selecionado"}`}
+                />
             )}
 
             <CreateClientDialog dialog={creationDialog} />

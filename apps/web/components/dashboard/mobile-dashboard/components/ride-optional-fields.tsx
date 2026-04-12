@@ -16,7 +16,7 @@ export function RideOptionalFields({
 }: RideOptionalFieldsProps) {
     return (
         <AnimatePresence>
-            {form.customValue ? (
+            {form.isValueSelectionComplete ? (
                 <motion.div
                     initial={{ opacity: 0, y: 10, height: 0 }}
                     animate={{ opacity: 1, y: 0, height: "auto" }}

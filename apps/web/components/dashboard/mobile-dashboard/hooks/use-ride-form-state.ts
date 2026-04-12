@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type ChangeEvent } from "react";
 import type { PaymentStatus } from "@/types/rides";
+import type { ValueSelectionMode } from "./ride-registration.types";
 
 interface UseRideFormStateProps {
     onReset?: () => void;
@@ -11,7 +12,8 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [customValue, setCustomValue] = useState("");
     const [customLocation, setCustomLocation] = useState("");
-    const [showCustomForm, setShowCustomForm] = useState(false);
+    const [valueSelectionMode, setValueSelectionMode] =
+        useState<ValueSelectionMode>("picker");
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("PAID");
     const [rideDate, setRideDate] = useState("");
     const [notes, setNotes] = useState("");
@@ -19,7 +21,7 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
 
     const resetForm = useCallback(() => {
         setSelectedPresetId(null);
-        setShowCustomForm(false);
+        setValueSelectionMode("picker");
         setCustomValue("");
         setCustomLocation("");
         setRideDate("");
@@ -34,20 +36,30 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
         if (location) {
             setCustomLocation(location);
         }
-        setShowCustomForm(false);
+        setValueSelectionMode("summary");
     }, []);
 
-    const toggleCustomForm = useCallback(() => {
-        setShowCustomForm((current) => {
-            const next = !current;
+    const startCustomValueEntry = useCallback(() => {
+        setSelectedPresetId(null);
+        setCustomValue("");
+        setValueSelectionMode("custom-edit");
+    }, []);
 
-            if (next) {
-                setSelectedPresetId(null);
-                setCustomValue("");
-            }
+    const confirmCustomValue = useCallback(() => {
+        const parsedValue = Number(customValue);
 
-            return next;
-        });
+        if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+            return;
+        }
+
+        setSelectedPresetId(null);
+        setValueSelectionMode("summary");
+    }, [customValue]);
+
+    const resetValueSelection = useCallback(() => {
+        setSelectedPresetId(null);
+        setCustomValue("");
+        setValueSelectionMode("picker");
     }, []);
 
     const handlePhotoChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +81,7 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
             selectedPresetId,
             customValue,
             customLocation,
-            showCustomForm,
+            valueSelectionMode,
             paymentStatus,
             rideDate,
             notes,
@@ -86,7 +98,9 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
         helpers: {
             resetForm,
             handlePresetSelect,
-            toggleCustomForm,
+            startCustomValueEntry,
+            confirmCustomValue,
+            resetValueSelection,
             handlePhotoChange,
         },
     };

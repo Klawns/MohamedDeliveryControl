@@ -45,13 +45,19 @@ export function useRideRegistration({
             selectedPresetId: formState.fields.selectedPresetId,
             customValue: formState.fields.customValue,
             customLocation: formState.fields.customLocation,
-            showCustomForm: formState.fields.showCustomForm,
+            valueSelectionMode: formState.fields.valueSelectionMode,
             paymentStatus: formState.fields.paymentStatus,
             rideDate: formState.fields.rideDate,
             notes: formState.fields.notes,
             photo: formState.fields.photo,
             isSaving: submitRide.isSubmitting,
-            canSubmit: !!selectedClient && !!formState.fields.customValue,
+            canSubmit:
+                !!selectedClient &&
+                formState.fields.valueSelectionMode === "summary" &&
+                !!formState.fields.customValue,
+            isValueSelectionComplete:
+                formState.fields.valueSelectionMode === "summary" &&
+                !!formState.fields.customValue,
         }),
         [
             formState.fields.customLocation,
@@ -61,7 +67,7 @@ export function useRideRegistration({
             formState.fields.photo,
             formState.fields.rideDate,
             formState.fields.selectedPresetId,
-            formState.fields.showCustomForm,
+            formState.fields.valueSelectionMode,
             selectedClient,
             submitRide.isSubmitting,
         ],
@@ -74,7 +80,9 @@ export function useRideRegistration({
         setRideDate: formState.setters.setRideDate,
         setNotes: formState.setters.setNotes,
         handlePresetSelect: formState.helpers.handlePresetSelect,
-        toggleCustomForm: formState.helpers.toggleCustomForm,
+        startCustomValueEntry: formState.helpers.startCustomValueEntry,
+        confirmCustomValue: formState.helpers.confirmCustomValue,
+        resetValueSelection: formState.helpers.resetValueSelection,
         handlePhotoChange: formState.helpers.handlePhotoChange,
         removePhoto: () => formState.setters.setPhoto(null),
         submitRide: submitRide.submitRide,

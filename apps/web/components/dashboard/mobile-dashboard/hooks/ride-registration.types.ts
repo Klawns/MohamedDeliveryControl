@@ -3,17 +3,20 @@
 import type { ChangeEvent } from "react";
 import type { PaymentStatus, RideViewModel } from "@/types/rides";
 
+export type ValueSelectionMode = "picker" | "custom-edit" | "summary";
+
 export interface RideFormState {
     selectedPresetId: string | null;
     customValue: string;
     customLocation: string;
-    showCustomForm: boolean;
+    valueSelectionMode: ValueSelectionMode;
     paymentStatus: PaymentStatus;
     rideDate: string;
     notes: string;
     photo: string | null;
     isSaving: boolean;
     canSubmit: boolean;
+    isValueSelectionComplete: boolean;
 }
 
 export interface RideFormActions {
@@ -23,7 +26,9 @@ export interface RideFormActions {
     setRideDate: (date: string) => void;
     setNotes: (notes: string) => void;
     handlePresetSelect: (id: string, value: number, location?: string) => void;
-    toggleCustomForm: () => void;
+    startCustomValueEntry: () => void;
+    confirmCustomValue: () => void;
+    resetValueSelection: () => void;
     handlePhotoChange: (event: ChangeEvent<HTMLInputElement>) => void;
     removePhoto: () => void;
     submitRide: () => Promise<void>;

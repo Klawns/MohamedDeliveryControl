@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { QueryErrorState } from "@/components/query-error-state";
 import { RideModal } from "@/components/ride-modal";
@@ -9,19 +9,44 @@ import { FinanceSummary } from "./components/finance-summary";
 import { PDFExport } from "./components/pdf-export";
 import { RecentRidesList } from "./components/recent-rides-list";
 import { RideForm } from "./components/ride-form";
+import { useAutoScrollToRideLocation } from "./hooks/use-auto-scroll-to-ride-location";
 import { useAutoScrollToRideValueSection } from "./hooks/use-auto-scroll-to-ride-value-section";
 import { useMobileDashboardController } from "./hooks/use-mobile-dashboard-controller";
 import type { MobileDashboardProps } from "./types";
 import { FeatureLockShell } from "@/app/dashboard/_components/feature-lock-shell";
+import type { Client } from "@/types/rides";
 
 export default function MobileDashboard(props: MobileDashboardProps) {
     const dashboard = useMobileDashboardController(props);
     const { trial } = props;
     const rideValueSectionRef = useRef<HTMLDivElement>(null);
+    const rideLocationSectionRef = useRef<HTMLDivElement>(null);
+    const { selectClient, selectedClient } = dashboard.clients;
+    const { resetForm } = dashboard.rideForm.actions;
+
+    const handleClientSelect = useCallback(
+        (client: Client | null) => {
+            if (!client) {
+                resetForm();
+                return;
+            }
+
+            selectClient(client);
+        },
+        [resetForm, selectClient],
+    );
 
     useAutoScrollToRideValueSection({
-        selectedClientId: dashboard.clients.selectedClient?.id ?? null,
+        selectedClientId: selectedClient?.id ?? null,
         targetRef: rideValueSectionRef,
+    });
+
+    useAutoScrollToRideLocation({
+        selectedValueKey: dashboard.rideForm.form.isValueSelectionComplete
+            ? `${dashboard.rideForm.form.selectedPresetId ?? "custom"}:${dashboard.rideForm.form.customValue}`
+            : null,
+        targetRef: rideLocationSectionRef,
+        enabled: !!selectedClient,
     });
 
     return (
@@ -63,13 +88,13 @@ export default function MobileDashboard(props: MobileDashboardProps) {
                 >
                     <ClientGrid
                         directory={dashboard.clients.directory}
-                        selectedClient={dashboard.clients.selectedClient}
-                        onSelect={dashboard.clients.selectClient}
+                        selectedClient={selectedClient}
+                        onSelect={handleClientSelect}
                         creationDialog={dashboard.clients.creationDialog}
                     />
                 </FeatureLockShell>
 
-                {dashboard.clients.selectedClient ? (
+                {selectedClient ? (
                     <FeatureLockShell
                         isLocked={trial.shouldLockFeatures}
                         title="Registro bloqueado"
@@ -83,6 +108,7 @@ export default function MobileDashboard(props: MobileDashboardProps) {
                             actions={dashboard.rideForm.actions}
                             onDeletePreset={dashboard.rideForm.deletePreset}
                             valueSectionRef={rideValueSectionRef}
+                            locationSectionRef={rideLocationSectionRef}
                         />
                     </FeatureLockShell>
                 ) : null}

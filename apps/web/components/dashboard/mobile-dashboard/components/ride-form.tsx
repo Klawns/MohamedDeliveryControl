@@ -17,6 +17,7 @@ interface RideFormProps {
     actions: RideFormActions;
     onDeletePreset: (presetId: string) => void;
     valueSectionRef?: RefObject<HTMLDivElement | null>;
+    locationSectionRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function RideForm({
@@ -25,6 +26,7 @@ export function RideForm({
     actions,
     onDeletePreset,
     valueSectionRef,
+    locationSectionRef,
 }: RideFormProps) {
     return (
         <motion.section
@@ -33,45 +35,50 @@ export function RideForm({
             exit={{ opacity: 0, y: 10 }}
             className="space-y-4"
         >
-            <RidePaymentStatus
-                paymentStatus={form.paymentStatus}
-                onChange={actions.setPaymentStatus}
-            />
-
             <div ref={valueSectionRef} className="scroll-mt-6 sm:scroll-mt-8">
+                <RidePaymentStatus
+                    paymentStatus={form.paymentStatus}
+                    onChange={actions.setPaymentStatus}
+                />
+            </div>
+
+            <div>
                 <RideValueSection
                     presets={presets}
                     form={form}
                     actions={actions}
                     onDeletePreset={onDeletePreset}
+                    locationSectionRef={locationSectionRef}
                 />
             </div>
 
             <RideOptionalFields form={form} actions={actions} />
 
-            {form.customValue ? (
-                <Button
-                    className={cn(
-                        "h-16 w-full rounded-[2rem] text-sm font-display font-bold uppercase tracking-widest text-primary-foreground shadow-xl transition-all active:scale-[0.98]",
-                        form.paymentStatus === "PAID"
-                            ? "bg-success shadow-success/20 hover:bg-success/90"
-                            : "bg-primary shadow-primary/20 hover:bg-primary/90",
-                    )}
-                    onClick={actions.submitRide}
-                    disabled={form.isSaving || !form.canSubmit}
-                >
-                    {form.isSaving ? (
-                        <span className="flex items-center gap-2">
-                            <div className="h-5 w-5 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
-                            Processando
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-3">
-                            <Save size={20} />
-                            Salvar Corrida
-                        </span>
-                    )}
-                </Button>
+            {form.isValueSelectionComplete ? (
+                <div className="scroll-mb-5">
+                    <Button
+                        className={cn(
+                            "h-16 w-full rounded-[2rem] text-sm font-display font-bold uppercase tracking-widest text-primary-foreground shadow-xl transition-all active:scale-[0.98]",
+                            form.paymentStatus === "PAID"
+                                ? "bg-success shadow-success/20 hover:bg-success/90"
+                                : "bg-primary shadow-primary/20 hover:bg-primary/90",
+                        )}
+                        onClick={actions.submitRide}
+                        disabled={form.isSaving || !form.canSubmit}
+                    >
+                        {form.isSaving ? (
+                            <span className="flex items-center gap-2">
+                                <div className="h-5 w-5 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+                                Processando
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-3">
+                                <Save size={20} />
+                                Salvar Corrida
+                            </span>
+                        )}
+                    </Button>
+                </div>
             ) : null}
         </motion.section>
     );
