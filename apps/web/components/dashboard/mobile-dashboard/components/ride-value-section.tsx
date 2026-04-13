@@ -1,10 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Banknote, MapPin, Plus, Star, Trash2 } from "lucide-react";
+import { Banknote, Camera, MapPin, Plus, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { RefObject } from "react";
 import { Button } from "@/components/ui/button";
+import { UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { RideFormActions, RideFormState } from "../hooks/use-ride-registration";
 import type { RidePreset } from "../types";
@@ -177,20 +178,35 @@ export function RideValueSection({
                             <label className="pl-1 text-[10px] font-bold uppercase tracking-widest text-text-muted">
                                 Localizacao da Corrida
                             </label>
-                            <div className="group relative">
-                                <MapPin
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 transition-colors group-focus-within:text-primary"
-                                    size={18}
-                                />
-                                <input
-                                    type="text"
-                                    value={form.customLocation}
-                                    onChange={(event) =>
-                                        actions.setCustomLocation(event.target.value)
-                                    }
-                                    placeholder="Destino ou Ponto de Partida"
-                                    className="w-full rounded-2xl border border-border bg-background py-4 pl-12 pr-4 text-sm font-bold text-foreground shadow-inner outline-none focus:border-primary/50"
-                                />
+                            <div className="flex items-center gap-2">
+                                <div className="group relative flex-1">
+                                    <MapPin
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 transition-colors group-focus-within:text-primary"
+                                        size={18}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={form.customLocation}
+                                        onChange={(event) =>
+                                            actions.setCustomLocation(event.target.value)
+                                        }
+                                        placeholder="Destino ou Ponto de Partida"
+                                        className="w-full rounded-2xl border border-border bg-background py-4 pl-12 pr-4 text-sm font-bold text-foreground shadow-inner outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                                <label
+                                    aria-label="Anexar foto da corrida"
+                                    className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary transition-all active:scale-95"
+                                >
+                                    <Camera size={16} />
+                                    <input
+                                        type="file"
+                                        accept={UPLOAD_IMAGE_ACCEPT}
+                                        capture="environment"
+                                        className="hidden"
+                                        onChange={actions.handlePhotoChange}
+                                    />
+                                </label>
                             </div>
                         </div>
                     </motion.div>

@@ -1,9 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar, Camera, FileText, Trash2 } from "lucide-react";
+import { Calendar, FileText, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image";
 import type { RideFormActions, RideFormState } from "../hooks/use-ride-registration";
 
 interface RideOptionalFieldsProps {
@@ -24,25 +23,12 @@ export function RideOptionalFields({
                     exit={{ opacity: 0, y: 10, height: 0 }}
                     className="space-y-4 overflow-hidden"
                 >
-                    <div className="space-y-5 rounded-[2rem] border border-border-subtle bg-card-background p-5 shadow-lg sm:p-6">
+                    <div className="space-y-5 rounded-[2rem] border border-border-subtle bg-card-background p-5 shadow-sm sm:p-6">
                         <div className="flex items-center justify-between">
                             <h3 className="flex items-center gap-2 text-[11px] font-display font-bold uppercase tracking-[0.2em] text-text-secondary">
                                 <Calendar size={14} className="text-primary/50" /> Detalhes
                                 Opcionais
                             </h3>
-                            <label className="cursor-pointer rounded-xl border border-primary/20 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-tight text-primary transition-all active:scale-95">
-                                <span className="flex items-center gap-2">
-                                    <Camera size={14} />
-                                    <span className="hidden sm:inline">Foto</span>
-                                </span>
-                                <input
-                                    type="file"
-                                    accept={UPLOAD_IMAGE_ACCEPT}
-                                    capture="environment"
-                                    className="hidden"
-                                    onChange={actions.handlePhotoChange}
-                                />
-                            </label>
                         </div>
 
                         <div className="space-y-4">
