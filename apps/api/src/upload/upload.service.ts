@@ -13,6 +13,13 @@ import { STORAGE_PROVIDER } from '../storage/interfaces/storage-provider.interfa
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
+  private static readonly allowedFolders = [
+    'images',
+    'avatars',
+    'posts',
+    'thumbnails',
+    'rides',
+  ] as const;
 
   constructor(
     @Inject(STORAGE_PROVIDER)
@@ -20,18 +27,37 @@ export class UploadService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async uploadImage(file: Express.Multer.File, folder: string = 'images') {
-    this.logger.log(
-      `Recebendo solicitação de upload: ${file.originalname} (Tamanho original: ${file.size} bytes) para pasta ${folder}`,
-    );
+  private resolveFolder(folder?: string): string {
+    return (
+      folder &&
+      UploadService.allowedFolders.includes(
+        folder as (typeof UploadService.allowedFolders)[number],
+      )
+    )
+      ? folder
+      : 'images';
+  }
 
-    // 1. Sanitizar folder
-    const allowedFolders = ['images', 'avatars', 'posts', 'thumbnails'];
-    if (!allowedFolders.includes(folder)) {
-      folder = 'images';
+  private buildUploadPath(userId: string, folder: string, fileName: string) {
+    if (folder === 'rides') {
+      return `users/${userId}/rides/${fileName}`;
     }
 
-    // 2. Validação rigorosa de MIME type (Magic Numbers - Anti-spoofing)
+    return `${folder}/${fileName}`;
+  }
+
+  async uploadImage(
+    file: Express.Multer.File,
+    userId: string,
+    folder: string = 'images',
+  ) {
+    const normalizedFolder = this.resolveFolder(folder);
+
+    this.logger.log(
+      `Recebendo solicitacao de upload: ${file.originalname} (Tamanho original: ${file.size} bytes) para pasta ${normalizedFolder}`,
+    );
+
+    // 1. Validacao rigorosa de MIME type (Magic Numbers - Anti-spoofing)
     const buffer = file.buffer;
 
     // JPEG: ffd8ff
@@ -52,21 +78,21 @@ export class UploadService {
 
     if (!isJpeg && !isPng && !isWebp) {
       this.logger.warn(
-        `Tentativa de upload de arquivo inválido: ${file.originalname} - Header: ${buffer.slice(0, 4).toString('hex')}`,
+        `Tentativa de upload de arquivo invalido: ${file.originalname} - Header: ${buffer.slice(0, 4).toString('hex')}`,
       );
       throw new BadRequestException(
-        'Arquivo inválido. O conteúdo não é uma imagem suportada (JPG, PNG, WEBP).',
+        'Arquivo invalido. O conteudo nao e uma imagem suportada (JPG, PNG, WEBP).',
       );
     }
 
-    // 3. Processamento com Sharp (Otimização Máxima)
+    // 2. Processamento com Sharp
     this.logger.debug(
       `Iniciando processamento Sharp para ${file.originalname}`,
     );
     const start = Date.now();
 
     const processedBuffer = await sharp(file.buffer)
-      .rotate() // Corrige orientação baseada em EXIF
+      .rotate()
       .resize({
         width: 1200,
         height: 1200,
@@ -75,7 +101,7 @@ export class UploadService {
       })
       .webp({
         quality: 80,
-        effort: 4, // Melhor compressão (Custo de CPU vs Tamanho)
+        effort: 4,
       })
       .toBuffer();
 
@@ -83,11 +109,11 @@ export class UploadService {
       `Sharp processing time: ${Date.now() - start}ms. Tamanho final: ${processedBuffer.length} bytes`,
     );
 
-    // 4. Gerar nome único
+    // 3. Gerar nome unico e caminho controlado
     const fileName = `${uuidv4()}.webp`;
-    const path = `${folder}/${fileName}`;
+    const path = this.buildUploadPath(userId, normalizedFolder, fileName);
 
-    // 5. Upload via Storage Provider (Strategy)
+    // 4. Upload via Storage Provider
     const { url, key } = await this.storageProvider.upload(
       {
         buffer: processedBuffer,
@@ -98,7 +124,7 @@ export class UploadService {
       { cacheControl: 'public, max-age=31536000, immutable' },
     );
 
-    // 6. Emitir Evento (Observer Pattern)
+    // 5. Emitir evento
     this.logger.log(`Disparando evento image.uploaded para ${url}`);
     this.eventEmitter.emit('image.uploaded', {
       url,

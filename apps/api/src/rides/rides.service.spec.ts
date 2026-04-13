@@ -8,6 +8,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DRIZZLE } from '../database/database.provider';
 import { UserDashboardCacheService } from '../cache/user-dashboard-cache.service';
 import { RideAccountingService } from './services/ride-accounting.service';
+import { RidePhotoReferenceService } from './services/ride-photo-reference.service';
 import { RideStatusService } from './services/ride-status.service';
 
 describe('RidesService', () => {
@@ -20,6 +21,7 @@ describe('RidesService', () => {
   let dashboardCacheMock: any;
   let profileCacheMock: any;
   let rideAccountingMock: any;
+  let ridePhotoReferenceMock: any;
   let rideStatusMock: any;
   let loggerErrorSpy: jest.SpyInstance;
 
@@ -132,6 +134,13 @@ describe('RidesService', () => {
       ),
     };
 
+    ridePhotoReferenceMock = {
+      validateForCreate: jest.fn((_: string, photo: string | null | undefined) => photo),
+      validateForUpdate: jest.fn(
+        (_: string, photo: string | null | undefined) => photo,
+      ),
+    };
+
     drizzleMock = {
       schema: {
         rides: {
@@ -196,6 +205,10 @@ describe('RidesService', () => {
           useValue: rideAccountingMock,
         },
         {
+          provide: RidePhotoReferenceService,
+          useValue: ridePhotoReferenceMock,
+        },
+        {
           provide: RideStatusService,
           useValue: rideStatusMock,
         },
@@ -247,6 +260,10 @@ describe('RidesService', () => {
         value: 25.5,
       }),
       'tx',
+    );
+    expect(ridePhotoReferenceMock.validateForCreate).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
     );
     expect(subsMock.findByUserId).toHaveBeenCalledWith('user-1');
     expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
@@ -593,6 +610,11 @@ describe('RidesService', () => {
       value: 32,
     });
 
+    expect(ridePhotoReferenceMock.validateForUpdate).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      null,
+    );
     expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
   });

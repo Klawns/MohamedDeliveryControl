@@ -17,6 +17,7 @@ import { DRIZZLE } from '../database/database.provider';
 import type { DrizzleClient } from '../database/database.provider';
 import { UserDashboardCacheService } from '../cache/user-dashboard-cache.service';
 import { RideAccountingService } from './services/ride-accounting.service';
+import { RidePhotoReferenceService } from './services/ride-photo-reference.service';
 import { RideStatusService } from './services/ride-status.service';
 import type {
   CreateRideDto,
@@ -74,6 +75,7 @@ export class RidesService {
     private readonly profileCacheService: ProfileCacheService,
     private readonly userDashboardCacheService: UserDashboardCacheService,
     private readonly rideAccountingService: RideAccountingService,
+    private readonly ridePhotoReferenceService: RidePhotoReferenceService,
     private readonly rideStatusService: RideStatusService,
   ) {}
 
@@ -167,6 +169,10 @@ export class RidesService {
   }
 
   async create(userId: string, data: CreateRideDto): Promise<RideWithClient> {
+    const photo = this.ridePhotoReferenceService.validateForCreate(
+      userId,
+      data.photo,
+    );
     this.logger.log(
       `[RidesService] Criando corrida para usuário ${userId}`,
       'RidesService',
@@ -221,7 +227,7 @@ export class RidesService {
             status: data.status || 'COMPLETED',
             paymentStatus,
             rideDate: data.rideDate ? new Date(data.rideDate) : new Date(),
-            photo: data.photo,
+            photo,
             userId,
           } as any,
           tx,
@@ -248,12 +254,20 @@ export class RidesService {
     this.logger.log(`[RidesService] Atualizando corrida ${id}`, 'RidesService');
 
     const existingRide = await this.getRideWithClientOrThrow(userId, id);
+    const normalizedData = {
+      ...data,
+      photo: this.ridePhotoReferenceService.validateForUpdate(
+        userId,
+        data.photo,
+        existingRide.photo ?? null,
+      ),
+    };
     const { nextClientId, refundAmount, updateData } =
-      this.rideStatusService.prepareRideUpdate(existingRide, data);
+      this.rideStatusService.prepareRideUpdate(existingRide, normalizedData);
 
     const result = await (this.drizzle.db as TransactionRunner).transaction(
       async (tx) => {
-        if (data.clientId !== undefined) {
+        if (normalizedData.clientId !== undefined) {
           await this.rideAccountingService.getClientOrThrow(
             userId,
             nextClientId,
