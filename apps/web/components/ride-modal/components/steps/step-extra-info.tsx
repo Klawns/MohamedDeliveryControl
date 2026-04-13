@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, FileText, Camera, Trash2 } from "lucide-react";
+import { UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image";
 
 interface StepExtraInfoProps {
     rideDate: string;
@@ -51,7 +52,7 @@ export function StepExtraInfo({
                             <span className="text-[10px] font-bold uppercase tracking-widest sm:hidden">Foto</span>
                             <input 
                                 type="file" 
-                                accept="image/*" 
+                                accept={UPLOAD_IMAGE_ACCEPT}
                                 capture="environment" 
                                 className="hidden" 
                                 onChange={handlePhotoChange} 

@@ -9,6 +9,10 @@ import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import type { IStorageProvider } from '../storage/interfaces/storage-provider.interface';
 import { STORAGE_PROVIDER } from '../storage/interfaces/storage-provider.interface';
+import {
+  hasAllowedUploadImageExtension,
+  isAllowedUploadImageFormat,
+} from './upload-image.constants';
 
 @Injectable()
 export class UploadService {
@@ -46,44 +50,58 @@ export class UploadService {
     return `${folder}/${fileName}`;
   }
 
+  private ensureUploadFile(file: Express.Multer.File | undefined) {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('Arquivo de imagem nao enviado.');
+    }
+  }
+
+  private ensureAllowedOriginalExtension(file: Express.Multer.File) {
+    if (hasAllowedUploadImageExtension(file.originalname)) {
+      return;
+    }
+
+    this.logger.warn(
+      `Tentativa de upload com extensao invalida: ${file.originalname}`,
+    );
+    throw new BadRequestException(
+      'Arquivo invalido. Envie apenas imagens JPG, PNG ou WEBP.',
+    );
+  }
+
+  private async ensureSupportedImageContent(file: Express.Multer.File) {
+    try {
+      const metadata = await sharp(file.buffer, { failOn: 'error' }).metadata();
+
+      if (isAllowedUploadImageFormat(metadata.format)) {
+        return;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao validar o conteudo da imagem ${file.originalname}: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      );
+    }
+
+    throw new BadRequestException(
+      'Arquivo invalido. O conteudo nao e uma imagem suportada (JPG, PNG ou WEBP).',
+    );
+  }
+
   async uploadImage(
     file: Express.Multer.File,
     userId: string,
     folder: string = 'images',
   ) {
     const normalizedFolder = this.resolveFolder(folder);
+    this.ensureUploadFile(file);
+    this.ensureAllowedOriginalExtension(file);
 
     this.logger.log(
       `Recebendo solicitacao de upload: ${file.originalname} (Tamanho original: ${file.size} bytes) para pasta ${normalizedFolder}`,
     );
 
-    // 1. Validacao rigorosa de MIME type (Magic Numbers - Anti-spoofing)
-    const buffer = file.buffer;
-
-    // JPEG: ffd8ff
-    const isJpeg =
-      buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-
-    // PNG: 89504e47
-    const isPng =
-      buffer[0] === 0x89 &&
-      buffer[1] === 0x50 &&
-      buffer[2] === 0x4e &&
-      buffer[3] === 0x47;
-
-    // WEBP: RIFF....WEBP (Robust check)
-    const isWebp =
-      buffer.toString('ascii', 0, 4) === 'RIFF' &&
-      buffer.toString('ascii', 8, 12) === 'WEBP';
-
-    if (!isJpeg && !isPng && !isWebp) {
-      this.logger.warn(
-        `Tentativa de upload de arquivo invalido: ${file.originalname} - Header: ${buffer.slice(0, 4).toString('hex')}`,
-      );
-      throw new BadRequestException(
-        'Arquivo invalido. O conteudo nao e uma imagem suportada (JPG, PNG, WEBP).',
-      );
-    }
+    // 1. Validacao real do conteudo da imagem antes do processamento.
+    await this.ensureSupportedImageContent(file);
 
     // 2. Processamento com Sharp
     this.logger.debug(

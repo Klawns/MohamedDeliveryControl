@@ -1,10 +1,17 @@
 import { isAxiosError } from 'axios';
 import { apiClient } from '@/services/api';
+import { getUploadImageValidationError } from '@/lib/upload-image';
 
 export async function uploadImage(
   file: File,
   folder: string = 'images',
 ): Promise<{ key: string; url?: string }> {
+  const validationError = getUploadImageValidationError(file);
+
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
   const formData = new FormData();
   formData.append('image', file);
 

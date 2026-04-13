@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Camera, FileText, Trash2 } from "lucide-react";
 import Image from "next/image";
+import { UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image";
 import type { RideFormActions, RideFormState } from "../hooks/use-ride-registration";
 
 interface RideOptionalFieldsProps {
@@ -36,7 +37,7 @@ export function RideOptionalFields({
                                 </span>
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept={UPLOAD_IMAGE_ACCEPT}
                                     capture="environment"
                                     className="hidden"
                                     onChange={actions.handlePhotoChange}

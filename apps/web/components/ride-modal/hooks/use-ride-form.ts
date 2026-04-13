@@ -4,6 +4,10 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { toLocalInputValue } from '@/lib/date-utils';
+import {
+  getUploadImageValidationError,
+  readFileAsDataUrl,
+} from '@/lib/upload-image';
 import { type RideModalProps } from '@/types/rides';
 import { useRideClientCreation } from './use-ride-client-creation';
 import { useRideFormData } from './use-ride-form-data';
@@ -187,15 +191,34 @@ export function useRideForm({
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    const input = event.currentTarget;
+
     if (!file) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhoto(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    const validationError = getUploadImageValidationError(file);
+
+    if (validationError) {
+      input.value = '';
+      toast.error(validationError);
+      return;
+    }
+
+    void readFileAsDataUrl(file)
+      .then((result) => {
+        setPhoto(result);
+      })
+      .catch((error: unknown) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Nao foi possivel ler a imagem selecionada.',
+        );
+      })
+      .finally(() => {
+        input.value = '';
+      });
   };
 
   const nextStep = () => {

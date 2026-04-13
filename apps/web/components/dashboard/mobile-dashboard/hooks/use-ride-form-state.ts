@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useState, type ChangeEvent } from "react";
+import { useToast } from "@/hooks/use-toast";
+import {
+    getUploadImageValidationError,
+    readFileAsDataUrl,
+} from "@/lib/upload-image";
 import type { PaymentStatus } from "@/types/rides";
 import type { ValueSelectionMode } from "./ride-registration.types";
 
@@ -9,6 +14,7 @@ interface UseRideFormStateProps {
 }
 
 export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
+    const { toast } = useToast();
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [customValue, setCustomValue] = useState("");
     const [customLocation, setCustomLocation] = useState("");
@@ -64,17 +70,40 @@ export function useRideFormState({ onReset }: UseRideFormStateProps = {}) {
 
     const handlePhotoChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+        const input = event.currentTarget;
 
         if (!file) {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPhoto(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-    }, []);
+        const validationError = getUploadImageValidationError(file);
+
+        if (validationError) {
+            input.value = "";
+            toast({
+                title: validationError,
+                variant: "destructive",
+            });
+            return;
+        }
+
+        void readFileAsDataUrl(file)
+            .then((result) => {
+                setPhoto(result);
+            })
+            .catch((error: unknown) => {
+                toast({
+                    title:
+                        error instanceof Error
+                            ? error.message
+                            : "Nao foi possivel ler a imagem selecionada.",
+                    variant: "destructive",
+                });
+            })
+            .finally(() => {
+                input.value = "";
+            });
+    }, [toast]);
 
     return {
         fields: {
