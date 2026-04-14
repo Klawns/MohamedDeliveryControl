@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Clock } from "lucide-react";
 import { RefObject } from "react";
 import { DashboardCompactRidesContainer } from "@/components/ui/dashboard-compact-rides-container";
@@ -41,9 +42,17 @@ export function RecentRidesList({
                     <Clock size={18} className="text-primary" />
                     Corridas Recentes
                 </h2>
-                {isLoading && rides.length > 0 ? (
-                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                ) : null}
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/rides"
+                        className="text-[11px] font-semibold text-text-secondary transition-colors hover:text-primary"
+                    >
+                        Ver tudo
+                    </Link>
+                    {isLoading && rides.length > 0 ? (
+                        <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                    ) : null}
+                </div>
             </div>
 
             {isLoading && rides.length === 0 ? (
