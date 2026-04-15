@@ -4,6 +4,7 @@ import {
   notifyUnauthorizedIfNeeded,
   refreshSession,
 } from './api-auth';
+import { resolveApiOrigin } from '../lib/resolve-api-origin.mjs';
 import { createRefreshQueue } from './api-refresh-queue';
 import { normalizeEnvelope, type ApiEnvelope, unwrapData } from './api-envelope';
 import { applySessionHeaders } from './api-session';
@@ -19,9 +20,7 @@ declare module 'axios' {
 
 export const api = axios.create({
   baseURL:
-    typeof window !== 'undefined'
-      ? '/api'
-      : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    typeof window !== 'undefined' ? '/api' : resolveApiOrigin(),
   withCredentials: true,
 });
 

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveApiOrigin } from './lib/resolve-api-origin.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -8,13 +9,7 @@ const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
   async rewrites() {
-    // URL da API (usado como destino do proxy)
-    let apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').trim();
-
-    // Garante que a URL tenha o protocolo (essencial para o Next.js build não falhar)
-    if (apiUrl && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
-      apiUrl = `https://${apiUrl}`;
-    }
+    const apiUrl = resolveApiOrigin();
 
     return [
       {
