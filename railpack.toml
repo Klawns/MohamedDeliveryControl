@@ -1,0 +1,10 @@
+[build]
+# Railpack auto-detects Node.js from package.json engines field
+
+[cache]
+# Cache these directories between builds to avoid reinstalling
+paths = [
+  "node_modules",
+  ".pnpm-store",
+  ".turbo"
+]
