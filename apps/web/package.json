@@ -1,5 +1,6 @@
 {
   "name": "my-project",
+  "packageManager": "pnpm@10.30.3",
   "version": "0.1.1",
   "description": "Trigger redeploy",
   "private": true,

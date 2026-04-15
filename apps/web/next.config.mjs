@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   async rewrites() {
     // URL da API (usado como destino do proxy)
     let apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000").trim();
