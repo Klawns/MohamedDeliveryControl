@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────
+# Stage 1 — Builder
+# Install all workspace dependencies and build
+# the Next.js app (my-project / apps/web).
+# ─────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+# corepack ships with Node 20; enable it so it
+# can activate the exact pnpm version declared
+# in the root package.json "packageManager" field.
+RUN corepack enable
+
+WORKDIR /app
+
+# Copy manifests needed to resolve the full
+# workspace dependency graph before any source.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy every package.json in the monorepo so
+# pnpm can link workspace:* packages correctly.
+COPY apps/web/package.json       ./apps/web/package.json
+COPY apps/api/package.json       ./apps/api/package.json
+COPY packages/database/package.json ./packages/database/package.json
+COPY packages/ui/package.json    ./packages/ui/package.json
+
+# Install all dependencies (including workspace
+# packages) with a frozen lockfile for
+# reproducible builds.
+RUN pnpm install --frozen-lockfile
+
+# Copy the full source tree after deps are
+# installed to maximise layer-cache reuse.
+COPY . .
+
+# Build only the frontend workspace package.
+RUN pnpm --filter my-project build
+
+# ─────────────────────────────────────────────
+# Stage 2 — Runtime
+# Lean image that only carries what Next.js
+# needs to serve the production application.
+# ─────────────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Bring in the root manifest so corepack can
+# resolve the correct pnpm version at runtime.
+COPY --from=builder /app/package.json             ./package.json
+COPY --from=builder /app/pnpm-lock.yaml           ./pnpm-lock.yaml
+COPY --from=builder /app/pnpm-workspace.yaml      ./pnpm-workspace.yaml
+
+# Copy workspace package manifests (needed for
+# pnpm to understand the monorepo layout).
+COPY --from=builder /app/apps/web/package.json       ./apps/web/package.json
+COPY --from=builder /app/apps/api/package.json       ./apps/api/package.json
+COPY --from=builder /app/packages/database/package.json ./packages/database/package.json
+COPY --from=builder /app/packages/ui/package.json    ./packages/ui/package.json
+
+# Copy installed node_modules (all workspaces)
+# and the compiled Next.js output.
+COPY --from=builder /app/node_modules            ./node_modules
+COPY --from=builder /app/apps/web/.next          ./apps/web/.next
+COPY --from=builder /app/apps/web/public         ./apps/web/public
+
+# Next.js listens on 3000 by default.
+EXPOSE 3000
+
+# Run the production server for the my-project
+# workspace package.
+CMD ["pnpm", "--filter", "my-project", "start"]
