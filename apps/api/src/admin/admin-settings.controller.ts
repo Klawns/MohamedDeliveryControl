@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { AdminSettingsService } from './admin-settings.service';
 import { ZodBody, ZodParam } from '../common/decorators/zod.decorator';
 import {
@@ -60,6 +61,7 @@ export class AdminSettingsController {
     return this.settingsService.createCoupon(data);
   }
 
+  @Public()
   @Post('seed')
   async seed() {
     await this.settingsService.seedInitialData();
