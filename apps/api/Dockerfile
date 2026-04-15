@@ -19,14 +19,12 @@ RUN pnpm dlx turbo@${TURBO_VERSION} prune api --docker
 FROM base AS prod-deps
 WORKDIR /app
 COPY --from=pruner /repo/out/json/ .
-RUN --mount=type=cache,id=mdc-api-pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod
 
 FROM base AS builder
 WORKDIR /app
 COPY --from=pruner /repo/out/json/ .
-RUN --mount=type=cache,id=mdc-api-pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
 RUN pnpm --filter @mdc/database build
 RUN pnpm --filter api build

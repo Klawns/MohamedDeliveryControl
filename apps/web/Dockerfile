@@ -19,8 +19,7 @@ RUN pnpm dlx turbo@${TURBO_VERSION} prune my-project --docker
 FROM base AS builder
 WORKDIR /app
 COPY --from=pruner /repo/out/json/ .
-RUN --mount=type=cache,id=mdc-web-pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
 RUN pnpm --filter my-project build
 
