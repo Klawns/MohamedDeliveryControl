@@ -1,0 +1,10 @@
+[build]
+# Force pnpm as the package manager
+packageManager = "pnpm"
+
+[cache]
+paths = [
+  "node_modules",
+  ".pnpm-store",
+  ".turbo"
+]
