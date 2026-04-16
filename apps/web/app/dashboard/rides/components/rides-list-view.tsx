@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Bike, SearchX } from "lucide-react";
 import { SelectionActionBarMobile } from "@/components/ride-selection/selection-action-bar-mobile";
 import { SelectionContextBar } from "@/components/ride-selection/selection-context-bar";
@@ -13,6 +14,11 @@ import { DASHBOARD_MOBILE_NAV_OFFSET } from "@/app/dashboard/_lib/dashboard-navi
 import { type RidesListPresentation } from "../_mappers/rides-list.presenter";
 import { RideCard } from "./ride-card";
 import { RideSkeleton } from "./ride-skeleton";
+
+const SELECTION_TRANSITION = {
+  duration: 0.16,
+  ease: "easeOut",
+} as const;
 
 interface RidesListActions {
   onEdit: (ride: RideViewModel) => void;
@@ -260,90 +266,134 @@ export function RidesListView({
             : undefined,
       }}
     >
-      {selection.isSelectionMode ? (
-        <div className="mb-5">
-          <SelectionContextBar
-            selectedCount={selection.selectedCount}
-            totalVisible={selection.totalVisible}
-            onCancel={selection.onExitSelectionMode}
-            onToggleSelectAll={() =>
-              selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
-            }
-            isAllVisibleSelected={selection.isAllVisibleSelected}
-            onDeleteSelected={selection.onDeleteSelected}
-            isDeleting={selection.isDeletingSelected}
-            hideInlineActions={isMobile}
-          />
-        </div>
-      ) : (
-        <div className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-lg font-display font-bold tracking-tight text-text-primary">
-            Lista de corridas
-          </h2>
+      <motion.div layout transition={SELECTION_TRANSITION}>
+        <AnimatePresence initial={false} mode="popLayout">
+          {selection.isSelectionMode ? (
+            <motion.div
+              key="selection-header"
+              layout
+              className="mb-5"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={SELECTION_TRANSITION}
+            >
+              <SelectionContextBar
+                selectedCount={selection.selectedCount}
+                totalVisible={selection.totalVisible}
+                onCancel={selection.onExitSelectionMode}
+                onToggleSelectAll={() =>
+                  selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+                }
+                isAllVisibleSelected={selection.isAllVisibleSelected}
+                onDeleteSelected={selection.onDeleteSelected}
+                isDeleting={selection.isDeletingSelected}
+                hideInlineActions={isMobile}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="default-header"
+              layout
+              className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={SELECTION_TRANSITION}
+            >
+              <h2 className="text-lg font-display font-bold tracking-tight text-text-primary">
+                Lista de corridas
+              </h2>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
-            <span>
-              <span className="font-semibold text-text-primary">
-                {viewModel.resultsLabel}
-              </span>
-              {" / "}
-              Ordenadas por data
-            </span>
-            {viewModel.contentState === "results" ? (
-              <button
-                type="button"
-                onClick={() => selection.onEnterSelectionMode()}
-                className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
-              >
-                Selecionar
-              </button>
-            ) : null}
-          </div>
-        </div>
-      )}
+              <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+                <span>
+                  <span className="font-semibold text-text-primary">
+                    {viewModel.resultsLabel}
+                  </span>
+                  {" / "}
+                  Ordenadas por data
+                </span>
+                {viewModel.contentState === "results" ? (
+                  <motion.button
+                    type="button"
+                    layout
+                    onClick={() => selection.onEnterSelectionMode()}
+                    className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Selecionar
+                  </motion.button>
+                ) : null}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {selection.isSelectionMode && !isMobile && viewModel.contentState === "results" ? (
-        <div className="mb-5 rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
-          <label className="flex items-center gap-3 text-sm font-semibold text-text-primary">
-            <SelectionCheckbox
-              checked={
-                selection.isAllVisibleSelected
-                  ? true
-                  : selection.isSelectionIndeterminate
-                    ? "indeterminate"
-                    : false
-              }
-              onToggle={() =>
-                selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
-              }
-              ariaLabel="Selecionar todas as corridas visiveis"
-              disabled={selection.isDeletingSelected}
-            />
-            <span>
-              {selection.isAllVisibleSelected
-                ? "Desmarcar todas"
-                : "Selecionar todas"}
-            </span>
-          </label>
-        </div>
-      ) : null}
+        <AnimatePresence initial={false}>
+          {selection.isSelectionMode && !isMobile && viewModel.contentState === "results" ? (
+            <motion.div
+              key="selection-desktop-actions"
+              layout
+              className="mb-5 overflow-hidden"
+              initial={{ opacity: 0, y: -6, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -6, height: 0 }}
+              transition={SELECTION_TRANSITION}
+            >
+              <div className="rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
+                <label className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+                  <SelectionCheckbox
+                    checked={
+                      selection.isAllVisibleSelected
+                        ? true
+                        : selection.isSelectionIndeterminate
+                          ? "indeterminate"
+                          : false
+                    }
+                    onToggle={() =>
+                      selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+                    }
+                    ariaLabel="Selecionar todas as corridas visiveis"
+                    disabled={selection.isDeletingSelected}
+                  />
+                  <span>
+                    {selection.isAllVisibleSelected
+                      ? "Desmarcar todas"
+                      : "Selecionar todas"}
+                  </span>
+                </label>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </motion.div>
 
       {renderContent()}
 
-      {selection.isSelectionMode && isMobile ? (
-        <SelectionActionBarMobile
-          className="fixed inset-x-4 z-50 rounded-[1.5rem] border border-border-subtle bg-background/98 p-3 shadow-[0_-14px_34px_rgba(15,23,42,0.16)] backdrop-blur-xl"
-          style={{ bottom: DASHBOARD_MOBILE_NAV_OFFSET }}
-          isAllVisibleSelected={selection.isAllVisibleSelected}
-          hasSelection={selection.selectedCount > 0}
-          isDeleting={selection.isDeletingSelected}
-          onToggleSelectAll={() =>
-            selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
-          }
-          onDeleteSelected={selection.onDeleteSelected}
-          onCancel={selection.onExitSelectionMode}
-        />
-      ) : null}
+      <AnimatePresence initial={false}>
+        {selection.isSelectionMode && isMobile ? (
+          <motion.div
+            key="selection-mobile-actions"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={SELECTION_TRANSITION}
+          >
+            <SelectionActionBarMobile
+              className="fixed inset-x-4 z-50 rounded-[1.5rem] border border-border-subtle bg-background/98 p-3 shadow-[0_-14px_34px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+              style={{ bottom: DASHBOARD_MOBILE_NAV_OFFSET }}
+              isAllVisibleSelected={selection.isAllVisibleSelected}
+              hasSelection={selection.selectedCount > 0}
+              isDeleting={selection.isDeletingSelected}
+              onToggleSelectAll={() =>
+                selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+              }
+              onDeleteSelected={selection.onDeleteSelected}
+              onCancel={selection.onExitSelectionMode}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }

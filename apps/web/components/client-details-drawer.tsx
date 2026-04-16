@@ -192,19 +192,29 @@ export function ClientDetailsDrawer({
                 </div>
               </div>
 
-              {isMobile && selection.isSelectionMode ? (
-                <SelectionActionBarMobile
-                  className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md"
-                  isAllVisibleSelected={selection.isAllVisibleSelected}
-                  hasSelection={selection.hasSelection}
-                  isDeleting={isDeletingRides}
-                  onToggleSelectAll={() =>
-                    selection.selectAllVisible(!selection.isAllVisibleSelected)
-                  }
-                  onDeleteSelected={() => setIsBulkDeleteConfirmOpen(true)}
-                  onCancel={selection.exitSelectionMode}
-                />
-              ) : null}
+              <AnimatePresence initial={false}>
+                {isMobile && selection.isSelectionMode ? (
+                  <motion.div
+                    key="drawer-selection-mobile-actions"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 12 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                  >
+                    <SelectionActionBarMobile
+                      className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md"
+                      isAllVisibleSelected={selection.isAllVisibleSelected}
+                      hasSelection={selection.hasSelection}
+                      isDeleting={isDeletingRides}
+                      onToggleSelectAll={() =>
+                        selection.selectAllVisible(!selection.isAllVisibleSelected)
+                      }
+                      onDeleteSelected={() => setIsBulkDeleteConfirmOpen(true)}
+                      onCancel={selection.exitSelectionMode}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </motion.div>
           </div>
 

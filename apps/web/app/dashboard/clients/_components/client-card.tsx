@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bike,
   ChevronRight,
@@ -23,6 +23,11 @@ import { SelectableCardShell } from '@/components/ride-selection/selectable-card
 import { SelectionCheckbox } from '@/components/ride-selection/selection-checkbox';
 import { cn } from '@/lib/utils';
 import { Client } from '@/types/rides';
+
+const SELECTION_TRANSITION = {
+  duration: 0.16,
+  ease: 'easeOut',
+} as const;
 
 interface ClientCardProps {
   client: Client;
@@ -62,10 +67,15 @@ export const ClientCard = React.memo(function ClientCard({
   const isSelected = selection?.isSelected ?? false;
 
   return (
-    <motion.div animate={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 10 }}>
+    <motion.div
+      layout
+      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      transition={SELECTION_TRANSITION}
+    >
       <SelectableCardShell
         className={cn(
-          'rounded-[1.6rem] border border-border-subtle bg-card-background p-3.5 shadow-sm transition-shadow hover:shadow-md',
+          'rounded-[1.6rem] border border-border-subtle bg-card-background p-3.5 shadow-sm transition-[border-color,background-color,box-shadow,transform] duration-150 hover:shadow-md',
           !isSelectionMode && 'cursor-pointer',
           isSelectionMode && isSelected && 'border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20',
         )}
@@ -86,21 +96,29 @@ export const ClientCard = React.memo(function ClientCard({
         >
           <div className="flex flex-col gap-3">
             <div className="flex items-start gap-4">
-              {isSelectionMode ? (
-                <div
-                  data-selection-ignore="true"
-                  className="mt-1"
-                  onClick={(event) => event.stopPropagation()}
-                  onPointerDown={(event) => event.stopPropagation()}
-                >
-                  <SelectionCheckbox
-                    checked={isSelected}
-                    onToggle={() => selection?.onToggleSelection(client.id)}
-                    ariaLabel={`Selecionar cliente ${clientName}`}
-                    disabled={selection?.selectionDisabled}
-                  />
-                </div>
-              ) : null}
+              <AnimatePresence initial={false}>
+                {isSelectionMode ? (
+                  <motion.div
+                    key="selection-checkbox"
+                    layout
+                    data-selection-ignore="true"
+                    className="mt-1"
+                    initial={{ opacity: 0, x: -6, scale: 0.96 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                    transition={SELECTION_TRANSITION}
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <SelectionCheckbox
+                      checked={isSelected}
+                      onToggle={() => selection?.onToggleSelection(client.id)}
+                      ariaLabel={`Selecionar cliente ${clientName}`}
+                      disabled={selection?.selectionDisabled}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
 
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary transition-colors group-hover:border-primary/20 group-hover:bg-primary/12">
                 <User size={20} />
@@ -133,99 +151,111 @@ export const ClientCard = React.memo(function ClientCard({
               </div>
             </div>
 
-            {!isSelectionMode ? (
-              <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-2.5">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onViewHistory(client);
-                  }}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+            <AnimatePresence initial={false}>
+              {!isSelectionMode ? (
+                <motion.div
+                  key="client-actions"
+                  layout
+                  className="overflow-hidden"
+                  initial={{ opacity: 0, y: -4, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -4, height: 0 }}
+                  transition={SELECTION_TRANSITION}
                 >
-                  Ver detalhes
-                  <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </button>
+                  <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-2.5">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onViewHistory(client);
+                      }}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+                    >
+                      Ver detalhes
+                      <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </button>
 
-                <div
-                  data-selection-ignore="true"
-                  className="flex items-center gap-2"
-                >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onQuickRide(client);
-                    }}
-                    className="inline-flex h-9 items-center gap-2 rounded-full border border-border-subtle bg-background px-3.5 text-sm font-medium text-text-primary transition-colors hover:border-border hover:bg-hover-accent"
-                    title="Nova corrida"
-                  >
-                    <Bike className="size-4" />
-                    <span className="hidden sm:inline">Nova corrida</span>
-                  </button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <div
+                      data-selection-ignore="true"
+                      className="flex items-center gap-2"
+                    >
                       <button
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          onQuickRide(client);
                         }}
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-background text-text-secondary transition-colors hover:border-border hover:bg-hover-accent hover:text-text-primary"
-                        title="Abrir acoes do cliente"
-                        aria-label={`Abrir menu de acoes para ${clientName}`}
+                        className="inline-flex h-9 items-center gap-2 rounded-full border border-border-subtle bg-background px-3.5 text-sm font-medium text-text-primary transition-colors hover:border-border hover:bg-hover-accent"
+                        title="Nova corrida"
                       >
-                        <MoreHorizontal className="size-4" />
+                        <Bike className="size-4" />
+                        <span className="hidden sm:inline">Nova corrida</span>
                       </button>
-                    </DropdownMenuTrigger>
 
-                    <DropdownMenuContent
-                      align="end"
-                      className="min-w-48 rounded-2xl border-border-subtle bg-card-background p-1.5"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      <DropdownMenuItem
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          onEdit(client);
-                        }}
-                        className="rounded-xl font-medium text-text-primary"
-                      >
-                        <Pencil size={14} />
-                        Editar
-                      </DropdownMenuItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-background text-text-secondary transition-colors hover:border-border hover:bg-hover-accent hover:text-text-primary"
+                            title="Abrir acoes do cliente"
+                            aria-label={`Abrir menu de acoes para ${clientName}`}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </button>
+                        </DropdownMenuTrigger>
 
-                      <DropdownMenuItem
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          onPin(client);
-                        }}
-                        className="rounded-xl font-medium text-text-primary"
-                      >
-                        {client.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-                        {client.isPinned ? 'Desafixar' : 'Fixar'}
-                      </DropdownMenuItem>
+                        <DropdownMenuContent
+                          align="end"
+                          className="min-w-48 rounded-2xl border-border-subtle bg-card-background p-1.5"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          <DropdownMenuItem
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              onEdit(client);
+                            }}
+                            className="rounded-xl font-medium text-text-primary"
+                          >
+                            <Pencil size={14} />
+                            Editar
+                          </DropdownMenuItem>
 
-                      <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              onPin(client);
+                            }}
+                            className="rounded-xl font-medium text-text-primary"
+                          >
+                            {client.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                            {client.isPinned ? 'Desafixar' : 'Fixar'}
+                          </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          onDelete(client);
-                        }}
-                        className="rounded-xl font-medium"
-                      >
-                        <Trash2 size={14} />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ) : null}
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              onDelete(client);
+                            }}
+                            className="rounded-xl font-medium"
+                          >
+                            <Trash2 size={14} />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
         </article>
       </SelectableCardShell>
