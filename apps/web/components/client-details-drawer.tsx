@@ -196,10 +196,10 @@ export function ClientDetailsDrawer({
                 {isMobile && selection.isSelectionMode ? (
                   <motion.div
                     key="drawer-selection-mobile-actions"
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 12 }}
-                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                   >
                     <SelectionActionBarMobile
                       className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md"

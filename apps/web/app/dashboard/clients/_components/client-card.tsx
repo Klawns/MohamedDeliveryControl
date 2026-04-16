@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { Client } from '@/types/rides';
 
 const SELECTION_TRANSITION = {
-  duration: 0.16,
+  duration: 0.15,
   ease: 'easeOut',
 } as const;
 
@@ -103,9 +103,9 @@ export const ClientCard = React.memo(function ClientCard({
                     layout
                     data-selection-ignore="true"
                     className="mt-1"
-                    initial={{ opacity: 0, x: -6, scale: 0.96 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -2 }}
                     transition={SELECTION_TRANSITION}
                     onClick={(event) => event.stopPropagation()}
                     onPointerDown={(event) => event.stopPropagation()}
@@ -157,9 +157,9 @@ export const ClientCard = React.memo(function ClientCard({
                   key="client-actions"
                   layout
                   className="overflow-hidden"
-                  initial={{ opacity: 0, y: -4, height: 0 }}
+                  initial={{ opacity: 0, y: -2, height: 0 }}
                   animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -4, height: 0 }}
+                  exit={{ opacity: 0, y: -2, height: 0 }}
                   transition={SELECTION_TRANSITION}
                 >
                   <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-2.5">

@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { type RideViewModel } from "@/types/rides";
 
 const SELECTION_TRANSITION = {
-  duration: 0.16,
+  duration: 0.15,
   ease: "easeOut",
 } as const;
 
@@ -146,14 +146,14 @@ export function ClientRidesHistory({
   return (
     <section className="flex flex-col gap-5">
       <motion.div layout transition={SELECTION_TRANSITION}>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {isSelectionMode ? (
             <motion.div
               key="selection-header"
               layout
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <SelectionContextBar
@@ -172,9 +172,9 @@ export function ClientRidesHistory({
               key="default-header"
               layout
               className="flex items-end justify-between gap-4"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <div>
@@ -218,9 +218,9 @@ export function ClientRidesHistory({
             key="selection-desktop-actions"
             layout
             className="overflow-hidden"
-            initial={{ opacity: 0, y: -6, height: 0 }}
+            initial={{ opacity: 0, y: -3, height: 0 }}
             animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -6, height: 0 }}
+            exit={{ opacity: 0, y: -3, height: 0 }}
             transition={SELECTION_TRANSITION}
           >
             <div className="rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">

@@ -11,7 +11,7 @@ import type { RideViewModel } from '@/types/rides';
 import type { ClientRideCardItem } from './mappers/client-ride-card.mapper';
 
 const SELECTION_TRANSITION = {
-  duration: 0.16,
+  duration: 0.15,
   ease: 'easeOut',
 } as const;
 
@@ -72,9 +72,9 @@ export function ClientRideCard({
                   layout
                   data-selection-ignore="true"
                   className="mt-1"
-                  initial={{ opacity: 0, x: -6, scale: 0.96 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -2 }}
                   transition={SELECTION_TRANSITION}
                   onClick={(event) => event.stopPropagation()}
                   onPointerDown={(event) => event.stopPropagation()}
@@ -129,9 +129,9 @@ export function ClientRideCard({
               key="ride-actions"
               layout
               className="overflow-hidden"
-              initial={{ opacity: 0, y: -4, height: 0 }}
+              initial={{ opacity: 0, y: -2, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -4, height: 0 }}
+              exit={{ opacity: 0, y: -2, height: 0 }}
               transition={SELECTION_TRANSITION}
             >
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">

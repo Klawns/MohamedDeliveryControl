@@ -16,7 +16,7 @@ import { RideCard } from "./ride-card";
 import { RideSkeleton } from "./ride-skeleton";
 
 const SELECTION_TRANSITION = {
-  duration: 0.16,
+  duration: 0.15,
   ease: "easeOut",
 } as const;
 
@@ -267,15 +267,15 @@ export function RidesListView({
       }}
     >
       <motion.div layout transition={SELECTION_TRANSITION}>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {selection.isSelectionMode ? (
             <motion.div
               key="selection-header"
               layout
               className="mb-5"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <SelectionContextBar
@@ -296,9 +296,9 @@ export function RidesListView({
               key="default-header"
               layout
               className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <h2 className="text-lg font-display font-bold tracking-tight text-text-primary">
@@ -335,9 +335,9 @@ export function RidesListView({
               key="selection-desktop-actions"
               layout
               className="mb-5 overflow-hidden"
-              initial={{ opacity: 0, y: -6, height: 0 }}
+              initial={{ opacity: 0, y: -3, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
-              exit={{ opacity: 0, y: -6, height: 0 }}
+              exit={{ opacity: 0, y: -3, height: 0 }}
               transition={SELECTION_TRANSITION}
             >
               <div className="rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
@@ -374,9 +374,9 @@ export function RidesListView({
         {selection.isSelectionMode && isMobile ? (
           <motion.div
             key="selection-mobile-actions"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
+            exit={{ opacity: 0, y: 8 }}
             transition={SELECTION_TRANSITION}
           >
             <SelectionActionBarMobile

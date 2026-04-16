@@ -16,7 +16,7 @@ import { ClientCard } from './client-card';
 import { ClientSkeleton } from './client-skeleton';
 
 const SELECTION_TRANSITION = {
-  duration: 0.16,
+  duration: 0.15,
   ease: 'easeOut',
 } as const;
 
@@ -202,15 +202,15 @@ export function ClientsListContainer({
       }}
     >
       <motion.div layout transition={SELECTION_TRANSITION}>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false}>
           {selection.isSelectionMode ? (
             <motion.div
               key="selection-header"
               layout
               className="mb-5"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <SelectionContextBar
@@ -241,9 +241,9 @@ export function ClientsListContainer({
               key="default-header"
               layout
               className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between"
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0, y: -3 }}
               transition={SELECTION_TRANSITION}
             >
               <div className="space-y-1">
@@ -280,9 +280,9 @@ export function ClientsListContainer({
               key="selection-desktop-actions"
               layout
               className="mb-5 overflow-hidden"
-              initial={{ opacity: 0, y: -6, height: 0 }}
+              initial={{ opacity: 0, y: -3, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -6, height: 0 }}
+              exit={{ opacity: 0, y: -3, height: 0 }}
               transition={SELECTION_TRANSITION}
             >
               <div className="rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
@@ -319,9 +319,9 @@ export function ClientsListContainer({
         {selection.isSelectionMode && isMobile ? (
           <motion.div
             key="selection-mobile-actions"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
+            exit={{ opacity: 0, y: 8 }}
             transition={SELECTION_TRANSITION}
           >
             <SelectionActionBarMobile
