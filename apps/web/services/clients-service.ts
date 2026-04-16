@@ -5,6 +5,7 @@ import {
   type CreateClientPaymentInput,
 } from '@/types/client-payments';
 import {
+  type BulkDeleteClientsResult,
   type Client,
   type ClientBalance,
   type ClientDirectoryEntry,
@@ -146,6 +147,10 @@ export const clientsService = {
 
   async deleteClient(clientId: string): Promise<void> {
     return apiClient.delete(`/clients/${clientId}`);
+  },
+
+  async deleteClients(ids: string[]): Promise<BulkDeleteClientsResult> {
+    return apiClient.post('/clients/bulk-delete', { ids });
   },
 
   async deleteAllClients(): Promise<void> {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, and, or, ilike, sql, desc, lt, gt, count } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, desc, lt, gt, count, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 import { DRIZZLE } from '../../database/database.provider';
@@ -300,6 +300,46 @@ export class DrizzleClientsRepository implements IClientsRepository {
     await this.getExecutor(executor)
       .delete(this.schema.clients)
       .where(this.getScopedClientCondition(userId, id));
+  }
+
+  async findManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: any,
+  ): Promise<Client[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.getExecutor(executor)
+      .select()
+      .from(this.schema.clients)
+      .where(
+        and(
+          eq(this.schema.clients.userId, userId),
+          inArray(this.schema.clients.id, ids),
+        ),
+      );
+  }
+
+  async deleteManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: any,
+  ): Promise<Client[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.getExecutor(executor)
+      .delete(this.schema.clients)
+      .where(
+        and(
+          eq(this.schema.clients.userId, userId),
+          inArray(this.schema.clients.id, ids),
+        ),
+      )
+      .returning();
   }
 
   async deleteAll(userId: string): Promise<void> {

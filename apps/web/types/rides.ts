@@ -119,6 +119,11 @@ export interface BulkDeleteRidesResult {
     deletedCount: number;
 }
 
+export interface BulkDeleteClientsResult {
+    requestedCount: number;
+    deletedCount: number;
+}
+
 // ===========================
 // Filters & Pagination
 // ===========================

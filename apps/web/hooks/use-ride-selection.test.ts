@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  getClientRideSelectionSummary,
+  getRideSelectionSummary,
   pruneSelectedRideIds,
   toggleSelectedRideId,
-} from './use-client-ride-selection';
+} from './use-ride-selection';
 
 test('toggleSelectedRideId adds and removes the ride id from selection', () => {
   const initialSelection = new Set(['ride-1']);
@@ -16,7 +16,7 @@ test('toggleSelectedRideId adds and removes the ride id from selection', () => {
   assert.deepEqual(Array.from(withoutExistingRide), ['ride-2']);
 });
 
-test('pruneSelectedRideIds keeps only rides that are still loaded', () => {
+test('pruneSelectedRideIds keeps only rides that are still visible', () => {
   const pruned = pruneSelectedRideIds(
     new Set(['ride-1', 'ride-2', 'ride-3']),
     ['ride-2', 'ride-4'],
@@ -25,40 +25,40 @@ test('pruneSelectedRideIds keeps only rides that are still loaded', () => {
   assert.deepEqual(Array.from(pruned), ['ride-2']);
 });
 
-test('getClientRideSelectionSummary reports all-selected and indeterminate states', () => {
-  const indeterminate = getClientRideSelectionSummary(
+test('getRideSelectionSummary reports all-selected and indeterminate states', () => {
+  const indeterminate = getRideSelectionSummary(
     ['ride-1', 'ride-2', 'ride-3'],
     new Set(['ride-1']),
   );
-  const allSelected = getClientRideSelectionSummary(
+  const allSelected = getRideSelectionSummary(
     ['ride-1', 'ride-2'],
     new Set(['ride-1', 'ride-2']),
   );
 
   assert.deepEqual(indeterminate, {
     selectedCount: 1,
-    totalLoaded: 3,
-    isAllLoadedSelected: false,
+    totalVisible: 3,
+    isAllVisibleSelected: false,
     isIndeterminate: true,
   });
   assert.deepEqual(allSelected, {
     selectedCount: 2,
-    totalLoaded: 2,
-    isAllLoadedSelected: true,
+    totalVisible: 2,
+    isAllVisibleSelected: true,
     isIndeterminate: false,
   });
 });
 
-test('getClientRideSelectionSummary reports zero state without indeterminate when nothing is selected', () => {
-  const summary = getClientRideSelectionSummary(
+test('getRideSelectionSummary reports zero state without indeterminate when nothing is selected', () => {
+  const summary = getRideSelectionSummary(
     ['ride-1', 'ride-2'],
     new Set(),
   );
 
   assert.deepEqual(summary, {
     selectedCount: 0,
-    totalLoaded: 2,
-    isAllLoadedSelected: false,
+    totalVisible: 2,
+    isAllVisibleSelected: false,
     isIndeterminate: false,
   });
 });

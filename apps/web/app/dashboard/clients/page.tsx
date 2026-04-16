@@ -1,5 +1,8 @@
 "use client";
+import { useEffect, useMemo, useState } from 'react';
+import { ConfirmModal } from '@/components/confirm-modal';
 import { ClientDetailsDrawer } from "@/components/client-details-drawer";
+import { useRideSelection } from '@/hooks/use-ride-selection';
 import { useRidePaymentStatus } from "@/hooks/use-ride-payment-status";
 import { toast } from "sonner";
 import { isApiErrorStatus, parseApiError } from "@/lib/api-error";
@@ -22,11 +25,16 @@ import { ClientModals } from "./_components/client-modals";
 
 export default function ClientsPage() {
     const paymentStatus = useRidePaymentStatus();
+    const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
     // Data Hooks
     const { 
         clients, search, setSearch, isLoading, isFetching,
         hasNextPage, isFetchingNextPage, fetchNextPage, totalCount, error, fetchClients
     } = useClients();
+    const selection = useRideSelection({
+        items: clients,
+        scopeKey: 'clients-page',
+    });
     
     const state = useClientsPageState(clients);
     
@@ -44,9 +52,34 @@ export default function ClientsPage() {
     });
 
     const {
-        isSettling, isDeleting, isDeletingRide, isDeletingRides,
-        togglePin, closeDebt, deleteClient, deleteRide, deleteRides
+        isSettling, isDeleting, isDeletingClients, isDeletingRide, isDeletingRides,
+        togglePin, closeDebt, deleteClient, deleteClients, deleteRide, deleteRides
     } = useClientActions();
+    const selectedClients = useMemo(
+        () => clients.filter((client) => selection.selectedIds.has(client.id)),
+        [clients, selection.selectedIds],
+    );
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                selection.exitSelectionMode();
+            }
+        }
+
+        if (!selection.isSelectionMode) {
+            return;
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selection.exitSelectionMode, selection.isSelectionMode]);
+
+    useEffect(() => {
+        if (!selection.isSelectionMode) {
+            setIsBulkDeleteConfirmOpen(false);
+        }
+    }, [selection.isSelectionMode]);
 
     const handlePinClient = async (client: Client) => {
         await togglePin(client);
@@ -110,6 +143,27 @@ export default function ClientsPage() {
         }
     };
 
+    const onConfirmDeleteClients = async () => {
+        if (selectedClients.length === 0) {
+            setIsBulkDeleteConfirmOpen(false);
+            return;
+        }
+
+        const selectedClientIds = new Set(selectedClients.map((client) => client.id));
+        const success = await deleteClients(selectedClients);
+
+        if (!success.success) {
+            return;
+        }
+
+        if (state.selectedClient?.id && selectedClientIds.has(state.selectedClient.id)) {
+            state.closeClientHistory();
+        }
+
+        selection.exitSelectionMode();
+        setIsBulkDeleteConfirmOpen(false);
+    };
+
     return (
         <>
             <div
@@ -139,6 +193,20 @@ export default function ClientsPage() {
                         onPin={handlePinClient}
                         onQuickRide={state.openQuickRideModal}
                         onViewHistory={state.openClientHistory}
+                        selection={{
+                            isSelectionMode: selection.isSelectionMode,
+                            selectedCount: selection.selectedCount,
+                            totalVisible: selection.totalVisible,
+                            isClientSelected: selection.isSelected,
+                            onEnterSelectionMode: selection.enterSelectionMode,
+                            onExitSelectionMode: selection.exitSelectionMode,
+                            onToggleClientSelection: selection.toggleItem,
+                            onToggleSelectAllVisible: selection.selectAllVisible,
+                            isAllVisibleSelected: selection.isAllVisibleSelected,
+                            isSelectionIndeterminate: selection.isIndeterminate,
+                            onDeleteSelected: () => setIsBulkDeleteConfirmOpen(true),
+                            isDeletingSelected: isDeletingClients,
+                        }}
                     />
                 </div>
             </div>
@@ -192,6 +260,21 @@ export default function ClientsPage() {
                 onSuccessClient={handleClientSuccess}
                 onSuccessPayment={refreshDetails}
                 onSuccessRide={refreshDetails}
+            />
+
+            <ConfirmModal
+                isOpen={isBulkDeleteConfirmOpen}
+                onClose={() => setIsBulkDeleteConfirmOpen(false)}
+                onConfirm={onConfirmDeleteClients}
+                title="Excluir clientes selecionados"
+                description={
+                    selection.selectedCount === 1
+                        ? 'Deseja realmente excluir o cliente selecionado? Esta acao e irreversivel e tambem removera corridas, pagamentos e dados relacionados.'
+                        : `Deseja realmente excluir os ${selection.selectedCount} clientes selecionados? Esta acao e irreversivel e tambem removera corridas, pagamentos e dados relacionados.`
+                }
+                confirmText="Excluir selecionados"
+                variant="danger"
+                isLoading={isDeletingClients}
             />
         </>
     );

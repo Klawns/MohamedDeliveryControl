@@ -64,6 +64,14 @@ export class ClientsController {
     return this.clientsService.create(req.user.id, body);
   }
 
+  @Post('bulk-delete')
+  bulkDelete(
+    @Request() req: RequestWithUser,
+    @ZodBody(Dtos.bulkDeleteClientsSchema) body: Dtos.BulkDeleteClientsDto,
+  ) {
+    return this.clientsService.bulkDelete(req.user.id, body);
+  }
+
   @Get(':id')
   findOne(@Request() req: RequestWithUser, @Param('id') id: string) {
     return this.clientsService.findOne(req.user.id, id);

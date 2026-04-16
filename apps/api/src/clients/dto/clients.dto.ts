@@ -20,6 +20,16 @@ export const updateClientSchema = z.object({
 
 export type UpdateClientBodyDto = z.infer<typeof updateClientSchema>;
 
+export const bulkDeleteClientsSchema = z.object({
+  ids: z
+    .array(z.string().trim().min(1, { message: 'ID do cliente e obrigatorio' }))
+    .min(1, { message: 'Informe ao menos um cliente para excluir' })
+    .max(500, { message: 'Voce pode excluir ate 500 clientes por vez' })
+    .transform((ids) => Array.from(new Set(ids))),
+});
+
+export type BulkDeleteClientsDto = z.infer<typeof bulkDeleteClientsSchema>;
+
 export const findAllClientsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
   cursor: z.string().optional(),

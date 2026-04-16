@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:unit": "tsx --test lib/client-autocomplete.test.ts app/dashboard/finance/_lib/finance-dashboard-query.test.ts hooks/auth/current-user-query-options.test.ts hooks/payment-plans-query-options.test.ts hooks/mutations/use-delete-ride-mutation.test.ts hooks/mutations/use-delete-rides-mutation.test.ts hooks/use-long-press.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.presenter.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.navigation.test.ts components/client-details-drawer/use-client-ride-selection.test.ts app/dashboard/rides/_mappers/rides-list.presenter.test.ts",
+    "test:unit": "tsx --test lib/client-autocomplete.test.ts app/dashboard/finance/_lib/finance-dashboard-query.test.ts hooks/auth/current-user-query-options.test.ts hooks/payment-plans-query-options.test.ts hooks/mutations/use-delete-ride-mutation.test.ts hooks/mutations/use-delete-rides-mutation.test.ts hooks/mutations/use-delete-clients-mutation.test.ts hooks/use-long-press.test.ts hooks/use-ride-selection.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.presenter.test.ts components/ui/client-autocomplete-field/client-autocomplete-field.navigation.test.ts app/dashboard/rides/_mappers/rides-list.presenter.test.ts",
     "lint:style": "prettier --check \"**/*.{ts,tsx,md}\"",
     "lint:fix": "eslint . --fix && prettier --write \"**/*.{ts,tsx,md}\""
   },

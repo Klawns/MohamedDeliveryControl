@@ -222,6 +222,49 @@ export class ClientsService {
     return { success: true };
   }
 
+  async bulkDelete(
+    userId: string,
+    data: { ids: string[] },
+  ): Promise<{ requestedCount: number; deletedCount: number }> {
+    let deletedCount = 0;
+
+    await (this.drizzle.db as TransactionRunner).transaction(async (tx) => {
+      const clientsToDelete = await this.clientsRepository.findManyByIds(
+        userId,
+        data.ids,
+        tx,
+      );
+
+      if (clientsToDelete.length === 0) {
+        throw new NotFoundException('Nenhum cliente encontrado.');
+      }
+
+      const deletedClients = await this.clientsRepository.deleteManyByIds(
+        userId,
+        clientsToDelete.map((client) => client.id),
+        tx,
+      );
+
+      deletedCount = deletedClients.length;
+    });
+
+    await this.invalidateCachesAfterWrite(userId, 'remocao em lote de clientes', [
+      {
+        cacheName: 'user dashboard',
+        execute: () => this.userDashboardCacheService.invalidate(userId),
+      },
+      {
+        cacheName: 'client directory',
+        execute: () => this.invalidateDirectoryCache(userId),
+      },
+    ]);
+
+    return {
+      requestedCount: data.ids.length,
+      deletedCount,
+    };
+  }
+
   async deleteAll(userId: string) {
     await this.clientsRepository.deleteAll(userId);
     await this.invalidateCachesAfterWrite(

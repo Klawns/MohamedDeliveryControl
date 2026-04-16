@@ -67,5 +67,15 @@ export interface IClientsRepository {
   ): Promise<Client | undefined>;
 
   delete(userId: string, id: string, executor?: unknown): Promise<void>;
+  findManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: unknown,
+  ): Promise<Client[]>;
+  deleteManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: unknown,
+  ): Promise<Client[]>;
   deleteAll(userId: string): Promise<void>;
 }

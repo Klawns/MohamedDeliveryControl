@@ -25,6 +25,18 @@ interface RidesListContainerProps {
   isPaymentUpdating: (rideId: string) => boolean;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
+  isSelectionMode: boolean;
+  selectedCount: number;
+  totalVisible: number;
+  isRideSelected: (rideId: string) => boolean;
+  onEnterSelectionMode: (rideId?: string) => void;
+  onExitSelectionMode: () => void;
+  onToggleRideSelection: (rideId: string) => void;
+  onToggleSelectAllVisible: (isSelected: boolean) => void;
+  isAllVisibleSelected: boolean;
+  isSelectionIndeterminate: boolean;
+  onDeleteSelected: () => void;
+  isDeletingSelected: boolean;
 }
 
 export function RidesListContainer({
@@ -45,6 +57,18 @@ export function RidesListContainer({
   isPaymentUpdating,
   hasActiveFilters,
   onClearFilters,
+  isSelectionMode,
+  selectedCount,
+  totalVisible,
+  isRideSelected,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  onToggleRideSelection,
+  onToggleSelectAllVisible,
+  isAllVisibleSelected,
+  isSelectionIndeterminate,
+  onDeleteSelected,
+  isDeletingSelected,
 }: RidesListContainerProps) {
   const viewModel = useRidesListViewModel({
     rides,
@@ -65,6 +89,20 @@ export function RidesListContainer({
         onChangePaymentStatus,
         isPaymentUpdating,
         onClearFilters,
+      }}
+      selection={{
+        isSelectionMode,
+        selectedCount,
+        totalVisible,
+        isRideSelected,
+        onEnterSelectionMode,
+        onExitSelectionMode,
+        onToggleRideSelection,
+        onToggleSelectAllVisible,
+        isAllVisibleSelected,
+        isSelectionIndeterminate,
+        onDeleteSelected,
+        isDeletingSelected,
       }}
       pagination={{
         hasNextPage,

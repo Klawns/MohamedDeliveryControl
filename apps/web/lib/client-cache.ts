@@ -84,6 +84,13 @@ function removeClient<T extends { id: string }>(clients: T[], clientId: string) 
   return clients.filter((client) => client.id !== clientId);
 }
 
+function removeClients<T extends { id: string }>(
+  clients: T[],
+  clientIds: Set<string>,
+) {
+  return clients.filter((client) => !clientIds.has(client.id));
+}
+
 function matchesSearch(name: string, search?: string) {
   if (!search?.trim()) {
     return true;
@@ -218,9 +225,26 @@ export function upsertClientCaches(queryClient: QueryClient, client: Client) {
 }
 
 export function removeClientCaches(queryClient: QueryClient, clientId: string) {
+  removeClientCachesByIds(queryClient, [clientId]);
+}
+
+export function removeClientCachesByIds(
+  queryClient: QueryClient,
+  clientIds: string[],
+) {
+  const clientIdSet = new Set(clientIds.filter(Boolean));
+
+  if (clientIdSet.size === 0) {
+    return;
+  }
+
   queryClient.removeQueries({
-    queryKey: clientKeys.detail(clientId),
-    exact: true,
+    predicate: (query) =>
+      clientKeys.details().every(
+        (entry, index) => query.queryKey[index] === entry,
+      ) &&
+      typeof query.queryKey[2] === 'string' &&
+      clientIdSet.has(query.queryKey[2]),
   });
 
   const clientQueries = queryClient.getQueryCache().findAll({
@@ -238,7 +262,7 @@ export function removeClientCaches(queryClient: QueryClient, clientId: string) {
           ...current,
           pages: current.pages.map((page) => ({
             ...page,
-            data: removeClient(page.data, clientId),
+            data: removeClients(page.data, clientIdSet),
           })),
         };
       });
@@ -254,7 +278,7 @@ export function removeClientCaches(queryClient: QueryClient, clientId: string) {
 
         return {
           ...current,
-          data: removeClient(current.data, clientId),
+          data: removeClients(current.data, clientIdSet),
         };
       });
 
@@ -267,7 +291,7 @@ export function removeClientCaches(queryClient: QueryClient, clientId: string) {
           return current;
         }
 
-        const nextData = removeClient(current.data, clientId);
+        const nextData = removeClients(current.data, clientIdSet);
 
         return {
           ...current,

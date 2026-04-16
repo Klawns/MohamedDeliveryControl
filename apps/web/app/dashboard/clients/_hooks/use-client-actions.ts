@@ -2,8 +2,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useDeleteClientsAction } from '@/hooks/use-delete-clients-action';
+import { useDeleteRidesAction } from '@/hooks/use-delete-rides-action';
 import { useDeleteRideMutation } from '@/hooks/mutations/use-delete-ride-mutation';
-import { useDeleteRidesMutation } from '@/hooks/mutations/use-delete-rides-mutation';
 import { isApiErrorStatus, parseApiError } from '@/lib/api-error';
 import { removeClientCaches, upsertClientCaches } from '@/lib/client-cache';
 import { clientKeys, financeKeys, rideKeys } from '@/lib/query-keys';
@@ -24,6 +25,7 @@ type ClientActionResult =
 
 export function useClientActions() {
   const queryClient = useQueryClient();
+  const deleteClientsAction = useDeleteClientsAction();
 
   const togglePinMutation = useMutation({
     mutationFn: (client: Client) => clientsService.togglePin(client.id, !!client.isPinned),
@@ -65,8 +67,10 @@ export function useClientActions() {
       removeRideCachesByClient(queryClient, clientId);
 
       void Promise.all([
+        queryClient.invalidateQueries({ queryKey: clientKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: clientKeys.directories() }),
         queryClient.invalidateQueries({ queryKey: [...rideKeys.all, 'stats'] }),
+        queryClient.invalidateQueries({ queryKey: rideKeys.frequentClients() }),
         queryClient.invalidateQueries({ queryKey: financeKeys.all }),
       ]);
 
@@ -86,25 +90,14 @@ export function useClientActions() {
     },
   });
 
-  const deleteRidesMutation = useDeleteRidesMutation({
-    onSuccess: async (result) => {
-      const deletedLabel =
-        result.deletedCount === 1
-          ? '1 corrida excluida com sucesso.'
-          : `${result.deletedCount} corridas excluidas com sucesso.`;
-
-      toast.success(deletedLabel);
-    },
-    onError: async (error) => {
-      toast.error(parseApiError(error, 'Erro ao excluir corridas.'));
-    },
-  });
+  const deleteRidesAction = useDeleteRidesAction();
 
   return {
     isSettling: closeDebtMutation.isPending,
     isDeleting: deleteClientMutation.isPending,
+    isDeletingClients: deleteClientsAction.isDeletingClients,
     isDeletingRide: deleteRideMutation.isPending,
-    isDeletingRides: deleteRidesMutation.isPending,
+    isDeletingRides: deleteRidesAction.isDeletingRides,
     isTogglingPin: togglePinMutation.isPending,
     togglePin: async (client: Client) => {
       try {
@@ -138,6 +131,9 @@ export function useClientActions() {
         return false;
       }
     },
+    deleteClients: async (clients: Client[]) => {
+      return deleteClientsAction.deleteClients(clients);
+    },
     deleteRide: async (ride: RideViewModel) => {
       try {
         await deleteRideMutation.mutateAsync(ride);
@@ -147,12 +143,7 @@ export function useClientActions() {
       }
     },
     deleteRides: async (rides: RideViewModel[]) => {
-      try {
-        const result = await deleteRidesMutation.mutateAsync(rides);
-        return { success: true as const, result };
-      } catch {
-        return { success: false as const };
-      }
+      return deleteRidesAction.deleteRides(rides);
     },
   };
 }

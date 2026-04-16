@@ -57,6 +57,21 @@ export default function RidesPage() {
         variant="danger"
         isLoading={page.deleteDialog.isLoading}
       />
+
+      <ConfirmModal
+        isOpen={page.bulkDeleteDialog.isOpen}
+        onClose={page.bulkDeleteDialog.onClose}
+        onConfirm={page.bulkDeleteDialog.onConfirm}
+        title="Excluir corridas selecionadas"
+        description={
+          page.bulkDeleteDialog.selectedCount === 1
+            ? "Deseja realmente excluir a corrida selecionada? Esta acao e irreversivel."
+            : `Deseja realmente excluir as ${page.bulkDeleteDialog.selectedCount} corridas selecionadas? Esta acao e irreversivel.`
+        }
+        confirmText="Excluir selecionadas"
+        variant="danger"
+        isLoading={page.bulkDeleteDialog.isLoading}
+      />
     </>
   );
 }

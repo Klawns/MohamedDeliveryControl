@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await -- Jest mocks in this spec intentionally use partial runtime stubs. */
-import { Logger } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClientsService } from './clients.service';
 import { IClientsRepository } from './interfaces/clients-repository.interface';
@@ -52,6 +52,12 @@ describe('ClientsService', () => {
       decrementBalance: jest
         .fn()
         .mockResolvedValue({ id: 'uuid-123', name: 'Client Test', balance: 0 }),
+      findManyByIds: jest
+        .fn()
+        .mockResolvedValue([{ id: 'uuid-123', name: 'Client Test', balance: 0 }]),
+      deleteManyByIds: jest
+        .fn()
+        .mockResolvedValue([{ id: 'uuid-123', name: 'Client Test', balance: 0 }]),
       delete: jest.fn().mockResolvedValue(undefined),
       deleteAll: jest.fn().mockResolvedValue(undefined),
     };
@@ -208,6 +214,42 @@ describe('ClientsService', () => {
     expect(cacheMock.invalidatePrefix).toHaveBeenCalledWith(
       'client-directory:user-1:',
     );
+  });
+
+  it('should bulk delete clients and invalidate shared caches once', async () => {
+    const result = await service.bulkDelete('user-1', {
+      ids: ['uuid-123', 'uuid-456'],
+    });
+
+    expect(drizzleMock.db.transaction).toHaveBeenCalled();
+    expect(clientsRepoMock.findManyByIds).toHaveBeenCalledWith(
+      'user-1',
+      ['uuid-123', 'uuid-456'],
+      'tx',
+    );
+    expect(clientsRepoMock.deleteManyByIds).toHaveBeenCalledWith(
+      'user-1',
+      ['uuid-123'],
+      'tx',
+    );
+    expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+    expect(cacheMock.invalidatePrefix).toHaveBeenCalledWith(
+      'client-directory:user-1:',
+    );
+    expect(result).toEqual({
+      requestedCount: 2,
+      deletedCount: 1,
+    });
+  });
+
+  it('should throw when bulk delete does not find any client', async () => {
+    clientsRepoMock.findManyByIds.mockResolvedValueOnce([]);
+
+    await expect(
+      service.bulkDelete('user-1', { ids: ['missing-client'] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(clientsRepoMock.deleteManyByIds).not.toHaveBeenCalled();
   });
 
   it('should get client balance using aggregated sql methods', async () => {

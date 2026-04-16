@@ -20,6 +20,20 @@ interface ClientListSectionProps {
   onPin: (client: Client) => void;
   onQuickRide: (client: Client) => void;
   onViewHistory: (client: Client) => void;
+  selection: {
+    isSelectionMode: boolean;
+    selectedCount: number;
+    totalVisible: number;
+    isClientSelected: (clientId: string) => boolean;
+    onEnterSelectionMode: (clientId?: string) => void;
+    onExitSelectionMode: () => void;
+    onToggleClientSelection: (clientId: string) => void;
+    onToggleSelectAllVisible: (isSelected: boolean) => void;
+    isAllVisibleSelected: boolean;
+    isSelectionIndeterminate: boolean;
+    onDeleteSelected: () => void;
+    isDeletingSelected: boolean;
+  };
 }
 
 export function ClientListSection({
@@ -40,6 +54,7 @@ export function ClientListSection({
   onPin,
   onQuickRide,
   onViewHistory,
+  selection,
 }: ClientListSectionProps) {
   return (
     <section className="flex min-h-0 flex-col gap-6 overflow-hidden">
@@ -69,6 +84,7 @@ export function ClientListSection({
           onPin={onPin}
           onQuickRide={onQuickRide}
           onViewHistory={onViewHistory}
+          selection={selection}
         />
       </div>
     </section>

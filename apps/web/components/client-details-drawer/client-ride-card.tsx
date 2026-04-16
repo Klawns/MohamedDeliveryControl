@@ -1,14 +1,13 @@
 'use client';
 
-import type { KeyboardEvent } from 'react';
 import { Calendar, Pencil, Trash2 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useLongPress } from '@/hooks/use-long-press';
+import { SelectableCardShell } from '@/components/ride-selection/selectable-card-shell';
+import { SelectionCheckbox } from '@/components/ride-selection/selection-checkbox';
 import { PaymentComposition } from '@/components/ui/payment-composition';
 import { RidePaymentAction } from '@/components/ui/ride-payment-action';
 import { cn } from '@/lib/utils';
-import type { ClientRideCardItem } from './mappers/client-ride-card.mapper';
 import type { RideViewModel } from '@/types/rides';
+import type { ClientRideCardItem } from './mappers/client-ride-card.mapper';
 
 interface ClientRideCardProps {
   item: ClientRideCardItem;
@@ -41,52 +40,21 @@ export function ClientRideCard({
   canEnterSelectionWithLongPress = false,
 }: ClientRideCardProps) {
   const { ride } = item;
-  const longPressHandlers = useLongPress({
-    onLongPress: () => onEnterSelectionMode(ride.id),
-    disabled: selectionDisabled || isSelectionMode || !canEnterSelectionWithLongPress,
-    shouldHandleEvent: (event) => {
-      const target = event.target as HTMLElement | null;
-      return (
-        event.pointerType !== 'mouse' &&
-        !target?.closest('[data-selection-ignore="true"]')
-      );
-    },
-  });
-
-  const handleToggleSelection = () => {
-    if (!isSelectionMode || selectionDisabled) {
-      return;
-    }
-
-    onToggleSelection(ride.id);
-  };
-
-  const handleSelectionKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!isSelectionMode || selectionDisabled) {
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onToggleSelection(ride.id);
-    }
-  };
 
   return (
-    <div
+    <SelectableCardShell
       className={cn(
         'rounded-2xl border bg-card-background/55 p-4 shadow-sm transition-colors hover:bg-card-background',
         isSelectionMode && isSelected
           ? 'border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20'
           : 'border-border-subtle',
-        isSelectionMode && !selectionDisabled && 'cursor-pointer',
       )}
-      role={isSelectionMode ? 'button' : undefined}
-      tabIndex={isSelectionMode ? 0 : undefined}
-      aria-pressed={isSelectionMode ? isSelected : undefined}
-      onClick={handleToggleSelection}
-      onKeyDown={handleSelectionKeyDown}
-      {...longPressHandlers}
+      isSelectionMode={isSelectionMode}
+      isSelected={isSelected}
+      selectionDisabled={selectionDisabled}
+      canEnterSelectionWithLongPress={canEnterSelectionWithLongPress}
+      onEnterSelectionMode={() => onEnterSelectionMode(ride.id)}
+      onToggleSelection={() => onToggleSelection(ride.id)}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -97,12 +65,11 @@ export function ClientRideCard({
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
             >
-              <Checkbox
+              <SelectionCheckbox
                 checked={isSelected}
-                onCheckedChange={() => onToggleSelection(ride.id)}
-                aria-label={`Selecionar corrida ${item.title}`}
+                onToggle={() => onToggleSelection(ride.id)}
+                ariaLabel={`Selecionar corrida ${item.title}`}
                 disabled={selectionDisabled}
-                className="size-5 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
               />
             </div>
           ) : null}
@@ -174,6 +141,6 @@ export function ClientRideCard({
           </div>
         </div>
       ) : null}
-    </div>
+    </SelectableCardShell>
   );
 }

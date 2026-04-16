@@ -2,9 +2,14 @@
 
 import { useRef } from "react";
 import { Bike, SearchX } from "lucide-react";
+import { SelectionActionBarMobile } from "@/components/ride-selection/selection-action-bar-mobile";
+import { SelectionContextBar } from "@/components/ride-selection/selection-context-bar";
+import { SelectionCheckbox } from "@/components/ride-selection/selection-checkbox";
 import { InfiniteScrollTrigger } from "@/components/dashboard/mobile-dashboard/components/infinite-scroll-trigger";
 import { ScrollBoundaryContainer } from "@/components/ui/scroll-boundary-container";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PaymentStatus, RideViewModel } from "@/types/rides";
+import { DASHBOARD_MOBILE_NAV_OFFSET } from "@/app/dashboard/_lib/dashboard-navigation";
 import { type RidesListPresentation } from "../_mappers/rides-list.presenter";
 import { RideCard } from "./ride-card";
 import { RideSkeleton } from "./ride-skeleton";
@@ -33,6 +38,20 @@ interface RidesListViewProps {
   viewModel: RidesListPresentation;
   actions: RidesListActions;
   pagination: RidesListPaginationProps;
+  selection: {
+    isSelectionMode: boolean;
+    selectedCount: number;
+    totalVisible: number;
+    isRideSelected: (rideId: string) => boolean;
+    onEnterSelectionMode: (rideId?: string) => void;
+    onExitSelectionMode: () => void;
+    onToggleRideSelection: (rideId: string) => void;
+    onToggleSelectAllVisible: (isSelected: boolean) => void;
+    isAllVisibleSelected: boolean;
+    isSelectionIndeterminate: boolean;
+    onDeleteSelected: () => void;
+    isDeletingSelected: boolean;
+  };
 }
 
 function RidesListLoadingState() {
@@ -114,10 +133,14 @@ function RidesListResults({
   viewModel,
   actions,
   pagination,
+  selection,
+  isMobile,
 }: {
   viewModel: RidesListPresentation;
   actions: RidesListActions;
   pagination: RidesListPaginationProps;
+  selection: RidesListViewProps["selection"];
+  isMobile: boolean;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldRenderLoadMore = Boolean(
@@ -150,6 +173,14 @@ function RidesListResults({
                 onDelete={actions.onDelete}
                 onChangePaymentStatus={actions.onChangePaymentStatus}
                 isPaymentUpdating={actions.isPaymentUpdating(ride.id)}
+                selection={{
+                  isSelectionMode: selection.isSelectionMode,
+                  isSelected: selection.isRideSelected(ride.id),
+                  onEnterSelectionMode: selection.onEnterSelectionMode,
+                  onToggleSelection: selection.onToggleRideSelection,
+                  selectionDisabled: selection.isDeletingSelected,
+                  canEnterSelectionWithLongPress: isMobile,
+                }}
               />
             ))}
           </div>
@@ -178,7 +209,10 @@ export function RidesListView({
   viewModel,
   actions,
   pagination,
+  selection,
 }: RidesListViewProps) {
+  const isMobile = useIsMobile();
+
   const renderContent = () => {
     switch (viewModel.contentState) {
       case "loading":
@@ -207,6 +241,8 @@ export function RidesListView({
             viewModel={viewModel}
             actions={actions}
             pagination={pagination}
+            selection={selection}
+            isMobile={isMobile}
           />
         );
       default:
@@ -215,22 +251,99 @@ export function RidesListView({
   };
 
   return (
-    <section className="rounded-[2rem] border border-border-subtle bg-background/80 p-4 shadow-sm sm:p-5">
-      <div className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="text-lg font-display font-bold tracking-tight text-text-primary">
-          Lista de corridas
-        </h2>
-
-        <div className="text-sm text-text-secondary">
-          <span className="font-semibold text-text-primary">
-            {viewModel.resultsLabel}
-          </span>
-          {" / "}
-          Ordenadas por data
+    <section
+      className="rounded-[2rem] border border-border-subtle bg-background/80 p-4 shadow-sm sm:p-5"
+      style={{
+        paddingBottom:
+          selection.isSelectionMode && isMobile
+            ? `calc(${DASHBOARD_MOBILE_NAV_OFFSET} + 5.5rem)`
+            : undefined,
+      }}
+    >
+      {selection.isSelectionMode ? (
+        <div className="mb-5">
+          <SelectionContextBar
+            selectedCount={selection.selectedCount}
+            totalVisible={selection.totalVisible}
+            onCancel={selection.onExitSelectionMode}
+            onToggleSelectAll={() =>
+              selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+            }
+            isAllVisibleSelected={selection.isAllVisibleSelected}
+            onDeleteSelected={selection.onDeleteSelected}
+            isDeleting={selection.isDeletingSelected}
+            hideInlineActions={isMobile}
+          />
         </div>
-      </div>
+      ) : (
+        <div className="mb-5 flex flex-col gap-2 border-b border-border-subtle/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <h2 className="text-lg font-display font-bold tracking-tight text-text-primary">
+            Lista de corridas
+          </h2>
+
+          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+            <span>
+              <span className="font-semibold text-text-primary">
+                {viewModel.resultsLabel}
+              </span>
+              {" / "}
+              Ordenadas por data
+            </span>
+            {viewModel.contentState === "results" ? (
+              <button
+                type="button"
+                onClick={() => selection.onEnterSelectionMode()}
+                className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+              >
+                Selecionar
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {selection.isSelectionMode && !isMobile && viewModel.contentState === "results" ? (
+        <div className="mb-5 rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
+          <label className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <SelectionCheckbox
+              checked={
+                selection.isAllVisibleSelected
+                  ? true
+                  : selection.isSelectionIndeterminate
+                    ? "indeterminate"
+                    : false
+              }
+              onToggle={() =>
+                selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+              }
+              ariaLabel="Selecionar todas as corridas visiveis"
+              disabled={selection.isDeletingSelected}
+            />
+            <span>
+              {selection.isAllVisibleSelected
+                ? "Desmarcar todas"
+                : "Selecionar todas"}
+            </span>
+          </label>
+        </div>
+      ) : null}
 
       {renderContent()}
+
+      {selection.isSelectionMode && isMobile ? (
+        <SelectionActionBarMobile
+          className="fixed inset-x-4 z-50 rounded-[1.5rem] border border-border-subtle bg-background/98 p-3 shadow-[0_-14px_34px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+          style={{ bottom: DASHBOARD_MOBILE_NAV_OFFSET }}
+          isAllVisibleSelected={selection.isAllVisibleSelected}
+          hasSelection={selection.selectedCount > 0}
+          isDeleting={selection.isDeletingSelected}
+          onToggleSelectAll={() =>
+            selection.onToggleSelectAllVisible(!selection.isAllVisibleSelected)
+          }
+          onDeleteSelected={selection.onDeleteSelected}
+          onCancel={selection.onExitSelectionMode}
+        />
+      ) : null}
     </section>
   );
 }

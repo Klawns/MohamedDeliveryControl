@@ -4,13 +4,14 @@ import React, { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ClientExportController } from "@/app/dashboard/clients/_hooks/use-client-export";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { SelectionActionBarMobile } from "@/components/ride-selection/selection-action-bar-mobile";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRideSelection } from "@/hooks/use-ride-selection";
 import { type ClientBalance, type Client, type RideViewModel } from "@/types/rides";
 import { ClientFinancePanel } from "@/components/client-details-drawer/client-finance-panel";
 import { ClientDetailsHeader } from "@/components/client-details-drawer/client-details-header";
 import { ClientRidesHistory } from "@/components/client-details-drawer/client-rides-history";
-import { useClientRideSelection } from "@/components/client-details-drawer/use-client-ride-selection";
 
 interface ClientDetailsDrawerProps {
   client: Client | null;
@@ -62,13 +63,13 @@ export function ClientDetailsDrawer({
   const drawerPanelRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = React.useState(false);
-  const selection = useClientRideSelection({
-    rides,
-    clientId: client?.id ?? null,
+  const selection = useRideSelection({
+    items: rides,
+    scopeKey: client?.id ?? null,
   });
   const selectedRides = React.useMemo(
-    () => rides.filter((ride) => selection.selectedRideIds.has(ride.id)),
-    [rides, selection.selectedRideIds],
+    () => rides.filter((ride) => selection.selectedIds.has(ride.id)),
+    [rides, selection.selectedIds],
   );
 
   useBodyScrollLock(!!client);
@@ -177,13 +178,13 @@ export function ClientDetailsDrawer({
                     isPaymentUpdating={isPaymentUpdating}
                     isSelectionMode={selection.isSelectionMode}
                     selectedCount={selection.selectedCount}
-                    totalLoaded={selection.totalLoaded}
+                    totalLoaded={selection.totalVisible}
                     isRideSelected={selection.isSelected}
                     onEnterSelectionMode={selection.enterSelectionMode}
                     onExitSelectionMode={selection.exitSelectionMode}
-                    onToggleRideSelection={selection.toggleRide}
-                    onToggleSelectAllLoaded={selection.setAllLoadedSelected}
-                    isAllLoadedSelected={selection.isAllLoadedSelected}
+                    onToggleRideSelection={selection.toggleItem}
+                    onToggleSelectAllLoaded={selection.selectAllVisible}
+                    isAllLoadedSelected={selection.isAllVisibleSelected}
                     isSelectionIndeterminate={selection.isIndeterminate}
                     onDeleteSelected={() => setIsBulkDeleteConfirmOpen(true)}
                     isDeletingSelected={isDeletingRides}
@@ -192,36 +193,17 @@ export function ClientDetailsDrawer({
               </div>
 
               {isMobile && selection.isSelectionMode ? (
-                <div className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        selection.setAllLoadedSelected(!selection.isAllLoadedSelected)
-                      }
-                      className="inline-flex min-w-0 flex-1 items-center justify-center rounded-2xl border border-border-subtle bg-secondary/10 px-3 py-3 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
-                    >
-                      {selection.isAllLoadedSelected
-                        ? "Desmarcar"
-                        : "Selecionar todas"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsBulkDeleteConfirmOpen(true)}
-                      disabled={!selection.hasSelection || isDeletingRides}
-                      className="inline-flex min-w-0 flex-1 items-center justify-center rounded-2xl border border-blue-500/15 bg-blue-500 px-3 py-3 text-xs font-semibold text-white transition-all hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isDeletingRides ? "Excluindo..." : "Excluir"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={selection.exitSelectionMode}
-                      className="inline-flex items-center justify-center rounded-2xl border border-border-subtle bg-secondary/10 px-3 py-3 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
+                <SelectionActionBarMobile
+                  className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md"
+                  isAllVisibleSelected={selection.isAllVisibleSelected}
+                  hasSelection={selection.hasSelection}
+                  isDeleting={isDeletingRides}
+                  onToggleSelectAll={() =>
+                    selection.selectAllVisible(!selection.isAllVisibleSelected)
+                  }
+                  onDeleteSelected={() => setIsBulkDeleteConfirmOpen(true)}
+                  onCancel={selection.exitSelectionMode}
+                />
               ) : null}
             </motion.div>
           </div>

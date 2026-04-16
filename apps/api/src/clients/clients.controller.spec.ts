@@ -7,6 +7,7 @@ describe('ClientsController', () => {
   let controller: ClientsController;
   const clientsServiceMock = {
     findDirectory: jest.fn(),
+    bulkDelete: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -27,6 +28,7 @@ describe('ClientsController', () => {
 
     controller = module.get<ClientsController>(ClientsController);
     clientsServiceMock.findDirectory.mockReset();
+    clientsServiceMock.bulkDelete.mockReset();
   });
 
   it('should be defined', () => {
@@ -60,6 +62,26 @@ describe('ClientsController', () => {
         hasMore: false,
         search: 'Ali',
       },
+    });
+  });
+
+  it('should forward bulk deletion requests to the service', async () => {
+    clientsServiceMock.bulkDelete.mockResolvedValue({
+      requestedCount: 2,
+      deletedCount: 2,
+    });
+
+    const result = await controller.bulkDelete(
+      { user: { id: 'user-1' } } as any,
+      { ids: ['client-1', 'client-2'] },
+    );
+
+    expect(clientsServiceMock.bulkDelete).toHaveBeenCalledWith('user-1', {
+      ids: ['client-1', 'client-2'],
+    });
+    expect(result).toEqual({
+      requestedCount: 2,
+      deletedCount: 2,
     });
   });
 });
