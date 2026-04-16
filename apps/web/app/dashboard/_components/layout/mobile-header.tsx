@@ -66,7 +66,7 @@ export function MobileHeader({
     }
 
     return (
-        <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between border-b border-border bg-card/40 p-6 backdrop-blur-md lg:hidden">
+        <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card/40 p-6 backdrop-blur-md lg:hidden">
             <Link
                 href="/dashboard"
                 aria-label="Ir para o Dashboard"
@@ -82,16 +82,14 @@ export function MobileHeader({
                 </div>
                 <span className="font-bold tracking-tight uppercase italic text-foreground">ROTTA</span>
             </Link>
-            <div className="flex items-center gap-2">
-                <button
-                    onClick={onOpenNavigationMenu}
-                    aria-expanded={isNavigationMenuOpen}
-                    aria-label={isNavigationMenuOpen ? "Fechar menu" : "Abrir menu"}
-                    className="p-2 bg-accent/50 rounded-lg text-muted-foreground active:scale-95 transition-transform"
-                >
-                    <Menu size={20} />
-                </button>
-            </div>
+            <button
+                onClick={onOpenNavigationMenu}
+                aria-expanded={isNavigationMenuOpen}
+                aria-label={isNavigationMenuOpen ? "Fechar menu" : "Abrir menu"}
+                className="p-2 bg-accent/50 rounded-lg text-muted-foreground active:scale-95 transition-transform"
+            >
+                <Menu size={20} />
+            </button>
         </header>
     );
 }
