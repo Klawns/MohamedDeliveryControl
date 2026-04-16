@@ -20,6 +20,7 @@ import { RideAccountingService } from './services/ride-accounting.service';
 import { RidePhotoReferenceService } from './services/ride-photo-reference.service';
 import { RideStatusService } from './services/ride-status.service';
 import type {
+  BulkDeleteRidesDto,
   CreateRideDto,
   UpdateRideDto,
   UpdateRideStatusDto,
@@ -380,6 +381,79 @@ export class RidesService {
     this.logger.debug(
       `[RidesService] Delete timings para corrida ${id}: lookup=${timings.lookupMs}ms transaction=${timings.transactionMs}ms cleanup=${timings.cleanupMs}ms invalidate=${timings.invalidateMs}ms total=${Date.now() - startedAt}ms`,
     );
+  }
+
+  async bulkDelete(
+    userId: string,
+    data: BulkDeleteRidesDto,
+  ): Promise<{ requestedCount: number; deletedCount: number }> {
+    this.logger.log(
+      `[RidesService] Removendo ${data.ids.length} corridas em lote para o usuario ${userId}`,
+      'RidesService',
+    );
+    const photosToCleanup = new Set<string>();
+    let deletedCount = 0;
+
+    await (this.drizzle.db as TransactionRunner).transaction(async (tx) => {
+      const ridesToDelete = await this.ridesRepository.findManyByIds(
+        userId,
+        data.ids,
+        tx,
+      );
+
+      if (ridesToDelete.length === 0) {
+        throw new NotFoundException('Nenhuma corrida encontrada.');
+      }
+
+      const refundByClient = new Map<string, number>();
+
+      for (const ride of ridesToDelete) {
+        const paidWithBalance = Number(ride.paidWithBalance ?? 0);
+
+        if (this.ridePhotoReferenceService.isManagedPhotoKey(ride.photo)) {
+          photosToCleanup.add(ride.photo);
+        }
+
+        if (paidWithBalance > 0) {
+          refundByClient.set(
+            ride.clientId,
+            (refundByClient.get(ride.clientId) ?? 0) + paidWithBalance,
+          );
+        }
+      }
+
+      for (const [clientId, amount] of refundByClient.entries()) {
+        await this.rideAccountingService.refundClientBalance(
+          userId,
+          clientId,
+          amount,
+          'bulk-delete',
+          tx,
+        );
+      }
+
+      const deletedRides = await this.ridesRepository.deleteManyByIds(
+        userId,
+        ridesToDelete.map((ride) => ride.id),
+        tx,
+      );
+      deletedCount = deletedRides.length;
+    });
+
+    await Promise.all(
+      Array.from(photosToCleanup).map((photo) =>
+        this.cleanupManagedRidePhoto(photo, {
+          action: 'delete-all',
+          userId,
+        }),
+      ),
+    );
+    await this.invalidateRideMutations(userId);
+
+    return {
+      requestedCount: data.ids.length,
+      deletedCount,
+    };
   }
 
   async deleteAll(userId: string): Promise<{ success: true }> {

@@ -3,6 +3,7 @@ import {
   CreateRideDTO,
   CursorMeta,
   FrequentClient,
+  BulkDeleteRidesResult,
   RideViewModel,
   RidesParams,
   UpdateRideDTO,
@@ -104,6 +105,10 @@ export const ridesService = {
 
   async deleteRide(id: string): Promise<void> {
     return apiClient.delete(`/rides/${id}`);
+  },
+
+  async deleteRides(ids: string[]): Promise<BulkDeleteRidesResult> {
+    return apiClient.post('/rides/bulk-delete', { ids });
   },
 
   async deleteAllRides(): Promise<void> {

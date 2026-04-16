@@ -78,6 +78,16 @@ export interface IRidesRepository {
     id: string,
     executor?: unknown,
   ): Promise<Ride | undefined>;
+  findManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: unknown,
+  ): Promise<Ride[]>;
+  deleteManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: unknown,
+  ): Promise<Ride[]>;
 
   findByClient(
     userId: string,

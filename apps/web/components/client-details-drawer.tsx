@@ -3,11 +3,14 @@
 import React, { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ClientExportController } from "@/app/dashboard/clients/_hooks/use-client-export";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { type ClientBalance, type Client, type RideViewModel } from "@/types/rides";
 import { ClientFinancePanel } from "@/components/client-details-drawer/client-finance-panel";
 import { ClientDetailsHeader } from "@/components/client-details-drawer/client-details-header";
 import { ClientRidesHistory } from "@/components/client-details-drawer/client-rides-history";
+import { useClientRideSelection } from "@/components/client-details-drawer/use-client-ride-selection";
 
 interface ClientDetailsDrawerProps {
   client: Client | null;
@@ -24,12 +27,14 @@ interface ClientDetailsDrawerProps {
   onAddPayment: () => void;
   onEditRide: (ride: RideViewModel) => void;
   onDeleteRide: (ride: RideViewModel) => void;
+  onDeleteRides: (rides: RideViewModel[]) => Promise<{ success: boolean }>;
   onChangePaymentStatus: (
     ride: RideViewModel,
     status: "PAID" | "PENDING",
   ) => void | Promise<unknown>;
   isPaymentUpdating: (rideId: string) => boolean;
   fetchNextPage: () => void;
+  isDeletingRides: boolean;
 }
 
 export function ClientDetailsDrawer({
@@ -47,71 +52,191 @@ export function ClientDetailsDrawer({
   onAddPayment,
   onEditRide,
   onDeleteRide,
+  onDeleteRides,
   onChangePaymentStatus,
   isPaymentUpdating,
   fetchNextPage,
+  isDeletingRides,
 }: ClientDetailsDrawerProps) {
   const drawerScrollContainerRef = useRef<HTMLDivElement>(null);
   const drawerPanelRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = React.useState(false);
+  const selection = useClientRideSelection({
+    rides,
+    clientId: client?.id ?? null,
+  });
+  const selectedRides = React.useMemo(
+    () => rides.filter((ride) => selection.selectedRideIds.has(ride.id)),
+    [rides, selection.selectedRideIds],
+  );
 
   useBodyScrollLock(!!client);
+
+  React.useEffect(() => {
+    if (!client) {
+      setIsBulkDeleteConfirmOpen(false);
+    }
+  }, [client]);
+
+  React.useEffect(() => {
+    if (!selection.isSelectionMode) {
+      setIsBulkDeleteConfirmOpen(false);
+    }
+  }, [selection.isSelectionMode]);
+
+  React.useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        selection.exitSelectionMode();
+      }
+    }
+
+    if (!selection.isSelectionMode) {
+      return;
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selection.exitSelectionMode, selection.isSelectionMode]);
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedRides.length === 0) {
+      setIsBulkDeleteConfirmOpen(false);
+      return;
+    }
+
+    const result = await onDeleteRides(selectedRides);
+
+    if (result.success) {
+      selection.exitSelectionMode();
+      setIsBulkDeleteConfirmOpen(false);
+    }
+  };
+
+  const bulkDeleteDescription =
+    selection.selectedCount === 1
+      ? "Deseja realmente excluir a corrida selecionada? Esta acao e irreversivel."
+      : `Deseja realmente excluir as ${selection.selectedCount} corridas selecionadas? Esta acao e irreversivel.`;
 
   return (
     <AnimatePresence mode="wait">
       {client && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
+        <>
+          <div className="fixed inset-0 z-[100] flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
 
-          <motion.div
-            ref={drawerPanelRef}
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="relative z-10 flex h-dvh w-full max-w-xl flex-col overflow-hidden border-l border-border bg-drawer-background shadow-2xl"
-          >
-            <div
-              ref={drawerScrollContainerRef}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide"
-              data-qa="client-drawer-rides"
+            <motion.div
+              ref={drawerPanelRef}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="relative z-10 flex h-dvh w-full max-w-xl flex-col overflow-hidden border-l border-border bg-drawer-background shadow-2xl"
             >
-              <div className="flex min-h-full flex-col gap-6 p-6 lg:gap-8 lg:p-8">
-                <div className="space-y-6 lg:space-y-8">
-                  <ClientDetailsHeader client={client} onClose={onClose} />
+              <div
+                ref={drawerScrollContainerRef}
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide"
+                data-qa="client-drawer-rides"
+              >
+                <div
+                  className={`flex min-h-full flex-col gap-6 p-6 lg:gap-8 lg:p-8 ${
+                    isMobile && selection.isSelectionMode ? "pb-28" : ""
+                  }`}
+                >
+                  <div className="space-y-6 lg:space-y-8">
+                    <ClientDetailsHeader client={client} onClose={onClose} />
 
-                  <ClientFinancePanel
-                    balance={balance}
-                    isSettling={isSettling}
-                    onNewRide={onNewRide}
-                    onAddPayment={onAddPayment}
-                    onCloseDebt={onCloseDebt}
-                    clientExport={clientExport}
-                    drawerPortalContainer={drawerPanelRef.current}
+                    <ClientFinancePanel
+                      balance={balance}
+                      isSettling={isSettling}
+                      onNewRide={onNewRide}
+                      onAddPayment={onAddPayment}
+                      onCloseDebt={onCloseDebt}
+                      clientExport={clientExport}
+                      drawerPortalContainer={drawerPanelRef.current}
+                    />
+                  </div>
+
+                  <ClientRidesHistory
+                    rides={rides}
+                    isLoading={isLoading}
+                    isFetchingNextPage={isFetchingNextPage}
+                    hasNextPage={hasNextPage}
+                    fetchNextPage={fetchNextPage}
+                    containerRef={drawerScrollContainerRef}
+                    onEditRide={onEditRide}
+                    onDeleteRide={onDeleteRide}
+                    onChangePaymentStatus={onChangePaymentStatus}
+                    isPaymentUpdating={isPaymentUpdating}
+                    isSelectionMode={selection.isSelectionMode}
+                    selectedCount={selection.selectedCount}
+                    totalLoaded={selection.totalLoaded}
+                    isRideSelected={selection.isSelected}
+                    onEnterSelectionMode={selection.enterSelectionMode}
+                    onExitSelectionMode={selection.exitSelectionMode}
+                    onToggleRideSelection={selection.toggleRide}
+                    onToggleSelectAllLoaded={selection.setAllLoadedSelected}
+                    isAllLoadedSelected={selection.isAllLoadedSelected}
+                    isSelectionIndeterminate={selection.isIndeterminate}
+                    onDeleteSelected={() => setIsBulkDeleteConfirmOpen(true)}
+                    isDeletingSelected={isDeletingRides}
                   />
                 </div>
-
-                <ClientRidesHistory
-                  rides={rides}
-                  isLoading={isLoading}
-                  isFetchingNextPage={isFetchingNextPage}
-                  hasNextPage={hasNextPage}
-                  fetchNextPage={fetchNextPage}
-                  containerRef={drawerScrollContainerRef}
-                  onEditRide={onEditRide}
-                  onDeleteRide={onDeleteRide}
-                  onChangePaymentStatus={onChangePaymentStatus}
-                  isPaymentUpdating={isPaymentUpdating}
-                />
               </div>
-            </div>
-          </motion.div>
-        </div>
+
+              {isMobile && selection.isSelectionMode ? (
+                <div className="absolute inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-4 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        selection.setAllLoadedSelected(!selection.isAllLoadedSelected)
+                      }
+                      className="inline-flex min-w-0 flex-1 items-center justify-center rounded-2xl border border-border-subtle bg-secondary/10 px-3 py-3 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+                    >
+                      {selection.isAllLoadedSelected
+                        ? "Desmarcar"
+                        : "Selecionar todas"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                      disabled={!selection.hasSelection || isDeletingRides}
+                      className="inline-flex min-w-0 flex-1 items-center justify-center rounded-2xl border border-blue-500/15 bg-blue-500 px-3 py-3 text-xs font-semibold text-white transition-all hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isDeletingRides ? "Excluindo..." : "Excluir"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={selection.exitSelectionMode}
+                      className="inline-flex items-center justify-center rounded-2xl border border-border-subtle bg-secondary/10 px-3 py-3 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </motion.div>
+          </div>
+
+          <ConfirmModal
+            isOpen={isBulkDeleteConfirmOpen}
+            onClose={() => setIsBulkDeleteConfirmOpen(false)}
+            onConfirm={handleConfirmBulkDelete}
+            title="Excluir corridas selecionadas"
+            description={bulkDeleteDescription}
+            confirmText="Excluir selecionadas"
+            variant="danger"
+            isLoading={isDeletingRides}
+          />
+        </>
       )}
     </AnimatePresence>
   );

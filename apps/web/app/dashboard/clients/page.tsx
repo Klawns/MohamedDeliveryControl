@@ -44,8 +44,8 @@ export default function ClientsPage() {
     });
 
     const {
-        isSettling, isDeleting, isDeletingRide,
-        togglePin, closeDebt, deleteClient, deleteRide
+        isSettling, isDeleting, isDeletingRide, isDeletingRides,
+        togglePin, closeDebt, deleteClient, deleteRide, deleteRides
     } = useClientActions();
 
     const handlePinClient = async (client: Client) => {
@@ -159,8 +159,10 @@ export default function ClientsPage() {
                 onAddPayment={() => state.setIsPaymentModalOpen(true)}
                 onEditRide={state.openEditRideModal}
                 onDeleteRide={state.setRideToDelete}
+                onDeleteRides={deleteRides}
                 onChangePaymentStatus={paymentStatus.setPaymentStatus}
                 isPaymentUpdating={paymentStatus.isUpdatingRide}
+                isDeletingRides={isDeletingRides}
             />
 
             <ClientModals 

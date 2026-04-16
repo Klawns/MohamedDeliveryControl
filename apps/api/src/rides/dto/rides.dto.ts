@@ -38,6 +38,16 @@ export const updateRideStatusSchema = z.object({
 
 export type UpdateRideStatusDto = z.infer<typeof updateRideStatusSchema>;
 
+export const bulkDeleteRidesSchema = z.object({
+  ids: z
+    .array(z.string().trim().min(1, { message: 'ID da corrida e obrigatorio' }))
+    .min(1, { message: 'Informe ao menos uma corrida para excluir' })
+    .max(500, { message: 'Voce pode excluir ate 500 corridas por vez' })
+    .transform((ids) => Array.from(new Set(ids))),
+});
+
+export type BulkDeleteRidesDto = z.infer<typeof bulkDeleteRidesSchema>;
+
 export const findAllRidesSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
   cursor: z.string().optional(),

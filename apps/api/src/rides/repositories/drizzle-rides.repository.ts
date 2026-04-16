@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Drizzle is consumed through a dialect-agnostic runtime boundary in this repository. */
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, inArray } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.provider';
 import type { DrizzleClient } from '../../database/database.provider';
 import {
@@ -141,6 +141,46 @@ export class DrizzleRidesRepository implements IRidesRepository {
       .returning();
 
     return result[0];
+  }
+
+  async findManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: any,
+  ): Promise<Ride[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.getExecutor(executor)
+      .select()
+      .from(this.schema.rides)
+      .where(
+        and(
+          eq(this.schema.rides.userId, userId),
+          inArray(this.schema.rides.id, ids),
+        ),
+      );
+  }
+
+  async deleteManyByIds(
+    userId: string,
+    ids: string[],
+    executor?: any,
+  ): Promise<Ride[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.getExecutor(executor)
+      .delete(this.schema.rides)
+      .where(
+        and(
+          eq(this.schema.rides.userId, userId),
+          inArray(this.schema.rides.id, ids),
+        ),
+      )
+      .returning();
   }
 
   async findByClient(

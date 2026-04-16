@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useDeleteRideMutation } from '@/hooks/mutations/use-delete-ride-mutation';
+import { useDeleteRidesMutation } from '@/hooks/mutations/use-delete-rides-mutation';
 import { isApiErrorStatus, parseApiError } from '@/lib/api-error';
 import { removeClientCaches, upsertClientCaches } from '@/lib/client-cache';
 import { clientKeys, financeKeys, rideKeys } from '@/lib/query-keys';
@@ -85,10 +86,25 @@ export function useClientActions() {
     },
   });
 
+  const deleteRidesMutation = useDeleteRidesMutation({
+    onSuccess: async (result) => {
+      const deletedLabel =
+        result.deletedCount === 1
+          ? '1 corrida excluida com sucesso.'
+          : `${result.deletedCount} corridas excluidas com sucesso.`;
+
+      toast.success(deletedLabel);
+    },
+    onError: async (error) => {
+      toast.error(parseApiError(error, 'Erro ao excluir corridas.'));
+    },
+  });
+
   return {
     isSettling: closeDebtMutation.isPending,
     isDeleting: deleteClientMutation.isPending,
     isDeletingRide: deleteRideMutation.isPending,
+    isDeletingRides: deleteRidesMutation.isPending,
     isTogglingPin: togglePinMutation.isPending,
     togglePin: async (client: Client) => {
       try {
@@ -128,6 +144,14 @@ export function useClientActions() {
         return true;
       } catch {
         return false;
+      }
+    },
+    deleteRides: async (rides: RideViewModel[]) => {
+      try {
+        const result = await deleteRidesMutation.mutateAsync(rides);
+        return { success: true as const, result };
+      } catch {
+        return { success: false as const };
       }
     },
   };

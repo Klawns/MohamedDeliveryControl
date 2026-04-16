@@ -63,6 +63,10 @@ function removeRide(rides: RideViewModel[], rideId: string) {
   return rides.filter((ride) => ride.id !== rideId);
 }
 
+function removeRideIds(rides: RideViewModel[], rideIds: Set<string>) {
+  return rides.filter((ride) => !rideIds.has(ride.id));
+}
+
 function removeRidesByClient(rides: RideViewModel[], clientId: string) {
   return rides.filter((ride) => getRideClientId(ride) !== clientId);
 }
@@ -259,6 +263,60 @@ export function removeRideCaches(queryClient: QueryClient, rideId: string) {
         })),
       };
     });
+  }
+}
+
+export function removeRideCachesByIds(
+  queryClient: QueryClient,
+  rideIds: string[],
+) {
+  const rideIdSet = new Set(rideIds.filter(Boolean));
+
+  if (rideIdSet.size === 0) {
+    return;
+  }
+
+  for (const rideId of rideIdSet) {
+    queryClient.removeQueries({
+      queryKey: rideKeys.detail(rideId),
+      exact: true,
+    });
+  }
+
+  const rideQueries = queryClient.getQueryCache().findAll({
+    queryKey: rideKeys.all,
+  });
+
+  for (const query of rideQueries) {
+    if (isInfiniteRideListQuery(query.queryKey)) {
+      queryClient.setQueryData(query.queryKey, (current: unknown) => {
+        if (!isRideInfiniteData(current)) {
+          return current;
+        }
+
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            data: removeRideIds(page.data, rideIdSet),
+          })),
+        };
+      });
+      continue;
+    }
+
+    if (query.queryKey[1] === 'list') {
+      queryClient.setQueryData(query.queryKey, (current: unknown) => {
+        if (!isRideListEnvelope(current)) {
+          return current;
+        }
+
+        return {
+          ...current,
+          data: removeRideIds(current.data, rideIdSet),
+        };
+      });
+    }
   }
 }
 

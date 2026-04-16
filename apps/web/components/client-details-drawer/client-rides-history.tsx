@@ -3,6 +3,8 @@
 import type { RefObject } from "react";
 import { ClientRideCard } from "@/components/client-details-drawer/client-ride-card";
 import { ClientRidesCardsContainer } from "@/components/ui/client-rides-cards-container";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   getClientRidesCountLabel,
   toClientRideCardItems,
@@ -24,6 +26,18 @@ interface ClientRidesHistoryProps {
     status: "PAID" | "PENDING",
   ) => void | Promise<unknown>;
   isPaymentUpdating: (rideId: string) => boolean;
+  isSelectionMode: boolean;
+  selectedCount: number;
+  totalLoaded: number;
+  isRideSelected: (rideId: string) => boolean;
+  onEnterSelectionMode: (rideId?: string) => void;
+  onExitSelectionMode: () => void;
+  onToggleRideSelection: (rideId: string) => void;
+  onToggleSelectAllLoaded: (isSelected: boolean) => void;
+  isAllLoadedSelected: boolean;
+  isSelectionIndeterminate: boolean;
+  onDeleteSelected: () => void;
+  isDeletingSelected: boolean;
 }
 
 function LoadingState() {
@@ -78,9 +92,29 @@ export function ClientRidesHistory({
   onDeleteRide,
   onChangePaymentStatus,
   isPaymentUpdating,
+  isSelectionMode,
+  selectedCount,
+  totalLoaded,
+  isRideSelected,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  onToggleRideSelection,
+  onToggleSelectAllLoaded,
+  isAllLoadedSelected,
+  isSelectionIndeterminate,
+  onDeleteSelected,
+  isDeletingSelected,
 }: ClientRidesHistoryProps) {
+  const isMobile = useIsMobile();
   const rideCardItems = toClientRideCardItems(rides);
   const rideCountLabel = getClientRidesCountLabel(rideCardItems.length);
+  const selectAllLabel = isAllLoadedSelected
+    ? "Desmarcar todas"
+    : "Selecionar todas";
+  const selectionCountLabel =
+    selectedCount === 1
+      ? "1 corrida selecionada"
+      : `${selectedCount} corridas selecionadas`;
 
   const ridesList = (
     <ClientRidesCardsContainer<ClientRideCardItem>
@@ -97,6 +131,12 @@ export function ClientRidesHistory({
             onDeleteRide={onDeleteRide}
             onChangePaymentStatus={onChangePaymentStatus}
             isPaymentUpdating={isPaymentUpdating}
+            isSelectionMode={isSelectionMode}
+            isSelected={isRideSelected(item.id)}
+            onEnterSelectionMode={onEnterSelectionMode}
+            onToggleSelection={onToggleRideSelection}
+            selectionDisabled={isDeletingSelected}
+            canEnterSelectionWithLongPress={isMobile}
           />
         );
       }}
@@ -105,26 +145,105 @@ export function ClientRidesHistory({
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-bold text-text-primary">
-            Historico de corridas
-          </h3>
-          <p className="mt-1 text-sm text-text-secondary">
-            {rideCardItems.length === 0 && !isLoading
-              ? "Nenhuma corrida registrada para este cliente."
-              : rideCountLabel}
-          </p>
+      {isSelectionMode ? (
+        <div className="sticky top-0 z-10 -mx-1 rounded-[1.5rem] border border-blue-500/20 bg-background/95 px-4 py-3 backdrop-blur-md">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-text-primary">
+                {selectionCountLabel}
+              </p>
+              <p className="text-xs text-text-secondary">
+                {selectedCount > 0
+                  ? `${selectedCount} de ${totalLoaded} carregadas`
+                  : `${totalLoaded} corridas carregadas`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onExitSelectionMode}
+                className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+              >
+                Cancelar
+              </button>
+              {!isMobile ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onToggleSelectAllLoaded(!isAllLoadedSelected)}
+                    className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+                  >
+                    {selectAllLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDeleteSelected}
+                    disabled={selectedCount === 0 || isDeletingSelected}
+                    className="inline-flex items-center rounded-xl border border-blue-500/15 bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isDeletingSelected ? "Excluindo..." : "Excluir"}
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
         </div>
-        {hasNextPage ? (
-          <span className="rounded-full border border-border-subtle bg-secondary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-text-secondary">
-            Mais registros ao rolar
-          </span>
-        ) : null}
-      </div>
+      ) : (
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-text-primary">
+              Historico de corridas
+            </h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              {rideCardItems.length === 0 && !isLoading
+                ? "Nenhuma corrida registrada para este cliente."
+                : rideCountLabel}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {hasNextPage ? (
+              <span className="rounded-full border border-border-subtle bg-secondary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-text-secondary">
+                Mais registros ao rolar
+              </span>
+            ) : null}
+            {rideCardItems.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => onEnterSelectionMode()}
+                className="inline-flex items-center rounded-xl border border-border-subtle bg-secondary/10 px-3 py-2 text-xs font-semibold text-text-secondary transition-all hover:bg-secondary/15 hover:text-text-primary"
+              >
+                Selecionar
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {isLoading && rideCardItems.length === 0 ? <LoadingState /> : null}
       {!isLoading && rideCardItems.length === 0 ? <EmptyState /> : null}
+      {isSelectionMode && !isMobile && rideCardItems.length > 0 ? (
+        <div className="rounded-[1.5rem] border border-border-subtle bg-card-background/40 p-4">
+          <label className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <Checkbox
+              checked={
+                isAllLoadedSelected
+                  ? true
+                  : isSelectionIndeterminate
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(checked) =>
+                onToggleSelectAllLoaded(checked === true)
+              }
+              aria-label="Selecionar todas as corridas carregadas"
+              disabled={isDeletingSelected}
+              className="size-5 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+            />
+            <span>{selectAllLabel}</span>
+          </label>
+        </div>
+      ) : null}
       {rideCardItems.length > 0 ? ridesList : null}
     </section>
   );

@@ -78,6 +78,8 @@ describe('RidesService', () => {
         .fn()
         .mockResolvedValue({ id: 'ride-123', value: 25.5 }),
       delete: jest.fn().mockResolvedValue({ id: 'ride-123' }),
+      findManyByIds: jest.fn().mockResolvedValue([]),
+      deleteManyByIds: jest.fn().mockResolvedValue([]),
       deleteAll: jest.fn().mockResolvedValue(undefined),
       getStats: jest
         .fn()
@@ -490,6 +492,73 @@ describe('RidesService', () => {
     expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
     expect(result).toEqual({ success: true });
+  });
+
+  it('should bulk delete only the rides found for the user and refund grouped balances', async () => {
+    repoMock.findManyByIds.mockResolvedValueOnce([
+      {
+        id: 'ride-1',
+        clientId: 'client-1',
+        userId: 'user-1',
+        paidWithBalance: 3,
+        photo:
+          'users/user-1/rides/123e4567-e89b-42d3-a456-426614174000.webp',
+      },
+      {
+        id: 'ride-2',
+        clientId: 'client-1',
+        userId: 'user-1',
+        paidWithBalance: 2,
+        photo: null,
+      },
+    ]);
+    repoMock.deleteManyByIds.mockResolvedValueOnce([
+      { id: 'ride-1' },
+      { id: 'ride-2' },
+    ]);
+
+    const result = await service.bulkDelete('user-1', {
+      ids: ['ride-1', 'ride-2', 'ride-missing'],
+    });
+
+    expect(repoMock.findManyByIds).toHaveBeenCalledWith(
+      'user-1',
+      ['ride-1', 'ride-2', 'ride-missing'],
+      'tx',
+    );
+    expect(rideAccountingMock.refundClientBalance).toHaveBeenCalledWith(
+      'user-1',
+      'client-1',
+      5,
+      'bulk-delete',
+      'tx',
+    );
+    expect(repoMock.deleteManyByIds).toHaveBeenCalledWith(
+      'user-1',
+      ['ride-1', 'ride-2'],
+      'tx',
+    );
+    expect(ridePhotoReferenceMock.deleteManagedPhoto).toHaveBeenCalledWith(
+      'users/user-1/rides/123e4567-e89b-42d3-a456-426614174000.webp',
+    );
+    expect(dashboardCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+    expect(profileCacheMock.invalidate).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({
+      requestedCount: 3,
+      deletedCount: 2,
+    });
+  });
+
+  it('should throw not found when bulk delete has no valid rides', async () => {
+    repoMock.findManyByIds.mockResolvedValueOnce([]);
+
+    await expect(
+      service.bulkDelete('user-1', {
+        ids: ['missing-1', 'missing-2'],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(repoMock.deleteManyByIds).not.toHaveBeenCalled();
   });
 
   it('should return cached frequent clients without reading from the repository', async () => {

@@ -1,4 +1,5 @@
 import {
+  bulkDeleteRidesSchema,
   createRideSchema,
   updateRideSchema,
 } from './rides.dto';
@@ -64,5 +65,19 @@ describe('rides dto photo contract', () => {
     });
 
     expect(parsed.photo).toBe(validPhotoKey);
+  });
+});
+
+describe('rides dto bulk delete contract', () => {
+  it('deduplicates and trims ride ids', () => {
+    const parsed = bulkDeleteRidesSchema.parse({
+      ids: [' ride-1 ', 'ride-2', 'ride-1'],
+    });
+
+    expect(parsed.ids).toEqual(['ride-1', 'ride-2']);
+  });
+
+  it('rejects empty payloads', () => {
+    expect(() => bulkDeleteRidesSchema.parse({ ids: [] })).toThrow();
   });
 });

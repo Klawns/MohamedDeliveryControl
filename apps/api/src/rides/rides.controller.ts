@@ -16,6 +16,7 @@ import { RidesService } from './rides.service';
 import { ActiveSubscriptionGuard } from '../auth/guards/active-subscription.guard';
 import { ZodBody, ZodQuery } from '../common/decorators/zod.decorator';
 import {
+  bulkDeleteRidesSchema,
   createRideSchema,
   updateRideSchema,
   updateRideStatusSchema,
@@ -23,6 +24,7 @@ import {
   getStatsSchema,
 } from './dto/rides.dto';
 import type {
+  BulkDeleteRidesDto,
   CreateRideDto,
   UpdateRideDto,
   UpdateRideStatusDto,
@@ -71,6 +73,14 @@ export class RidesController {
   ) {
     const result = await this.ridesService.create(req.user.id, body);
     return this.rideResponsePresenter.present(result);
+  }
+
+  @Post('bulk-delete')
+  async bulkDelete(
+    @Request() req: RequestWithUser,
+    @ZodBody(bulkDeleteRidesSchema) body: BulkDeleteRidesDto,
+  ) {
+    return this.ridesService.bulkDelete(req.user.id, body);
   }
 
   @Patch(':id/status')

@@ -114,6 +114,11 @@ export interface CreateRideDTO {
 
 export type UpdateRideDTO = Partial<CreateRideDTO>;
 
+export interface BulkDeleteRidesResult {
+    requestedCount: number;
+    deletedCount: number;
+}
+
 // ===========================
 // Filters & Pagination
 // ===========================
