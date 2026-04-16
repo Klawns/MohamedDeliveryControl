@@ -40,6 +40,23 @@ export class DrizzleClientsRepository implements IClientsRepository {
     );
   }
 
+  private normalizeRawRows<TResult>(payload: unknown): TResult[] {
+    if (Array.isArray(payload)) {
+      return payload as TResult[];
+    }
+
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'rows' in payload &&
+      Array.isArray((payload as { rows?: unknown[] }).rows)
+    ) {
+      return (payload as { rows: TResult[] }).rows;
+    }
+
+    return [];
+  }
+
   async findAll(
     userId: string,
     limit: number = 20,
@@ -218,13 +235,14 @@ export class DrizzleClientsRepository implements IClientsRepository {
     id: string,
     executor?: any,
   ): Promise<Client | undefined> {
-    const results = (await this.getExecutor(executor).execute(sql`
+    const rawResult = await this.getExecutor(executor).execute(sql`
       select *
       from ${this.schema.clients}
       where ${this.schema.clients.id} = ${id}
         and ${this.schema.clients.userId} = ${userId}
       for update
-    `)) as Client[];
+    `);
+    const results = this.normalizeRawRows<Client>(rawResult);
 
     return results[0];
   }
