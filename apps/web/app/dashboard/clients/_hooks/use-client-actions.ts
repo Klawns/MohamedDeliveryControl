@@ -2,22 +2,24 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { parseApiError } from '@/lib/api-error';
+import { useDeleteRideMutation } from '@/hooks/mutations/use-delete-ride-mutation';
+import { isApiErrorStatus, parseApiError } from '@/lib/api-error';
 import { removeClientCaches, upsertClientCaches } from '@/lib/client-cache';
 import { clientKeys, financeKeys, rideKeys } from '@/lib/query-keys';
 import {
   invalidateRideCachesForClient,
-  removeRideCaches,
   removeRideCachesByClient,
 } from '@/lib/ride-cache';
 import { formatCurrency } from '@/lib/utils';
 import { clientsService } from '@/services/clients-service';
-import { ridesService } from '@/services/rides-service';
 import { type Client, type RideViewModel } from '@/types/rides';
 
-function getRideClientId(ride: RideViewModel) {
-  return ride.clientId || '';
-}
+const STALE_CLIENT_MESSAGE =
+  'Os dados deste cliente ficaram desatualizados. Recarregamos a tela para sincronizar.';
+
+type ClientActionResult =
+  | { success: true }
+  | { success: false; reason: 'missing-client' | 'error' };
 
 export function useClientActions() {
   const queryClient = useQueryClient();
@@ -53,9 +55,6 @@ export function useClientActions() {
           : `Divida fechada. ${result.settledRides} corridas quitadas.`,
       );
     },
-    onError: (error) => {
-      toast.error(parseApiError(error, 'Erro ao fechar divida.'));
-    },
   });
 
   const deleteClientMutation = useMutation({
@@ -64,7 +63,7 @@ export function useClientActions() {
       removeClientCaches(queryClient, clientId);
       removeRideCachesByClient(queryClient, clientId);
 
-      await Promise.all([
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: clientKeys.directories() }),
         queryClient.invalidateQueries({ queryKey: [...rideKeys.all, 'stats'] }),
         queryClient.invalidateQueries({ queryKey: financeKeys.all }),
@@ -77,37 +76,11 @@ export function useClientActions() {
     },
   });
 
-  const deleteRideMutation = useMutation({
-    mutationFn: (ride: RideViewModel) => ridesService.deleteRide(ride.id),
-    onSuccess: async (_, ride) => {
-      removeRideCaches(queryClient, ride.id);
-
-      const clientId = getRideClientId(ride);
-      const tasks = [
-        queryClient.invalidateQueries({ queryKey: rideKeys.frequentClients() }),
-        queryClient.invalidateQueries({ queryKey: financeKeys.all }),
-      ];
-
-      if (clientId) {
-        tasks.push(
-          queryClient.invalidateQueries({
-            queryKey: clientKeys.detail(clientId),
-            exact: true,
-          }),
-        );
-        tasks.push(
-          queryClient.invalidateQueries({
-            queryKey: clientKeys.balance(clientId),
-            exact: true,
-          }),
-        );
-      }
-
-      await Promise.all(tasks);
-
+  const deleteRideMutation = useDeleteRideMutation({
+    onSuccess: async () => {
       toast.success('Corrida excluida com sucesso.');
     },
-    onError: (error) => {
+    onError: async (error) => {
       toast.error(parseApiError(error, 'Erro ao excluir corrida.'));
     },
   });
@@ -125,12 +98,20 @@ export function useClientActions() {
         return false;
       }
     },
-    closeDebt: async (clientId: string) => {
+    closeDebt: async (clientId: string): Promise<ClientActionResult> => {
       try {
         await closeDebtMutation.mutateAsync(clientId);
-        return true;
-      } catch {
-        return false;
+        return { success: true };
+      } catch (error) {
+        if (isApiErrorStatus(error, 404)) {
+          removeClientCaches(queryClient, clientId);
+          removeRideCachesByClient(queryClient, clientId);
+          toast.error(STALE_CLIENT_MESSAGE);
+          return { success: false, reason: 'missing-client' };
+        }
+
+        toast.error(parseApiError(error, 'Erro ao fechar divida.'));
+        return { success: false, reason: 'error' };
       }
     },
     deleteClient: async (clientId: string) => {

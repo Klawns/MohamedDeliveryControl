@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Bike, ChevronRight, DollarSign, Loader2 } from 'lucide-react';
+import { Banknote, Bike, DollarSign, Loader2 } from 'lucide-react';
 import type { ClientExportController } from '@/app/dashboard/clients/_hooks/use-client-export';
 import { ClientExportActions } from '@/components/client-details-drawer/client-export-actions';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -79,11 +79,15 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60',
         variantClasses[variant],
       )}
     >
-      {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}
+      {isLoading ? (
+        <Loader2 className="size-4 shrink-0 animate-spin" />
+      ) : (
+        <Icon className="size-4 shrink-0" />
+      )}
       <span>{label}</span>
     </button>
   );
@@ -116,11 +120,6 @@ export function ClientFinancePanel({
             <p className="mt-2 text-3xl font-black tracking-tight text-destructive">
               {remainingBalance}
             </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {hasOpenDebt
-                ? 'Ha valores pendentes em aberto para este cliente.'
-                : 'Nenhuma divida em aberto no momento.'}
-            </p>
           </div>
         </div>
 
@@ -131,41 +130,45 @@ export function ClientFinancePanel({
           <SummaryMetric label="Corridas pendentes" value={pendingRides} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <ActionButton
-            icon={Bike}
-            label="Nova corrida"
-            onClick={onNewRide}
-            variant="primary"
-          />
-          <ActionButton
-            icon={DollarSign}
-            label="Registrar pagamento"
-            onClick={onAddPayment}
-            variant="secondary"
-          />
-        </div>
-
         <div className="space-y-3 border-t border-border-subtle pt-5">
-
-          {hasOpenDebt && (
-            <div className="space-y-2 rounded-[1.75rem] border border-border-subtle bg-card-background/55 p-4">
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-secondary">
-                  Financeiro
-                </p>
-                <p className="text-sm text-text-secondary">
-                  Existe saldo devedor em aberto. Voce pode encerrar essa pendencia por aqui.
-                </p>
+          {hasOpenDebt ? (
+            <div className="space-y-3 rounded-[1.75rem] border border-border-subtle bg-card-background/55 p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <ActionButton
+                  icon={Banknote}
+                  label={isSettling ? 'Quitando...' : 'Quitar divida'}
+                  onClick={onCloseDebt}
+                  disabled={isSettling}
+                  variant="ghost"
+                  isLoading={isSettling}
+                />
+                <ActionButton
+                  icon={DollarSign}
+                  label="Registrar pagamento"
+                  onClick={onAddPayment}
+                  variant="secondary"
+                />
               </div>
-
               <ActionButton
-                icon={ChevronRight}
-                label={isSettling ? 'Quitando...' : 'Quitar divida'}
-                onClick={onCloseDebt}
-                disabled={isSettling}
-                variant="ghost"
-                isLoading={isSettling}
+                icon={Bike}
+                label="Nova corrida"
+                onClick={onNewRide}
+                variant="primary"
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <ActionButton
+                icon={Bike}
+                label="Nova corrida"
+                onClick={onNewRide}
+                variant="primary"
+              />
+              <ActionButton
+                icon={DollarSign}
+                label="Registrar pagamento"
+                onClick={onAddPayment}
+                variant="secondary"
               />
             </div>
           )}

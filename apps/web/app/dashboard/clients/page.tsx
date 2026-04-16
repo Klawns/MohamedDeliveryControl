@@ -1,6 +1,9 @@
 "use client";
 import { ClientDetailsDrawer } from "@/components/client-details-drawer";
 import { useRidePaymentStatus } from "@/hooks/use-ride-payment-status";
+import { toast } from "sonner";
+import { isApiErrorStatus, parseApiError } from "@/lib/api-error";
+import { clientsService } from "@/services/clients-service";
 
 // Services & Types
 import { Client } from "@/types/rides";
@@ -63,10 +66,33 @@ export default function ClientsPage() {
 
     const onConfirmCloseDebt = async () => {
         if (!state.selectedClient) return;
-        const success = await closeDebt(state.selectedClient.id);
-        if (success) {
+
+        const clientId = state.selectedClient.id;
+
+        try {
+            await clientsService.getClient(clientId);
+        } catch (error) {
+            if (isApiErrorStatus(error, 404)) {
+                state.handleMissingSelectedClient(clientId);
+                void fetchClients();
+                toast.error("Os dados deste cliente ficaram desatualizados. Recarregamos a tela para sincronizar.");
+                return;
+            }
+
+            toast.error(parseApiError(error, "Erro ao validar os dados do cliente."));
+            return;
+        }
+
+        const result = await closeDebt(clientId);
+        if (result.success) {
             refreshDetails();
             state.setIsCloseDebtConfirmOpen(false);
+            return;
+        }
+
+        if (result.reason === "missing-client") {
+            state.handleMissingSelectedClient(clientId);
+            void fetchClients();
         }
     };
 

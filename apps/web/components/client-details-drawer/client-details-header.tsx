@@ -19,21 +19,16 @@ export function ClientDetailsHeader({
           <User size={22} />
         </div>
         <div className="min-w-0 space-y-3">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="truncate text-2xl font-bold tracking-tight text-text-primary lg:text-3xl">
-                {client.name}
-              </h2>
-              {client.isPinned && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-icon-warning/20 bg-icon-warning/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-icon-warning">
-                  <Star size={12} className="fill-current" />
-                  Fixado
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-text-secondary">
-              Resumo financeiro e corridas recentes do cliente.
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-2xl font-bold tracking-tight text-text-primary lg:text-3xl">
+              {client.name}
+            </h2>
+            {client.isPinned && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-icon-warning/20 bg-icon-warning/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-icon-warning">
+                <Star size={12} className="fill-current" />
+                Fixado
+              </span>
+            )}
           </div>
         </div>
       </div>

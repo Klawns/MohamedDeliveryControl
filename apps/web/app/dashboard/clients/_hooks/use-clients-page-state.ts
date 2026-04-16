@@ -2,8 +2,11 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isApiErrorStatus } from '@/lib/api-error';
+import { removeClientCaches } from '@/lib/client-cache';
 import { clientKeys } from '@/lib/query-keys';
+import { removeRideCachesByClient } from '@/lib/ride-cache';
 import { clientsService } from '@/services/clients-service';
 import { type Client, type RideViewModel } from '@/types/rides';
 
@@ -35,7 +38,7 @@ export function useClientsPageState(clients: Client[] = []) {
     [clients, selectedClientIdFromUrl],
   );
 
-  const { data: selectedClient = null } = useQuery({
+  const { data: selectedClient = null, error: selectedClientError } = useQuery({
     queryKey: selectedClientIdFromUrl
       ? clientKeys.detail(selectedClientIdFromUrl)
       : [...clientKeys.all, 'detail', 'empty'],
@@ -43,6 +46,7 @@ export function useClientsPageState(clients: Client[] = []) {
     enabled: !!selectedClientIdFromUrl,
     initialData: selectedClientInitialData ?? undefined,
     staleTime: 60000,
+    retry: false,
   });
 
   const replaceSelectedClientInUrl = (clientId?: string) => {
@@ -59,6 +63,35 @@ export function useClientsPageState(clients: Client[] = []) {
       scroll: false,
     });
   };
+
+  const handleMissingSelectedClient = useCallback(
+    (clientId?: string) => {
+      const resolvedClientId =
+        clientId || selectedClientIdFromUrl || selectedClient?.id || modalClient?.id;
+
+      if (resolvedClientId) {
+        removeClientCaches(queryClient, resolvedClientId);
+        removeRideCachesByClient(queryClient, resolvedClientId);
+      }
+
+      setModalClient(null);
+      setIsRideModalOpen(false);
+      setIsPaymentModalOpen(false);
+      setIsCloseDebtConfirmOpen(false);
+      setRideToEdit(null);
+      setRideToDelete(null);
+      replaceSelectedClientInUrl();
+    },
+    [modalClient?.id, queryClient, selectedClient?.id, selectedClientIdFromUrl, searchParams],
+  );
+
+  useEffect(() => {
+    if (!selectedClientIdFromUrl || !isApiErrorStatus(selectedClientError, 404)) {
+      return;
+    }
+
+    handleMissingSelectedClient(selectedClientIdFromUrl);
+  }, [handleMissingSelectedClient, selectedClientError, selectedClientIdFromUrl]);
 
   const openNewClientModal = () => {
     setClientToEdit(null);
@@ -138,6 +171,7 @@ export function useClientsPageState(clients: Client[] = []) {
     rideToEdit,
     rideToDelete,
     setRideToDelete,
+    handleMissingSelectedClient,
     openNewClientModal,
     openEditClientModal,
     openDeleteClientConfirm,
