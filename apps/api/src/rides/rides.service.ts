@@ -329,9 +329,21 @@ export class RidesService {
     return updatedRide;
   }
 
-  async delete(userId: string, id: string): Promise<RideWithClient> {
+  async delete(userId: string, id: string): Promise<void> {
     this.logger.log(`[RidesService] Removendo corrida ${id}`, 'RidesService');
-    const existingRide = await this.getRideWithClientOrThrow(userId, id);
+    const startedAt = Date.now();
+    const timings = {
+      lookupMs: 0,
+      transactionMs: 0,
+      cleanupMs: 0,
+      invalidateMs: 0,
+    };
+
+    const lookupStartedAt = Date.now();
+    const existingRide = await this.getRideOrThrow(userId, id);
+    timings.lookupMs = Date.now() - lookupStartedAt;
+
+    const transactionStartedAt = Date.now();
     const result = await (this.drizzle.db as TransactionRunner).transaction(
       async (tx) => {
         await this.rideAccountingService.refundClientBalance(
@@ -345,21 +357,29 @@ export class RidesService {
         return this.ridesRepository.delete(userId, id, tx);
       },
     );
+    timings.transactionMs = Date.now() - transactionStartedAt;
 
     if (!result) {
       throw new NotFoundException('Corrida não encontrada.');
     }
 
+    const cleanupStartedAt = Date.now();
     await this.cleanupManagedRidePhoto(existingRide.photo ?? null, {
       action: 'delete',
       userId,
     });
+    timings.cleanupMs = Date.now() - cleanupStartedAt;
+
+    const invalidateStartedAt = Date.now();
     await this.invalidateRideMutations(userId);
+    timings.invalidateMs = Date.now() - invalidateStartedAt;
     this.logger.log(
       `[RidesService] Corrida ${id} removida com sucesso`,
       'RidesService',
     );
-    return existingRide;
+    this.logger.debug(
+      `[RidesService] Delete timings para corrida ${id}: lookup=${timings.lookupMs}ms transaction=${timings.transactionMs}ms cleanup=${timings.cleanupMs}ms invalidate=${timings.invalidateMs}ms total=${Date.now() - startedAt}ms`,
+    );
   }
 
   async deleteAll(userId: string): Promise<{ success: true }> {

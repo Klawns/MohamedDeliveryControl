@@ -188,8 +188,22 @@ export class ClientsService {
   }
 
   async delete(userId: string, id: string) {
+    const startedAt = Date.now();
+    const timings = {
+      lookupMs: 0,
+      deleteMs: 0,
+      invalidateMs: 0,
+    };
+
+    const lookupStartedAt = Date.now();
     await this.getClientOrThrow(userId, id);
+    timings.lookupMs = Date.now() - lookupStartedAt;
+
+    const deleteStartedAt = Date.now();
     await this.clientsRepository.delete(userId, id);
+    timings.deleteMs = Date.now() - deleteStartedAt;
+
+    const invalidateStartedAt = Date.now();
     await this.invalidateCachesAfterWrite(userId, 'remocao de cliente', [
       {
         cacheName: 'user dashboard',
@@ -200,6 +214,11 @@ export class ClientsService {
         execute: () => this.invalidateDirectoryCache(userId),
       },
     ]);
+    timings.invalidateMs = Date.now() - invalidateStartedAt;
+
+    this.logger.debug(
+      `[ClientsService] Delete timings para cliente ${id}: lookup=${timings.lookupMs}ms delete=${timings.deleteMs}ms invalidate=${timings.invalidateMs}ms total=${Date.now() - startedAt}ms`,
+    );
     return { success: true };
   }
 

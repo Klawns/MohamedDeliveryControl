@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   Post,
   Patch,
   UseGuards,
@@ -141,13 +143,14 @@ export class RidesController {
     return this.rideResponsePresenter.present(result);
   }
 
-  @Delete(':id')
-  async delete(@Request() req: RequestWithUser, @Param('id') id: string) {
-    if (id === 'all') {
-      return this.ridesService.deleteAll(req.user.id);
-    }
+  @Delete('all')
+  deleteAll(@Request() req: RequestWithUser) {
+    return this.ridesService.deleteAll(req.user.id);
+  }
 
-    const result = await this.ridesService.delete(req.user.id, id);
-    return result ? this.rideResponsePresenter.present(result) : null;
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Request() req: RequestWithUser, @Param('id') id: string) {
+    await this.ridesService.delete(req.user.id, id);
   }
 }

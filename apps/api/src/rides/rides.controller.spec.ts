@@ -10,6 +10,7 @@ describe('RidesController', () => {
   let ridesService: {
     create: jest.Mock;
     delete: jest.Mock;
+    deleteAll: jest.Mock;
     getStats: jest.Mock;
     update: jest.Mock;
     updateStatus: jest.Mock;
@@ -23,6 +24,7 @@ describe('RidesController', () => {
     ridesService = {
       create: jest.fn(),
       delete: jest.fn(),
+      deleteAll: jest.fn(),
       getStats: jest.fn(),
       update: jest.fn(),
       updateStatus: jest.fn(),
@@ -187,28 +189,16 @@ describe('RidesController', () => {
     expect(rideResponsePresenter.present).toHaveBeenCalledWith(updatedRide);
   });
 
-  it('should present deleted rides when a specific ride is removed', async () => {
-    const deletedRide = {
-      id: 'ride-1',
-      photo: 'users/user-1/rides/123e4567-e89b-42d3-a456-426614174000.webp',
-    };
-    const presentedRide = {
-      ...deletedRide,
-      photo: null,
-    };
-
-    ridesService.delete.mockResolvedValue(deletedRide);
-    rideResponsePresenter.present.mockResolvedValue(presentedRide);
+  it('should return no content when a specific ride is removed', async () => {
+    ridesService.delete.mockResolvedValue(undefined);
 
     const request = {
       user: { id: 'user-1', role: 'user' },
     } as unknown as RequestWithUser;
 
-    await expect(controller.delete(request, 'ride-1')).resolves.toEqual(
-      presentedRide,
-    );
+    await expect(controller.delete(request, 'ride-1')).resolves.toBeUndefined();
 
     expect(ridesService.delete).toHaveBeenCalledWith('user-1', 'ride-1');
-    expect(rideResponsePresenter.present).toHaveBeenCalledWith(deletedRide);
+    expect(rideResponsePresenter.present).not.toHaveBeenCalled();
   });
 });

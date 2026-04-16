@@ -697,12 +697,12 @@ describe('RidesService', () => {
   });
 
   it('should invalidate dashboard and profile caches after deleting a ride', async () => {
-    repoMock.findOneWithClient.mockResolvedValueOnce({
+    repoMock.findOne.mockResolvedValueOnce({
       ...sampleRide,
       photo: 'users/user-1/rides/123e4567-e89b-42d3-a456-426614174000.webp',
     });
 
-    await service.delete('user-1', 'ride-123');
+    await expect(service.delete('user-1', 'ride-123')).resolves.toBeUndefined();
 
     expect(ridePhotoReferenceMock.deleteManagedPhoto).toHaveBeenCalledWith(
       'users/user-1/rides/123e4567-e89b-42d3-a456-426614174000.webp',
