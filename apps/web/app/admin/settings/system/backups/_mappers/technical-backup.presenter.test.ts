@@ -13,6 +13,10 @@ test('builds download feedback and retry copy for the matching backup', () => {
       sizeBytes: 0,
       manifestVersion: 2,
       errorMessage: null,
+      warnings: [
+        'Upload concluido via fallback no provider r2 apos falha no provider rclone_drive.',
+      ],
+      displayName: 'technical-backup-r2-fallback-2026-04-01T10-00-00-000Z.sql.gz',
       createdAt: '2026-04-01T10:00:00.000Z',
       startedAt: null,
       finishedAt: null,
@@ -35,6 +39,14 @@ test('builds download feedback and retry copy for the matching backup', () => {
   assert.equal(presentation.download.label, 'Tentar novamente');
   assert.equal(presentation.download.isDisabled, false);
   assert.equal(presentation.download.isFeedbackVisible, true);
+  assert.equal(
+    presentation.details.displayName,
+    'technical-backup-r2-fallback-2026-04-01T10-00-00-000Z.sql.gz',
+  );
+  assert.equal(
+    presentation.details.warningMessage,
+    'Upload concluido via fallback no provider r2 apos falha no provider rclone_drive.',
+  );
   assert.equal(presentation.details.checksumLabel, '1234567890abcdef...');
   assert.equal(
     presentation.details.checksumTitle,
@@ -53,6 +65,8 @@ test('disables download for backups that are not successful', () => {
       sizeBytes: null,
       manifestVersion: 1,
       errorMessage: 'erro',
+      warnings: [],
+      displayName: null,
       createdAt: 'invalid',
       startedAt: null,
       finishedAt: null,

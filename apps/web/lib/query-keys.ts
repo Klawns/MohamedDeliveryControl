@@ -134,4 +134,6 @@ export const adminKeys = {
   plans: () => [...adminKeys.settings(), 'plans'] as const,
   promoCodes: () => [...adminKeys.settings(), 'promo-codes'] as const,
   technicalBackups: () => [...adminKeys.settings(), 'technical-backups'] as const,
+  systemBackupSettings: () =>
+    [...adminKeys.settings(), 'system-backup-settings'] as const,
 };

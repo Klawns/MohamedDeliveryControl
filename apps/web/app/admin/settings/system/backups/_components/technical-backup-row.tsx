@@ -66,7 +66,7 @@ export function TechnicalBackupRow({
                   : 'Exibir detalhes do backup tecnico'
               }
             >
-              <div className="md:col-span-3 flex items-center gap-3">
+              <div className="md:col-span-3 flex items-start gap-3">
                 <span className="text-muted-foreground">
                   {isExpanded ? (
                     <ChevronDown className="h-4 w-4" />
@@ -74,9 +74,16 @@ export function TechnicalBackupRow({
                     <ChevronRight className="h-4 w-4" />
                   )}
                 </span>
-                <span className="text-sm font-semibold text-foreground">
-                  {presentation.createdAtLabel}
-                </span>
+                <div className="space-y-1">
+                  <span className="block text-sm font-semibold text-foreground">
+                    {presentation.createdAtLabel}
+                  </span>
+                  {presentation.details.displayName ? (
+                    <span className="block text-xs font-medium text-muted-foreground">
+                      {presentation.details.displayName}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className="md:col-span-2 text-sm text-muted-foreground">
@@ -93,6 +100,11 @@ export function TechnicalBackupRow({
                   <StatusIcon className="h-3 w-3" />
                   {presentation.status.label}
                 </span>
+                {presentation.details.warningMessage ? (
+                  <span className="inline-flex items-center rounded-full border border-warning/20 bg-warning/10 px-2.5 py-0.5 text-xs font-bold tracking-wide text-warning">
+                    Fallback R2
+                  </span>
+                ) : null}
               </div>
 
               <div className="md:col-span-2 text-left text-sm font-medium text-foreground md:text-right">
@@ -145,6 +157,15 @@ export function TechnicalBackupRow({
 
                 <div className="space-y-1">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Arquivo
+                  </span>
+                  <p className="break-all font-mono text-sm text-foreground">
+                    {presentation.details.displayName ?? 'Nome padrao'}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Timing
                   </span>
                   <p className="text-sm text-foreground">
@@ -169,6 +190,13 @@ export function TechnicalBackupRow({
                   </p>
                 </div>
               </div>
+
+              {presentation.details.warningMessage ? (
+                <div className="relative z-10 mt-4 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+                  <strong className="mb-1 block">Warning:</strong>
+                  {presentation.details.warningMessage}
+                </div>
+              ) : null}
 
               {presentation.details.errorMessage ? (
                 <div className="relative z-10 mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">

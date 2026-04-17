@@ -31,6 +31,8 @@ interface TechnicalBackupDownloadPresentation {
 
 interface TechnicalBackupDetailsPresentation {
   externalJobId: string;
+  displayName: string | null;
+  warningMessage: string | null;
   startedAtLabel: string;
   finishedAtLabel: string;
   checksumLabel: string;
@@ -194,6 +196,8 @@ export function getTechnicalBackupRowPresentation(
     download: getDownloadPresentation(backup, options),
     details: {
       externalJobId: backup.id,
+      displayName: backup.displayName ?? null,
+      warningMessage: backup.warnings?.[0] ?? null,
       startedAtLabel: formatBackupTime(backup.startedAt),
       finishedAtLabel: formatBackupTime(backup.finishedAt),
       checksumLabel: checksum.label,

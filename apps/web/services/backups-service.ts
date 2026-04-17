@@ -6,6 +6,8 @@ import type {
   BackupImportJobResponse,
   BackupImportPreviewResponse,
   BackupJobSummary,
+  SystemBackupSettingsResponse,
+  UpdateSystemBackupSettingsInput,
 } from '@/types/backups';
 
 export const backupsService = {
@@ -75,6 +77,24 @@ export const backupsService = {
   ): Promise<BackupDownloadResponse> {
     return apiClient.get<BackupDownloadResponse>(
       `/admin/backups/technical/${backupId}/download`,
+    );
+  },
+
+  async getSystemBackupSettings(
+    signal?: AbortSignal,
+  ): Promise<SystemBackupSettingsResponse> {
+    return apiClient.get<SystemBackupSettingsResponse>(
+      '/admin/backups/system/settings',
+      { signal },
+    );
+  },
+
+  async updateSystemBackupSettings(
+    data: UpdateSystemBackupSettingsInput,
+  ): Promise<SystemBackupSettingsResponse> {
+    return apiClient.put<SystemBackupSettingsResponse>(
+      '/admin/backups/system/settings',
+      data,
     );
   },
 };

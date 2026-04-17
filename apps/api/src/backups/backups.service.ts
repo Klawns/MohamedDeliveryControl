@@ -40,6 +40,10 @@ export class BackupsService {
     return this.technicalBackupsService.getDownloadUrl(id);
   }
 
+  async getTechnicalDownloadFile(id: string) {
+    return this.technicalBackupsService.getDownloadFile(id);
+  }
+
   previewFunctionalImport(
     userId: string,
     upload: FunctionalBackupImportArchiveSource,

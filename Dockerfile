@@ -30,7 +30,7 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+  && apt-get install -y --no-install-recommends ca-certificates curl gnupg rclone \
   && install -m 0755 -d /etc/apt/keyrings \
   && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
   | gpg --dearmor --yes -o /etc/apt/keyrings/postgresql.gpg \
@@ -45,6 +45,7 @@ RUN apt-get update \
 
 RUN corepack enable
 RUN pg_dump --version
+RUN rclone version
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/package.json
@@ -54,10 +55,13 @@ COPY packages/ui/package.json ./packages/ui/package.json
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/scripts/start-api.sh ./apps/api/scripts/start-api.sh
 COPY --from=builder /app/packages/database/dist ./packages/database/dist
 
 ENV NODE_ENV=production
 
+RUN chmod +x ./apps/api/scripts/start-api.sh
+
 EXPOSE 3000
 
-CMD ["pnpm", "--filter", "api", "start:prod"]
+CMD ["/bin/sh", "./apps/api/scripts/start-api.sh"]

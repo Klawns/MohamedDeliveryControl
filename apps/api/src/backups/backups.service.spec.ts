@@ -57,6 +57,11 @@ describe('BackupsService', () => {
         url: 'https://signed.example.com/tech-1',
         expiresInSeconds: 300,
       }),
+      getDownloadFile: jest.fn().mockResolvedValue({
+        stream: {},
+        fileName: 'technical-backup.sql.gz',
+        contentType: 'application/gzip',
+      }),
     };
 
     moduleRef = await Test.createTestingModule({
@@ -129,6 +134,16 @@ describe('BackupsService', () => {
     await service.listTechnicalBackups();
 
     expect(technicalBackupsService.listBackups).toHaveBeenCalled();
+  });
+
+  it('should delegate technical backup proxy file retrieval to the dedicated service', async () => {
+    const technicalBackupsService = moduleRef.get<any>(TechnicalBackupsService);
+
+    await service.getTechnicalDownloadFile('tech-1');
+
+    expect(technicalBackupsService.getDownloadFile).toHaveBeenCalledWith(
+      'tech-1',
+    );
   });
 
   it('should expose the current backup automation status', () => {

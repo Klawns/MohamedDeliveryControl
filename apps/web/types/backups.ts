@@ -11,6 +11,8 @@ export interface BackupJobSummary {
   startedAt: string | null;
   finishedAt: string | null;
   metadata: Record<string, unknown> | null;
+  warnings?: string[];
+  displayName?: string | null;
 }
 
 export interface BackupAutomationStatus {
@@ -32,6 +34,41 @@ export interface BackupDownloadResponse {
   url: string;
   expiresInSeconds: number;
 }
+
+export type SystemBackupScheduleMode = 'disabled' | 'fixed_time' | 'interval';
+export type SystemBackupRetentionMode = 'count' | 'max_age';
+
+export interface SystemBackupSettingsResponse {
+  enabled: boolean;
+  providerId: string;
+  scheduler: {
+    health: 'disabled' | 'registered' | 'failed';
+    lastSyncedAt: string | null;
+  };
+  schedule: {
+    mode: SystemBackupScheduleMode;
+    fixedTime: string | null;
+    intervalMinutes: number | null;
+  };
+  retention: {
+    mode: SystemBackupRetentionMode;
+    maxCount: number | null;
+    maxAgeDays: number | null;
+  };
+  failover?: {
+    enabled: boolean;
+    primaryProviderId: string;
+    fallbackProviderId: string | null;
+    lastFallbackAt: string | null;
+    lastFallbackBackupId: string | null;
+    lastFallbackReason: string | null;
+  };
+}
+
+export type UpdateSystemBackupSettingsInput = Pick<
+  SystemBackupSettingsResponse,
+  'schedule' | 'retention'
+>;
 
 export interface BackupImportPreview {
   manifestVersion: number;

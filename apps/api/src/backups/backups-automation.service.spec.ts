@@ -68,7 +68,7 @@ describe('BackupsAutomationService', () => {
     );
   });
 
-  it('should register the functional schedule when automation is enabled', async () => {
+  it('should register only the functional schedule when automation is enabled', async () => {
     configValues.BACKUP_AUTOMATION_ENABLED = 'true';
     configValues.FUNCTIONAL_BACKUP_CRON = '0 2 * * *';
 
@@ -92,33 +92,25 @@ describe('BackupsAutomationService', () => {
         health: 'registered',
         automationEnabled: true,
         functionalRegistered: true,
-        technicalRegistered: true,
+        technicalRegistered: false,
       }),
     );
   });
 
-  it('should register the technical schedule when automation is enabled', async () => {
+  it('does not register the technical schedule anymore', async () => {
     configValues.BACKUP_AUTOMATION_ENABLED = 'true';
 
     await service.onModuleInit();
 
-    expect(queueMock.upsertJobScheduler).toHaveBeenCalledWith(
+    expect(queueMock.upsertJobScheduler).not.toHaveBeenCalledWith(
       TECHNICAL_BACKUP_SCHEDULER_ID,
-      {
-        pattern: '0 4 * * *',
-      },
-      {
-        name: RUN_TECHNICAL_BACKUP_SCHEDULE_JOB,
-        data: {},
-        opts: {
-          removeOnComplete: true,
-        },
-      },
+      expect.anything(),
+      expect.anything(),
     );
     expect(service.getStatus()).toEqual(
       expect.objectContaining({
         health: 'registered',
-        technicalRegistered: true,
+        technicalRegistered: false,
       }),
     );
   });

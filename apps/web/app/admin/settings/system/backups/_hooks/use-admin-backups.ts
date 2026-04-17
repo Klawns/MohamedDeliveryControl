@@ -22,6 +22,12 @@ export function useAdminBackups() {
     refetchIntervalInBackground: true,
   });
 
+  const settingsQuery = useQuery({
+    queryKey: adminKeys.systemBackupSettings(),
+    queryFn: ({ signal }) => backupsService.getSystemBackupSettings(signal),
+    retry: false,
+  });
+
   const createTechnicalBackupMutation = useMutation({
     mutationFn: () => backupsService.createManualTechnicalBackup(),
     onSuccess: async () => {
@@ -45,6 +51,32 @@ export function useAdminBackups() {
     },
   });
 
+  const updateSystemBackupSettingsMutation = useMutation({
+    mutationFn: backupsService.updateSystemBackupSettings,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: adminKeys.systemBackupSettings(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: adminKeys.technicalBackups(),
+      });
+      toast({
+        title: 'Configuracao de backup atualizada',
+        description: 'O scheduler e a retencao sistêmica foram reaplicados.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Falha ao salvar configuracao de backup',
+        description: parseApiError(
+          error,
+          'Nao foi possivel salvar a configuracao do backup sistêmico.',
+        ),
+        variant: 'destructive',
+      });
+    },
+  });
+
   const {
     downloadState,
     isPreparingDownload,
@@ -62,7 +94,9 @@ export function useAdminBackups() {
 
   return {
     backups: backupsQuery.data ?? [],
+    systemSettings: settingsQuery.data ?? null,
     isLoading: backupsQuery.isLoading,
+    isSettingsLoading: settingsQuery.isLoading,
     backupDownloadState: downloadState,
     errorMessage: backupsQuery.isError
       ? parseApiError(
@@ -70,11 +104,21 @@ export function useAdminBackups() {
           'Nao foi possivel carregar o historico de backups tecnicos.',
         )
       : null,
+    settingsErrorMessage: settingsQuery.isError
+      ? parseApiError(
+          settingsQuery.error,
+          'Nao foi possivel carregar a configuracao do backup sistêmico.',
+        )
+      : null,
     isCreating: createTechnicalBackupMutation.isPending,
+    isSavingSettings: updateSystemBackupSettingsMutation.isPending,
     isPreparingDownload,
     isDownloadActive,
     refresh: backupsQuery.refetch,
     createTechnicalBackup: () => createTechnicalBackupMutation.mutateAsync(),
+    saveSystemBackupSettings: (input: Parameters<
+      typeof backupsService.updateSystemBackupSettings
+    >[0]) => updateSystemBackupSettingsMutation.mutateAsync(input),
     openDownloadUrl: startDownload,
   };
 }

@@ -109,4 +109,66 @@ describe('validateEnv', () => {
       ),
     ).toThrow('GOOGLE_CLIENT_ID');
   });
+
+  it('accepts the rclone system-backup provider when the remote is configured', () => {
+    const env = validateEnv(
+      createValidEnv({
+        SYSTEM_BACKUP_PROVIDER: 'rclone_drive',
+        RCLONE_REMOTE: 'gdrive',
+        PG_DUMP_BACKUP_ENABLED: 'true',
+      }),
+    );
+
+    expect(env.SYSTEM_BACKUP_PROVIDER).toBe('rclone_drive');
+    expect(env.RCLONE_REMOTE).toBe('gdrive');
+  });
+
+  it('rejects rclone system-backup provider without a configured remote', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          SYSTEM_BACKUP_PROVIDER: 'rclone_drive',
+          RCLONE_REMOTE: '',
+        }),
+      ),
+    ).toThrow('RCLONE_REMOTE');
+  });
+
+  it('rejects docker compose pg_dump mode without a compose service name', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          PG_DUMP_EXECUTION_MODE: 'docker_compose',
+          PG_DUMP_DOCKER_COMPOSE_SERVICE: '',
+        }),
+      ),
+    ).toThrow('PG_DUMP_DOCKER_COMPOSE_SERVICE');
+  });
+
+  it('accepts explicit system-backup failover when the secondary provider differs from the primary', () => {
+    const env = validateEnv(
+      createValidEnv({
+        SYSTEM_BACKUP_PROVIDER: 'rclone_drive',
+        RCLONE_REMOTE: 'gdrive',
+        SYSTEM_BACKUP_FAILOVER_ENABLED: 'true',
+        SYSTEM_BACKUP_FALLBACK_PROVIDER: 'r2',
+      }),
+    );
+
+    expect(env.SYSTEM_BACKUP_FAILOVER_ENABLED).toBe('true');
+    expect(env.SYSTEM_BACKUP_FALLBACK_PROVIDER).toBe('r2');
+  });
+
+  it('rejects system-backup failover when primary and fallback providers are equal', () => {
+    expect(() =>
+      validateEnv(
+        createValidEnv({
+          SYSTEM_BACKUP_PROVIDER: 'rclone_drive',
+          RCLONE_REMOTE: 'gdrive',
+          SYSTEM_BACKUP_FAILOVER_ENABLED: 'true',
+          SYSTEM_BACKUP_FALLBACK_PROVIDER: 'rclone_drive',
+        }),
+      ),
+    ).toThrow('SYSTEM_BACKUP_FALLBACK_PROVIDER');
+  });
 });

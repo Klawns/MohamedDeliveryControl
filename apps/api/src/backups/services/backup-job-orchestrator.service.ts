@@ -31,8 +31,25 @@ import {
 } from '../backups.constants';
 import { getBackupPublicErrorMessage } from '../backups-public-errors';
 import { BackupRetentionService } from './backup-retention.service';
+import { BackupStorageRegistryService } from './backup-storage-registry.service';
 import { FunctionalBackupArchiveService } from './functional-backup-archive.service';
+import { SystemBackupRetentionService } from './system-backup-retention.service';
+import { SystemBackupSettingsService } from './system-backup-settings.service';
 import { TechnicalBackupRunnerService } from './technical-backup-runner.service';
+
+interface TechnicalBackupUploadOutcome {
+  requestedProviderId: string;
+  providerId: string;
+  reference: {
+    key: string;
+    fileName: string;
+    contentType: string;
+  };
+  fallbackUsed: boolean;
+  fallbackFromProviderId: string | null;
+  fallbackReason: string | null;
+  uploadAttemptCount: number;
+}
 
 @Injectable()
 export class BackupJobOrchestratorService {
@@ -48,6 +65,9 @@ export class BackupJobOrchestratorService {
     private readonly functionalBackupArchiveService: FunctionalBackupArchiveService,
     private readonly technicalBackupRunnerService: TechnicalBackupRunnerService,
     private readonly backupRetentionService: BackupRetentionService,
+    private readonly systemBackupRetentionService: SystemBackupRetentionService,
+    private readonly systemBackupSettingsService: SystemBackupSettingsService,
+    private readonly backupStorageRegistry: BackupStorageRegistryService,
     private readonly configService: ConfigService,
     @InjectQueue(BACKUPS_QUEUE)
     private readonly backupsQueue: Queue,
@@ -99,6 +119,11 @@ export class BackupJobOrchestratorService {
     let job: BackupJobRecord | undefined;
 
     try {
+      this.logger.log({
+        context: 'createManualTechnicalBackup:start',
+        actorUserId,
+      });
+
       job = await this.backupsRepository.createTechnicalJob(
         MANUAL_BACKUP_TRIGGER,
         actorUserId,
@@ -109,6 +134,12 @@ export class BackupJobOrchestratorService {
         { backupJobId: job.id },
         { actorUserId, backupJobId: job.id },
       );
+
+      this.logger.log({
+        context: 'createManualTechnicalBackup:success',
+        actorUserId,
+        backupJobId: job.id,
+      });
     } catch (error) {
       if (this.isTechnicalBackupSchemaError(error)) {
         throw this.getTechnicalBackupUnavailableException();
@@ -189,6 +220,59 @@ export class BackupJobOrchestratorService {
     );
   }
 
+  private getTechnicalBackupFailureMessage(error: unknown) {
+    const message = this.getErrorMessage(error);
+
+    if (
+      message.includes('pg_dump nao foi encontrado na runtime da API') ||
+      message.includes('docker compose para executar o pg_dump') ||
+      message.includes('PG_DUMP_DOCKER_COMPOSE_SERVICE')
+    ) {
+      return message;
+    }
+
+    return getBackupPublicErrorMessage('processTechnicalJob');
+  }
+
+  private getConfiguredFallbackProviderId(primaryProviderId: string) {
+    if (
+      this.configService.get<string>('SYSTEM_BACKUP_FAILOVER_ENABLED') !==
+      'true'
+    ) {
+      return null;
+    }
+
+    const fallbackProviderId =
+      this.configService.get<string>('SYSTEM_BACKUP_FALLBACK_PROVIDER') ?? null;
+
+    if (!fallbackProviderId || fallbackProviderId === primaryProviderId) {
+      return null;
+    }
+
+    return fallbackProviderId;
+  }
+
+  private shouldAttemptTechnicalUploadFallback(
+    primaryProviderId: string,
+    error: unknown,
+  ) {
+    if (!this.getConfiguredFallbackProviderId(primaryProviderId)) {
+      return false;
+    }
+
+    const message = this.getErrorMessage(error).toLowerCase();
+
+    return !(
+      message.includes('pg_dump') ||
+      message.includes('docker compose') ||
+      message.includes('provider de backup sistemico') ||
+      message.includes('nao esta disponivel') ||
+      message.includes('invalid environment configuration') ||
+      message.includes('obrigatorio') ||
+      message.includes('schema')
+    );
+  }
+
   private logOperationalError(
     context: string,
     error: unknown,
@@ -259,14 +343,25 @@ export class BackupJobOrchestratorService {
     return `${this.storagePrefix}/users/${userId}/${trigger}/${dateSegment}/${jobId}.zip`;
   }
 
-  private buildTechnicalStorageKey(trigger: string, jobId: string) {
+  private buildTechnicalStorageKey(
+    trigger: string,
+    jobId: string,
+    options?: {
+      fallbackProviderId?: string | null;
+    },
+  ) {
     const dateSegment = new Date().toISOString().slice(0, 10);
-    return `${this.storagePrefix}/technical/${trigger}/${dateSegment}/${jobId}.sql.gz`;
+    const fallbackSuffix = options?.fallbackProviderId
+      ? `.${options.fallbackProviderId}-fallback`
+      : '';
+
+    return `${this.storagePrefix}/technical/${trigger}/${dateSegment}/${jobId}${fallbackSuffix}.sql.gz`;
   }
 
   private buildDownloadFileName(job: {
     kind?: BackupJobRecord['kind'];
     createdAt: Date | string;
+    fallbackProviderId?: string | null;
   }) {
     const createdAt =
       job.createdAt instanceof Date
@@ -275,6 +370,10 @@ export class BackupJobOrchestratorService {
     const safeDate = createdAt.replace(/[:.]/g, '-');
 
     if (job.kind === TECHNICAL_BACKUP_KIND) {
+      if (job.fallbackProviderId) {
+        return `technical-backup-${job.fallbackProviderId}-fallback-${safeDate}.sql.gz`;
+      }
+
       return `technical-backup-${safeDate}.sql.gz`;
     }
 
@@ -353,6 +452,156 @@ export class BackupJobOrchestratorService {
     }
   }
 
+  private async uploadTechnicalBackup(
+    existingJob: BackupJobRecord,
+    technicalDump: {
+      dumpBuffer: Buffer;
+      contentType: string;
+      rawSizeBytes: number;
+    },
+  ): Promise<TechnicalBackupUploadOutcome> {
+    const primaryProvider = this.backupStorageRegistry.getActiveProvider();
+    const primaryStorageKey = this.buildTechnicalStorageKey(
+      existingJob.trigger,
+      existingJob.id,
+    );
+    const primaryFileName = this.buildDownloadFileName({
+      kind: TECHNICAL_BACKUP_KIND,
+      createdAt: existingJob.createdAt,
+    });
+
+    this.logger.log({
+      context: 'processTechnicalBackupJob:providerAttempt',
+      backupJobId: existingJob.id,
+      requestedProviderId: primaryProvider.id,
+      attemptProviderId: primaryProvider.id,
+      storageKey: primaryStorageKey,
+      storageFileName: primaryFileName,
+      trigger: existingJob.trigger,
+    });
+
+    try {
+      const upload = await primaryProvider.upload(
+        {
+          buffer: technicalDump.dumpBuffer,
+          contentType: technicalDump.contentType,
+          fileName: primaryFileName,
+        },
+        primaryStorageKey,
+      );
+
+      return {
+        requestedProviderId: primaryProvider.id,
+        providerId: upload.providerId,
+        reference: upload,
+        fallbackUsed: false,
+        fallbackFromProviderId: null,
+        fallbackReason: null,
+        uploadAttemptCount: 1,
+      };
+    } catch (error) {
+      this.logger.error(
+        {
+          context: 'processTechnicalBackupJob:providerFailed',
+          backupJobId: existingJob.id,
+          requestedProviderId: primaryProvider.id,
+          attemptProviderId: primaryProvider.id,
+          storageKey: primaryStorageKey,
+          storageFileName: primaryFileName,
+          trigger: existingJob.trigger,
+          message: this.getErrorMessage(error),
+        },
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      if (!this.shouldAttemptTechnicalUploadFallback(primaryProvider.id, error)) {
+        throw error;
+      }
+
+      const fallbackProviderId = this.getConfiguredFallbackProviderId(
+        primaryProvider.id,
+      );
+
+      if (!fallbackProviderId) {
+        throw error;
+      }
+
+      const fallbackProvider =
+        this.backupStorageRegistry.getProvider(fallbackProviderId);
+      const fallbackStorageKey = this.buildTechnicalStorageKey(
+        existingJob.trigger,
+        existingJob.id,
+        {
+          fallbackProviderId,
+        },
+      );
+      const fallbackFileName = this.buildDownloadFileName({
+        kind: TECHNICAL_BACKUP_KIND,
+        createdAt: existingJob.createdAt,
+        fallbackProviderId,
+      });
+
+      this.logger.log({
+        context: 'processTechnicalBackupJob:fallbackAttempt',
+        backupJobId: existingJob.id,
+        requestedProviderId: primaryProvider.id,
+        attemptProviderId: fallbackProvider.id,
+        fallbackProviderId,
+        storageKey: fallbackStorageKey,
+        storageFileName: fallbackFileName,
+        trigger: existingJob.trigger,
+        message: this.getErrorMessage(error),
+      });
+
+      try {
+        const fallbackUpload = await fallbackProvider.upload(
+          {
+            buffer: technicalDump.dumpBuffer,
+            contentType: technicalDump.contentType,
+            fileName: fallbackFileName,
+          },
+          fallbackStorageKey,
+        );
+
+        this.logger.log({
+          context: 'processTechnicalBackupJob:fallbackSuccess',
+          backupJobId: existingJob.id,
+          requestedProviderId: primaryProvider.id,
+          fallbackProviderId,
+          storageKey: fallbackUpload.key,
+          storageFileName: fallbackUpload.fileName,
+          trigger: existingJob.trigger,
+        });
+
+        return {
+          requestedProviderId: primaryProvider.id,
+          providerId: fallbackUpload.providerId,
+          reference: fallbackUpload,
+          fallbackUsed: true,
+          fallbackFromProviderId: primaryProvider.id,
+          fallbackReason: this.getErrorMessage(error),
+          uploadAttemptCount: 2,
+        };
+      } catch (fallbackError) {
+        this.logger.error(
+          {
+            context: 'processTechnicalBackupJob:fallbackFailed',
+            backupJobId: existingJob.id,
+            requestedProviderId: primaryProvider.id,
+            attemptProviderId: fallbackProvider.id,
+            fallbackProviderId,
+            storageKey: fallbackStorageKey,
+            storageFileName: fallbackFileName,
+            trigger: existingJob.trigger,
+            message: this.getErrorMessage(fallbackError),
+          },
+          fallbackError instanceof Error ? fallbackError.stack : undefined,
+        );
+        throw fallbackError;
+      }
+    }
+  }
+
   private async processTechnicalBackupJob(backupJobId: string) {
     const existingJob = await this.backupsRepository.findById(backupJobId);
 
@@ -363,45 +612,66 @@ export class BackupJobOrchestratorService {
     await this.backupsRepository.markRunning(backupJobId);
 
     try {
+      const requestedProvider = this.backupStorageRegistry.getActiveProvider();
+      this.logger.log({
+        context: 'processTechnicalBackupJob:start',
+        backupJobId,
+        providerId: requestedProvider.id,
+        trigger: existingJob.trigger,
+      });
       const technicalDump =
         await this.technicalBackupRunnerService.createDumpBuffer();
-      const storageKey = this.buildTechnicalStorageKey(
-        existingJob.trigger,
-        existingJob.id,
-      );
-
-      await this.storageProvider.uploadPrivate(
-        {
-          buffer: technicalDump.dumpBuffer,
-          mimetype: technicalDump.contentType,
-          originalname: this.buildDownloadFileName({
-            kind: TECHNICAL_BACKUP_KIND,
-            createdAt: existingJob.createdAt,
-          }),
-        },
-        storageKey,
-      );
+      const upload = await this.uploadTechnicalBackup(existingJob, technicalDump);
 
       await this.backupsRepository.markSuccess(backupJobId, {
-        storageKey,
+        storageKey: upload.reference.key,
         checksum: this.getSha256(technicalDump.dumpBuffer),
         sizeBytes: technicalDump.dumpBuffer.length,
         metadataJson: JSON.stringify({
           compression: 'gzip',
           rawSizeBytes: technicalDump.rawSizeBytes,
+          requestedStorageProviderId: upload.requestedProviderId,
+          storageProviderId: upload.providerId,
+          storageFileName: upload.reference.fileName,
+          displayFileName: upload.reference.fileName,
+          storageContentType: upload.reference.contentType,
+          fallbackUsed: upload.fallbackUsed,
+          fallbackFromProviderId: upload.fallbackFromProviderId,
+          fallbackReason: upload.fallbackReason,
+          uploadAttemptCount: upload.uploadAttemptCount,
         }),
       });
 
-      await this.backupRetentionService.pruneTechnicalBackups(
-        this.technicalRetentionCount,
+      const settings = await this.systemBackupSettingsService.getSettings();
+      await this.systemBackupRetentionService.pruneBackups(
+        settings.retention.mode === 'count'
+          ? {
+              mode: 'count',
+              maxCount: settings.retention.maxCount ?? this.technicalRetentionCount,
+            }
+          : {
+              mode: 'max_age',
+              maxAgeDays: settings.retention.maxAgeDays ?? 30,
+            },
       );
+
+      this.logger.log({
+        context: 'processTechnicalBackupJob:success',
+        backupJobId,
+        requestedProviderId: upload.requestedProviderId,
+        providerId: upload.providerId,
+        fallbackUsed: upload.fallbackUsed,
+        storageKey: upload.reference.key,
+        storageFileName: upload.reference.fileName,
+        sizeBytes: technicalDump.dumpBuffer.length,
+      });
     } catch (error) {
       this.logOperationalError('processTechnicalBackupJob', error, {
         backupJobId,
       });
       await this.backupsRepository.markFailed(
         backupJobId,
-        getBackupPublicErrorMessage('processTechnicalJob'),
+        this.getTechnicalBackupFailureMessage(error),
       );
       throw error;
     }
@@ -428,6 +698,10 @@ export class BackupJobOrchestratorService {
   }
 
   private async enqueueScheduledTechnicalBackup() {
+    this.logger.log({
+      context: 'enqueueScheduledTechnicalBackup:start',
+    });
+
     const job = await this.backupsRepository.createTechnicalJob(
       SCHEDULED_BACKUP_TRIGGER,
       null,
@@ -438,5 +712,10 @@ export class BackupJobOrchestratorService {
       { backupJobId: job.id },
       { backupJobId: job.id, trigger: 'scheduled' },
     );
+
+    this.logger.log({
+      context: 'enqueueScheduledTechnicalBackup:success',
+      backupJobId: job.id,
+    });
   }
 }

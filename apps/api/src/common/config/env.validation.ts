@@ -112,6 +112,29 @@ const envSchema = z
     FUNCTIONAL_BACKUP_CRON: optionalString,
     TECHNICAL_BACKUP_CRON: optionalString,
     PG_DUMP_BINARY: optionalString,
+    PG_DUMP_BACKUP_ENABLED: optionalBoolString,
+    PG_DUMP_EXECUTION_MODE: z.preprocess(
+      (value) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : value,
+      z.enum(['binary', 'docker_compose', 'auto']).default('binary'),
+    ),
+    PG_DUMP_DOCKER_COMPOSE_SERVICE: optionalString,
+    PG_DUMP_DOCKER_COMPOSE_FILE: optionalString,
+    SYSTEM_BACKUP_PROVIDER: z.preprocess(
+      (value) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : value,
+      z.enum(['r2', 'rclone_drive']).default('r2'),
+    ),
+    SYSTEM_BACKUP_FAILOVER_ENABLED: optionalBoolString,
+    SYSTEM_BACKUP_FALLBACK_PROVIDER: z.preprocess(
+      (value) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : value,
+      z.enum(['r2', 'rclone_drive']).optional(),
+    ),
+    RCLONE_BINARY: optionalString,
+    RCLONE_CONFIG_FILE: optionalString,
+    RCLONE_REMOTE: optionalString,
+    SYSTEM_BACKUP_REMOTE_PATH: optionalString,
   })
   .passthrough()
   .superRefine((env, ctx) => {
@@ -342,6 +365,54 @@ const envSchema = z
       if (env.R2_PUBLIC_URL) {
         validateUrl(env.R2_PUBLIC_URL, 'R2_PUBLIC_URL');
       }
+    }
+
+    if (env.SYSTEM_BACKUP_PROVIDER === 'rclone_drive' && !env.RCLONE_REMOTE) {
+      requireField(
+        'RCLONE_REMOTE',
+        'RCLONE_REMOTE e obrigatorio quando SYSTEM_BACKUP_PROVIDER=rclone_drive.',
+      );
+    }
+
+    if (
+      env.SYSTEM_BACKUP_FAILOVER_ENABLED === 'true' &&
+      !env.SYSTEM_BACKUP_FALLBACK_PROVIDER
+    ) {
+      requireField(
+        'SYSTEM_BACKUP_FALLBACK_PROVIDER',
+        'SYSTEM_BACKUP_FALLBACK_PROVIDER e obrigatorio quando SYSTEM_BACKUP_FAILOVER_ENABLED=true.',
+      );
+    }
+
+    if (
+      env.SYSTEM_BACKUP_FAILOVER_ENABLED === 'true' &&
+      env.SYSTEM_BACKUP_FALLBACK_PROVIDER === env.SYSTEM_BACKUP_PROVIDER
+    ) {
+      requireField(
+        'SYSTEM_BACKUP_FALLBACK_PROVIDER',
+        'SYSTEM_BACKUP_FALLBACK_PROVIDER deve ser diferente de SYSTEM_BACKUP_PROVIDER.',
+      );
+    }
+
+    if (
+      env.SYSTEM_BACKUP_FAILOVER_ENABLED === 'true' &&
+      env.SYSTEM_BACKUP_FALLBACK_PROVIDER === 'rclone_drive' &&
+      !env.RCLONE_REMOTE
+    ) {
+      requireField(
+        'RCLONE_REMOTE',
+        'RCLONE_REMOTE e obrigatorio quando o fallback do backup sistemico usar rclone_drive.',
+      );
+    }
+
+    if (
+      env.PG_DUMP_EXECUTION_MODE === 'docker_compose' &&
+      !env.PG_DUMP_DOCKER_COMPOSE_SERVICE
+    ) {
+      requireField(
+        'PG_DUMP_DOCKER_COMPOSE_SERVICE',
+        'PG_DUMP_DOCKER_COMPOSE_SERVICE e obrigatorio quando PG_DUMP_EXECUTION_MODE=docker_compose.',
+      );
     }
   });
 

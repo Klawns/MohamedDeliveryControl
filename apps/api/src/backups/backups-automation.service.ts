@@ -9,7 +9,6 @@ import {
   FUNCTIONAL_BACKUP_SCHEDULER_ID,
   RUN_FUNCTIONAL_BACKUPS_SCHEDULE_JOB,
   RUN_TECHNICAL_BACKUP_SCHEDULE_JOB,
-  TECHNICAL_BACKUP_SCHEDULER_ID,
 } from './backups.constants';
 
 type BackupAutomationHealth = 'disabled' | 'registered' | 'failed';
@@ -77,18 +76,10 @@ export class BackupsAutomationService implements OnModuleInit {
         functionalCron,
       );
       this.status.functionalRegistered = true;
-      await this.registerScheduler(
-        TECHNICAL_BACKUP_SCHEDULER_ID,
-        RUN_TECHNICAL_BACKUP_SCHEDULE_JOB,
-        technicalCron,
-      );
-      this.status.technicalRegistered = true;
 
       this.status.health = 'registered';
 
-      this.logger.log(
-        `Automacao de backup registrada. Funcional: ${functionalCron}. Tecnico: ${technicalCron}.`,
-      );
+      this.logger.log(`Automacao funcional registrada. Funcional: ${functionalCron}.`);
     } catch (error) {
       this.status.health = 'failed';
       this.status.lastCheckedAt = new Date().toISOString();
